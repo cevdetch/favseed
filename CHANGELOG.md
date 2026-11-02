@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Keep Astro HTML responses streaming after bounded head inspection instead of buffering
+  the whole page. Detect existing icons only in the head, handle tags split across chunks,
+  and pass through unchanged when a closing head is absent from the first 64 KiB.
 - Reject malformed root viewBox number lists before source rendering or output writes,
   including missing values, hexadecimal numbers and repeated commas. Retain supported signed
   decimal/exponent notation and whitespace/comma separators. Bump to 0.8.0 for shared-pipeline
