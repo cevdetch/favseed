@@ -69,6 +69,57 @@ test('site favicon metadata and actual ICO payload both declare48px', async ({ p
   expect([ico.readUInt32BE(offset + 16), ico.readUInt32BE(offset + 20)]).toEqual([48, 48]);
 });
 
+test('SVG diagnostics match native and replay once on a cached build', async ({ page }) => {
+  await checkPage(page);
+  const input = fixture('dependent'), source = await readFile(input, 'utf8');
+  const options = { manifest: true, sizes: [32], padding: 20, bg: '#fff' }, warnings = [];
+  const expected = summary(await buildFiles({ input, ...options, onWarn: (w) => warnings.push(w) }));
+  expect(warnings).toHaveLength(2);
+  for (let i = 0; i < 2; i++) {
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+    expect(actual.warnings).toEqual(warnings);
+    // The fixture intentionally depends on host fonts: native can substitute one
+    // while WASM omits text. The self-contained corpus above checks all raster bytes.
+    const reusable = (files) => files.filter((file) => /\.(svg|webmanifest)$/.test(file.name));
+    expect(reusable(actual.files)).toEqual(reusable(expected.files));
+    expect({ fit: actual.fit, links: actual.links, animated: actual.animated })
+      .toEqual({ fit: expected.fit, links: expected.links, animated: expected.animated });
+    if (i) expect(actual.progress).toEqual([]);
+  }
+});
+
+test('form keeps SVG guidance through failed builds and clears it on the next build', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[name=file]').setInputFiles(fixture('dependent'));
+  await page.locator('input[name=sizes]').fill('32');
+  const generate = page.getByRole('button', { name: 'Generate', exact: true });
+  await generate.click();
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings li')).toHaveCount(2);
+  await expect(page.locator('#warnings')).toContainText('Convert text to paths');
+  const previous = await downloads(page);
+  await generate.click(); // Replaying the cached build must not lose or duplicate guidance.
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings li')).toHaveCount(2);
+  await page.locator('input[name=file]').setInputFiles({ name: 'text.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text font-family="FavseedOutlineOnlyMissingFont">F</text></svg>') });
+  await generate.click();
+  await expect(page.locator('output')).toContainText('renders nothing');
+  await expect(page.locator('#warnings li')).toHaveCount(1);
+  await expect(page.locator('#warnings')).toContainText('Convert text to paths');
+  expect(await downloads(page)).toEqual(previous);
+  await page.locator('input[name=file]').setInputFiles({ name: 'unsized.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>') });
+  await generate.click();
+  await expect(page.locator('output')).toContainText('add a viewBox');
+  await expect(page.locator('#warnings')).toBeHidden();
+  expect(await downloads(page)).toEqual(previous);
+  await page.locator('input[name=file]').setInputFiles(fixture('flat'));
+  await generate.click();
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings')).toBeHidden();
+});
+
 test('invalid options, cancellation and worker retry leave the engine usable', async ({ page }) => {
   await checkPage(page);
   const source = await readFile(fixture('general'), 'utf8'), options = { mode: 'fast', sizes: [32] };

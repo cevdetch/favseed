@@ -11,6 +11,11 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Diagnose SVG text/font and external-image dependencies in the shared reference pass, and
+  show the same guidance in CLI/API and browser, including cached browser builds. Preserve
+  source content; outline text and embed images for consistent raster results across hosts.
+  Reject unusable root dimensions with viewBox guidance before source rendering or writes.
+  Bump to 0.7.0 for shared-pipeline cache invalidation; valid self-contained output bytes stay unchanged.
 - Make Astro `head: true` an alias for automatic injection and include it in the public types.
   Report actual paths and ownership-recovery steps for asset conflicts, including starter
   favicon links and clean checkouts with missing ownership metadata. Existing files remain

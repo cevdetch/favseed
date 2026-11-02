@@ -102,6 +102,7 @@ const outputs = [
     <button type="button" id="cancel" hidden>Cancel</button>
     <output aria-live="polite"></output>
   </form>
+  <ul id="warnings" aria-live="polite" hidden></ul>
 
   <section id="result" hidden>
     <h2>Your set</h2>
@@ -156,7 +157,7 @@ const outputs = [
   quality.addEventListener('input', updatePalette);
   updatePalette();
   const drop = file.labels[0], go = form.querySelector('button[type=submit]'), status = form.querySelector('output');
-  const cancel = $('cancel');
+  const cancel = $('cancel'), warnings = $('warnings');
   const TYPES = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon', webmanifest: 'application/manifest+json' };
   let urls = [], active;
 
@@ -194,6 +195,8 @@ const outputs = [
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
+    warnings.replaceChildren();
+    warnings.hidden = true;
     const nextUrls = [];
     const url = (bytes, type) => {
       const u = URL.createObjectURL(new Blob([bytes], { type }));
@@ -215,6 +218,13 @@ const outputs = [
         zopfli: data.has('zopfli'),
       }, {
         signal: controller.signal,
+        onWarn: (message) => {
+          if (active !== controller || controller.signal.aborted) return;
+          const item = document.createElement('li');
+          item.textContent = message;
+          warnings.append(item);
+          warnings.hidden = false;
+        },
         onProgress: ({ phase, completed, total }) => {
           if (active !== controller || controller.signal.aborted) return;
           say(phase === 'placement' ? 'Placing the mark…' : phase === 'complete'

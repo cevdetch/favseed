@@ -13,6 +13,55 @@ const select = (source, extra = {}, svgOptions = options) => selectSvg(source, s
   initial: optimiseSvg(source, svgOptions), optimiseSvg, renderRgba: engine.renderRgba, ...extra,
 });
 
+describe('SVG input diagnostics', () => {
+  it('reports parsed text and external image dependencies once without removing them', () => {
+    const warnings = [];
+    const source = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 64 64">'
+      + '<text>first</text><text>second</text><image xlink:href="m&#105;ssing.png"/>'
+      + '<filter><feImage href="other.png"/></filter></svg>';
+    const out = optimiseSvg(source, { reference: true, onWarn: (w) => warnings.push(w) });
+    assert.equal(warnings.length, 2);
+    assert.match(warnings[0], /text.*font.*paths/i);
+    assert.match(warnings[1], /external image.*embed/i);
+    assert.match(out.data, /<text>first<\/text>/);
+    assert.match(out.data, /xlink:href="missing.png"/);
+    assert.match(out.data, /<feImage href="other.png"/);
+  });
+
+  it('ignores comment/CDATA lookalikes, embedded images and fragment references', () => {
+    const warnings = [];
+    const source = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 64 64">'
+      + '<!-- <text>fake</text><image href="external.png"/> -->'
+      + '<desc><![CDATA[<text>fake</text><image href="external.png"/>]]></desc>'
+      + '<image href=" DATA:image/png;base64,AA== "/><image href=" #local "/><image href=""/>'
+      + '<image href="#local" xlink:href="ignored.png"/><circle cx="32" cy="32" r="20"/></svg>';
+    optimiseSvg(source, { reference: true, onWarn: (w) => warnings.push(w) });
+    assert.deepEqual(warnings, []);
+  });
+
+  it('rejects unusable root dimensions with guidance before rendering source pixels', async () => {
+    for (const attrs of ['', 'width="100%" height="100%"', 'width="0" height="64"',
+      'viewBox="0 0 0 64"', 'viewBox="0 0 -1 64"', 'viewBox="0 0 64"',
+      'viewBox="NaN 0 64 64"', 'viewBox="0 0 1e309 64"']) {
+      const source = `<svg xmlns="http://www.w3.org/2000/svg" ${attrs}><circle cx="32" cy="32" r="20"/></svg>`;
+      await assert.rejects(select(source, { renderRgba: () => { throw new Error('source renderer reached'); } }),
+        /precision\.svg.*viewBox.*width.*height/i);
+    }
+  });
+
+  it('emits dependency guidance once even when accuracy needs multiple SVG candidates', async () => {
+    const warnings = [], precisions = [];
+    const source = gridSvg(1).replace('</svg>', '<defs><text>unused font</text><image href="missing.png"/></defs></svg>');
+    await selectSvg(source, options, {
+      optimiseSvg: (svg, opts) => { if (!opts.reference) precisions.push(opts.precision ?? 1); return optimiseSvg(svg, opts); },
+      renderRgba: engine.renderRgba, warn: (w) => warnings.push(w),
+    });
+    assert.ok(precisions.length > 1, 'fixture must exercise precision retries');
+    assert.equal(warnings.filter((w) => /font/i.test(w)).length, 1);
+    assert.equal(warnings.filter((w) => /external image/i.test(w)).length, 1);
+  });
+});
+
 describe('SVG error comparison', () => {
   it('accepts exactly one percent bad pixels, counts values above eight only', () => {
     const ref = solid(), candidate = solid();
