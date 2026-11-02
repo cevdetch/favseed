@@ -61,7 +61,7 @@ before(async () => {
   const parsed = JSON.parse(stdout), packed = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
   const host = await json(join(fixture, 'package.json'));
   // Same direct dependency versions as the checkout, without linking checkout code.
-  for (const name of ['@napi-rs/image', 'svgo', 'vite']) {
+  for (const name of ['@napi-rs/image', 'svgo', 'vite', 'typescript']) {
     host.dependencies[name] = (await json(join(repo, 'node_modules', name, 'package.json'))).version;
   }
   await writeFile(join(workspace, 'package.json'), JSON.stringify(host));
@@ -121,6 +121,30 @@ const cliSet = async (p, fast = false) => {
 };
 
 describe('installed Astro integration', { concurrency: false, timeout: 240000 }, () => {
+  for (const [module, resolution] of [['NodeNext', 'NodeNext'], ['ESNext', 'Bundler']]) {
+    it(`checks public packed exports and invalid options with ${resolution} resolution`, async () => {
+      const root = await mkdtemp(join(workspace, 'TypeScript consumer '));
+      await cp(join(fixture, 'types'), root, { recursive: true });
+      const tsc = join(workspace, 'node_modules/typescript/bin/tsc');
+      const args = [tsc, '--noEmit', '--strict', '--module', module, '--moduleResolution', resolution,
+        '--skipLibCheck', '--pretty', 'false'];
+      await command(process.execPath, [...args, 'good.mts'], root);
+      await assert.rejects(command(process.execPath, [...args, 'bad.mts'], root), (error) => {
+        assert.ok(Number.isInteger(error.code) && error.code > 0, 'expected compiler diagnostics, not a startup error');
+        // Separate calls prevent the first invalid property from masking the next.
+        const propertyErrors = error.stdout.split('\n').filter((line) => /error TS(?:2353|2561):/.test(line));
+        for (const [property, count] of [['colours', 2], ['out', 2], ['base', 1], ['imput', 1]]) {
+          assert.equal(propertyErrors.filter((line) => line.includes(`'${property}'`)).length, count, error.stdout);
+        }
+        assert.match(error.stdout, /Property 'input' is missing/);
+        assert.match(error.stdout, /error TS2322:.*'"maybe"'/);
+        assert.match(error.stdout, /error TS2322:.*'string'.*'number'/);
+        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 9, error.stdout);
+        return true;
+      });
+    });
+  }
+
   it('builds the packed CLI bytes, resolves both head paths and reuses/prunes cache through Astro', async () => {
     const p = await project(); await p.build();
     const files = await cliSet(p);

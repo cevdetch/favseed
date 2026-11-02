@@ -312,14 +312,15 @@ describe('defineConfig from favseed', () => {
     assert.ok(existsSync(join(ROOT, 'bin', 'favseed.d.mts')));
   });
 
-  const tsc = join(ROOT, 'site', 'node_modules', 'typescript', 'bin', 'tsc');
-  it('type-checks a config, and catches a misspelt key', { skip: existsSync(tsc) ? false : 'typescript not installed' }, () => {
+  const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+  it('type-checks a config, and catches a misspelt key', () => {
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
     const dir = join(scratch, `tsc${++n}`);
     mkdirSync(dir);
     const spec = JSON.stringify(CLI.replace(/\\/g, '/'));
     writeFileSync(join(dir, 'good.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, mode: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`);
     writeFileSync(join(dir, 'bad.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ colours: 8 });\n`);
-    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(dir, f)], { encoding: 'utf8' });
+    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(dir, f)], { encoding: 'utf8', timeout: 30000 });
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
     const bad = check('bad.mts');
