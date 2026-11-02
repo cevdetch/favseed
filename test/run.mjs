@@ -905,7 +905,7 @@ describe('the published tarball', () => {
     // ERR_MODULE_NOT_FOUND on first run. This assertion is the only thing standing between
     // the split and a broken publish.
     assert.ok(files.includes('lib/core.mjs'), 'lib/core.mjs is missing - the package cannot run');
-    for (const need of ['lib/zopfli.mjs', 'lib/zopfli-build.mjs', 'lib/zopfli.wasm', 'lib/ZOPFLI-LICENSE', 'lib/WASI-LICENSE', 'astro/index.mjs', 'astro/cache.mjs', 'astro/Head.astro', 'vite/index.mjs', 'vite/cache.mjs', 'vite/index.d.mts', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']) {
+    for (const need of ['lib/zopfli.mjs', 'lib/zopfli-build.mjs', 'lib/zopfli.wasm', 'lib/ZOPFLI-LICENSE', 'lib/WASI-LICENSE', 'astro/index.mjs', 'astro/cache.mjs', 'astro/options.mjs', 'astro/Head.astro', 'vite/index.mjs', 'vite/cache.mjs', 'vite/index.d.mts', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']) {
       assert.ok(files.includes(need), `${need} is missing from the tarball`);
     }
     for (const f of files) {
@@ -1106,6 +1106,121 @@ describe('the astro integration', () => {
       build: () => integration.hooks['astro:build:start']({ logger: s.args.logger }),
       dev: () => integration.hooks['astro:server:setup']({ logger: s.args.logger }) };
   };
+
+  it('rejects unknown and CLI-only options before any Astro hook runs', () => {
+    for (const [options, expected] of [
+      [{ imput: 'logo.svg' }, /unknown option 'imput'/],
+      [{ out: 'icons' }, /out.*publicDir/],
+      [{ base: '/other/' }, /base.*Astro/],
+    ]) {
+      assert.throws(() => favseedAstro(options), (error) => {
+        assert.ok(error instanceof FavseedError);
+        assert.match(error.message, expected);
+        return true;
+      });
+    }
+  });
+
+  it('reports malformed option shapes instead of path or coercion errors', () => {
+    for (const [options, expected] of [
+      [null, /options must be an object/], [[], /options must be an object/],
+      ['logo.svg', /options must be an object/],
+      [{ input: 3 }, /input must be a non-empty string/],
+      [{ input: ' ' }, /input must be a non-empty string/],
+      [{ bg: false }, /bg must be a non-empty string or null/],
+      [{ bg: '' }, /bg must be a non-empty string or null/],
+      [{ vars: 'brand=red' }, /vars must be an object or Map/],
+      [{ vars: [] }, /vars must be an object or Map/],
+    ]) assert.throws(() => favseedAstro(options), expected);
+  });
+
+  it('validates original production values before fast or skipped development can hide them', () => {
+    for (const dev of ['fast', 'full', 'skip']) {
+      for (const [options, expected] of [
+        [{ colors: 1 }, /colors must be an integer 2-256/],
+        [{ quality: 0 }, /quality must be an integer 1-100/],
+        [{ quality: 80, colors: 8 }, /quality below 100 cannot be combined with colors/],
+        [{ sizes: [33] }, /sizes takes even pixel sizes/],
+        [{ sizes: [] }, /sizes is empty/],
+        [{ mode: 'slow' }, /mode must be 'release' or 'fast'/],
+        [{ padding: 46 }, /padding must be 'auto' or a percentage 0-45/],
+        [{ zopfli: null }, /zopfli must be true or false/],
+        [{ animation: 'no' }, /animation must be true or false/],
+        [{ manifest: [] }, /manifest must be true, false or an object/],
+        [{ vars: { 'bad name': 'red' } }, /vars name must be a CSS custom property/],
+      ]) {
+        assert.throws(() => favseedAstro({ dev, ...options }), (error) => {
+          assert.ok(error instanceof FavseedError);
+          assert.match(error.message, expected);
+          assert.doesNotMatch(error.message, /--(?:colors|quality|sizes|padding|var)\b/);
+          return true;
+        });
+      }
+    }
+  });
+
+  it('preserves compatible shared option forms and does not mutate caller settings', async () => {
+    const vars = new Map([['brand', '#123456']]);
+    const options = { sizes: '32,48', quality: '100', colors: '16', padding: '0', bg: 'none', vars,
+      head: true, dev: 'full', manifest: { name: 'Example' } };
+    const p = await project(options);
+    await p.build();
+    assert.ok(existsSync(join(p.pub, 'icon-32.png')));
+    assert.ok(existsSync(join(p.pub, 'icon-48.png')));
+    assert.equal(JSON.parse(readFileSync(join(p.pub, 'site.webmanifest'), 'utf8')).name, 'Example');
+    assert.equal(options.sizes, '32,48');
+    assert.deepEqual([...vars], [['brand', '#123456']]);
+  });
+
+  it('preserves user values that resemble flags in configuration errors', () => {
+    assert.throws(() => favseedAstro({ quality: '--colors' }), (error) => {
+      assert.match(error.message, /quality must be an integer 1-100/);
+      assert.match(error.message, /got '--colors'/);
+      return true;
+    });
+  });
+
+  it('rechecks mutable values before cache lookup without changing published files on failure', async () => {
+    const sizes = [32], p = await project({ sizes });
+    await p.build();
+    const stamp = readFileSync(p.stamp), ico = readFileSync(join(p.pub, 'favicon.ico'));
+    sizes[0] = 33;
+    await assert.rejects(p.build(), /^FavseedError: sizes takes even pixel sizes/);
+    assert.deepEqual(readFileSync(p.stamp), stamp);
+    assert.deepEqual(readFileSync(join(p.pub, 'favicon.ico')), ico);
+  });
+
+  it('uses configuration advice in renderer errors without rewriting source names or CSS variables', async () => {
+    for (const name of ['unresolved.svg', 'animvar.svg']) {
+      const p = await project({ sizes: [32] });
+      const input = 'supply it with --var name=value --no-animation.svg';
+      copyFileSync(fixture(name), join(p.root, input));
+      const s = stub(p.root), integration = favseedAstro({ input, sizes: [32] });
+      await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
+      await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }), (error) => {
+        assert.match(error.message, name === 'unresolved.svg' ? /var\(--brand\)/ : /var\(--beat\)/);
+        assert.ok(error.message.includes(input));
+        assert.match(error.message, /vars: \{ name: value \}/);
+        assert.match(error.message, /animation: false/);
+        assert.doesNotMatch(error.message, /no --var override| - supply it with --var name=value, or drop/);
+        return true;
+      });
+      assert.equal(existsSync(p.pub), false);
+    }
+    const p = await project({ bg: 'rgba(0,0,0,0.5)' });
+    await assert.rejects(p.build(), (error) => {
+      assert.match(error.message, /^bg must be opaque/);
+      assert.match(error.message, /bg: null/);
+      assert.doesNotMatch(error.message, /--bg/);
+      return true;
+    });
+    const invalid = await project({ bg: '--bg none' });
+    await assert.rejects(invalid.build(), (error) => {
+      assert.match(error.message, /^bg is not a colour resvg accepts/);
+      assert.ok(error.message.includes("'--bg none'"));
+      return true;
+    });
+  });
 
   it('removes legacy owned development assets before publishing the production set', async () => {
     // Previous releases published the 256px dev set; retain upgrade cleanup coverage.
@@ -1343,16 +1458,18 @@ describe('the astro integration', () => {
       assert.deepEqual([...readFileSync(join(pub, 'favicon.ico'))], [...before]);
     });
 
-  it('rejects invalid options even when their raw key matches a populated cache', async () => {
+  it('rejects invalid configuration before consulting a populated cache with the same raw key', async () => {
     const root = freshDir(), s = stub(root);
     mkdirSync(root, { recursive: true });
     copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
     for (const zopfli of [false, null]) {
+      if (zopfli === null) {
+        assert.throws(() => favseedAstro({ input: 'logo.svg', sizes: [32], zopfli }), /zopfli must be true or false/);
+        continue;
+      }
       const integration = favseedAstro({ input: 'logo.svg', sizes: [32], zopfli });
       await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
-      const result = integration.hooks['astro:build:start']({ logger: s.args.logger });
-      if (zopfli === false) await result;
-      else await assert.rejects(result, /zopfli must be true or false/);
+      await integration.hooks['astro:build:start']({ logger: s.args.logger });
     }
   });
 

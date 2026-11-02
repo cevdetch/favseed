@@ -137,12 +137,12 @@ describe('Astro development assets', () => {
   });
 
   it('dev:skip builds and serves nothing, and a failed dev build leaves the host usable', async (t) => {
-    for (const options of [{ dev: 'skip' }, { colors: 1 }]) {
+    for (const options of [{ dev: 'skip' }, { input: 'missing.svg' }]) {
       const p = await project(t, options); await p.dev();
       assert.equal((await p.request('/blog/favicon.ico')).status, 404);
       assert.equal(existsSync(p.pub), false); assert.equal(existsSync(p.stamp), false);
       assert.equal(existsSync(p.cache), false);
-      if (options.colors) assert.ok(p.logs.some(([level]) => level === 'warn'));
+      if (options.input) assert.ok(p.logs.some(([level]) => level === 'warn'));
     }
   });
 
@@ -153,6 +153,16 @@ describe('Astro development assets', () => {
     const before = snapshot(p.pub); await p.build();
     assert.ok(p.logs.some(([, message]) => message.startsWith('cache hit')));
     assert.deepEqual(snapshot(p.pub), before);
+  });
+
+  it('warns with configuration advice for an invalid SVG while leaving dev requests to the host', async (t) => {
+    const p = await project(t);
+    copyFileSync(fixture('unresolved'), join(p.root, 'logo.svg'));
+    await p.dev();
+    assert.equal((await p.request('/blog/favicon.ico')).status, 404);
+    assert.ok(p.logs.some(([level, message]) => level === 'warn' && /var\(--brand\)/.test(message) && /vars:/.test(message)));
+    assert.equal(existsSync(p.pub), false);
+    assert.equal(existsSync(p.cache), false);
   });
 });
 

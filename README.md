@@ -377,6 +377,14 @@ favseed({
 })
 ```
 
+Options are validated when the integration is created, including for `sync`, `preview`
+and `dev: 'skip'`. Typos, unsupported options and invalid build values fail before generation;
+the original production sizes and mode are checked even with `dev: 'fast'`. Set paths with
+Astro's `base` and `publicDir`, rather than passing `base` or `out` to Favseed.
+Checks that need the renderer, such as background opacity or unresolved SVG variables, still
+run during generation. They warn in development and fail production builds, with advice using
+`bg`, `vars` and `animation: false` configuration syntax.
+
 **It does not rebuild on every dev-server restart.** The cache is content-addressed, not a
 heuristic: keyed on favseed's version, the input bytes, the canonicalised options **and the
 versions of `@napi-rs/image` and Zopfli (including the WASM build hash)**. That last part is what makes it correct:

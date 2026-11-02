@@ -22,6 +22,7 @@ import { FavseedError, linkTags } from '../lib/core.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
 import { cacheKey, favseedVersion, writeSlot } from '../vite/cache.mjs';
 import { generatedAsset, pruneCache, readCachedSet } from './cache.mjs';
+import { configurationError, validateOptions } from './options.mjs';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 
@@ -95,19 +96,13 @@ const publish = async ({ files, publicDir, stampPath, logger }) => {
 };
 
 export default function favseed(options = {}) {
+  validateOptions(options);
   const {
     input = 'src/logo.svg',
     dev = 'fast',
     head = 'inject',
     ...buildOptions
   } = options;
-
-  if (!['fast', 'skip', 'full'].includes(dev)) {
-    throw new Error(`favseed: dev must be 'fast', 'skip' or 'full', got ${JSON.stringify(dev)}`);
-  }
-  if (![true, false, 'inject', 'component'].includes(head)) {
-    throw new Error(`favseed: head must be true, 'inject', 'component' or false, got ${JSON.stringify(head)}`);
-  }
 
   const state = { links: '', inputPath: '', publicDir: '', cacheDir: '', base: '/', devFiles: new Map(), devStamp: {} };
   const stampPath = () => join(state.cacheDir, 'written.json');
@@ -126,7 +121,9 @@ export default function favseed(options = {}) {
       ? { ...buildOptions, base: state.base, sizes: [256], mode: 'fast' }
       : { ...buildOptions, base: state.base };
 
-    normaliseOptions(opts); // Validate before cache lookup, including values that share a key.
+    // Recheck mutable values before cache lookup, including values that share a key.
+    try { normaliseOptions(opts); }
+    catch (error) { throw configurationError(error); }
     // Config, sync, preview and dev:skip need only the shared options and links.
     // Even a cache hit can inspect engine identity without initializing SVG/native engines.
     const { buildFiles, engineVersions } = await import('../bin/favseed.mjs');
@@ -138,7 +135,8 @@ export default function favseed(options = {}) {
       return { files: cached, key };
     }
 
-    const { files } = await buildFiles({ ...opts, input: state.inputPath, onWarn: (m) => logger?.warn(m) });
+    const { files } = await buildFiles({ ...opts, input: state.inputPath, onWarn: (m) => logger?.warn(m) })
+      .catch((error) => { throw configurationError(error); });
     await writeSlot(state.cacheDir, key, files, Object.fromEntries(files.map((f) => [f.name, sha256(f.bytes)])));
     return { files, key };
   };
