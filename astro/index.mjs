@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { build, engineVersions, FavseedError, linkTags } from '../bin/favseed.mjs';
+import { FavseedError, linkTags } from '../lib/core.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
 import { cacheKey, favseedVersion } from '../vite/cache.mjs';
 
@@ -125,6 +125,9 @@ export default function favseed(options = {}) {
       : { ...buildOptions, base: state.base };
 
     normaliseOptions(opts); // Validate before cache lookup, including values that share a key.
+    // Config, sync, preview and dev:skip need only the shared options and links.
+    // Even a cache hit can inspect engine identity without initializing SVG/native engines.
+    const { build, engineVersions } = await import('../bin/favseed.mjs');
     const key = cacheKey({ version: favseedVersion(), source, options: opts, engine: engineVersions() });
     const slot = join(state.cacheDir, key);
     const stampPath = join(state.cacheDir, 'written.json');

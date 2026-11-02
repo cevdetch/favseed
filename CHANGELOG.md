@@ -9,6 +9,12 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ## [Unreleased]
 
+### Changed
+
+- Defer SVGO initialization until SVG optimization, preserving the synchronous helper API.
+  CLI help/version and early validation avoid loading it; Astro loads the Node build module
+  only when building icons. Generated output and cache identity are unchanged.
+
 ### Fixed
 
 - Keep Astro HTML responses streaming after bounded head inspection instead of buffering
