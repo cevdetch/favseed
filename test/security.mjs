@@ -73,6 +73,22 @@ describe('benchmark path boundaries', () => {
   });
 });
 
+describe('SVG viewport validation', () => {
+  it('rejects long invalid whitespace separators without stalling', async () => {
+    const script = `
+      import assert from 'node:assert/strict';
+      import { optimiseSvg } from './bin/favseed.mjs';
+      const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 '
+        + ' '.repeat(200000) + 'x"><circle cx="32" cy="32" r="20"/></svg>';
+      assert.throws(() => optimiseSvg(source, { reference: true }), /viewBox/);
+      console.log('finished');
+    `;
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', script],
+      { cwd: ROOT, timeout: 5000 });
+    assert.equal(stdout.trim(), 'finished');
+  });
+});
+
 describe('CSS comment scanning', () => {
   it('keeps selectors needed by animation rules when comments surround the rules', () => {
     const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
