@@ -164,6 +164,14 @@ export default function favseed(options = {}) {
           vite: {
             plugins: [{
               name: 'favseed:virtual',
+              // Astro has separate dev/prerender/SSR environments. All server imports
+              // need transformation because our installed middleware uses a virtual ID.
+              configEnvironment(name, config) {
+                const consumer = config.consumer ?? (name === 'client' ? 'client' : 'server');
+                if (consumer === 'server' && config.resolve?.noExternal !== true) {
+                  return { resolve: { noExternal: ['favseed'] } };
+                }
+              },
               resolveId: (id) => (id === 'virtual:favseed' ? '\0virtual:favseed' : null),
               load: (id) => (id === '\0virtual:favseed'
                 ? `export const links = ${JSON.stringify(state.links)};`

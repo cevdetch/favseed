@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Keep installed Astro middleware in Vite's transform pipeline so its virtual head-tag
+  module resolves during dev, prerendering and Node SSR. Add packed-package integration
+  coverage for static/dev/SSR behavior in a dedicated CI job.
 - Validate Astro options before generation, including typos, unsupported `out`/`base` options
   and production values masked by fast development. Keep configuration paths lazy and use
   configuration property names in validation and renderer diagnostics.

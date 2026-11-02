@@ -17,10 +17,20 @@ not evidence, and neither is a screenshot.
 
 ```sh
 pnpm test                      # the definition of done, as node:test
+pnpm test:astro                # install the tarball and exercise real Astro static/dev/SSR
 node bench/bench.mjs           # every sweep, printed
 node bench/bench.mjs colors    # one sweep only
 node bench/bench.mjs --write   # regenerate docs/BENCHMARKS.md
 ```
+
+`test:astro` runs separately in Linux CI because it needs npm registry access. It installs
+the packed package in a temporary external consumer with Astro 7.3.8 and Node adapter 11.1.9,
+plus the checkout's installed image/SVGO/Vite versions. Direct test-host versions are pinned;
+the temporary npm install resolves transitive dependencies normally and disables lifecycle
+scripts. It checks CLI bytes, base paths, both head paths, dev modes, cache/public ownership
+and streaming SSR responses. The stream body waits for an explicit release request, so the
+test proves head delivery before the body completes. Servers and temporary files are cleaned
+up after success or failure. This does not expand the published Astro peer range.
 
 A change that costs bytes to save build time needs explicit approval and measured tradeoffs.
 The current default skips Zopfli; `--zopfli` opts into its additional lossless compression.

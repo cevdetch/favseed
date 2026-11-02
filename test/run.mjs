@@ -1409,6 +1409,21 @@ describe('the astro integration', () => {
     assert.ok(!links.includes('logo.svg'), 'logo.svg must not be linked');
   });
 
+  it('keeps virtual middleware transformed in server environments while respecting client and bundle-all settings', async () => {
+    const root = freshDir(), s = stub(root);
+    await favseedAstro().hooks['astro:config:setup']({ command: 'build', ...s.args });
+    const plugin = s.calls.configs.flatMap((config) => config.vite?.plugins ?? []).find((item) => item.name === 'favseed:virtual');
+    for (const name of ['astro', 'prerender', 'ssr']) {
+      const config = { consumer: 'server', resolve: { noExternal: ['author-package'] } };
+      const update = plugin.configEnvironment(name, config);
+      assert.ok(update.resolve.noExternal.includes('favseed'));
+      assert.deepEqual(config.resolve.noExternal, ['author-package']);
+      assert.equal(plugin.configEnvironment(name, { consumer: 'server', resolve: { noExternal: true } }), undefined);
+      assert.ok(plugin.configEnvironment(name, {}).resolve.noExternal.includes('favseed'));
+    }
+    assert.equal(plugin.configEnvironment('client', { consumer: 'client', resolve: {} }), undefined);
+  });
+
   it('head: true registers the same injection as the default and inject', async () => {
     for (const options of [{}, { head: 'inject' }, { head: true }]) {
       const s = stub(freshDir());
