@@ -11,6 +11,8 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Require the pinned development TypeScript compiler for config/Vite type checks, and test
+  packed public imports with valid and invalid options under NodeNext and bundler resolution.
 - Keep installed Astro middleware in Vite's transform pipeline so its virtual head-tag
   module resolves during dev, prerendering and Node SSR. Add packed-package integration
   coverage for static/dev/SSR behavior in a dedicated CI job.

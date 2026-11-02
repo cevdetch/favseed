@@ -314,17 +314,19 @@ describe('favseed/vite types', () => {
     assert.equal(pkg.peerDependenciesMeta.vite.optional, true);
   });
 
-  const tsc = join(ROOT, 'site', 'node_modules', 'typescript', 'bin', 'tsc');
-  it('type-checks a vite.config, and catches out and a misspelt key', { skip: existsSync(tsc) ? false : 'typescript not installed' }, () => {
+  const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+  it('type-checks a vite.config, and catches out and a misspelt key', () => {
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
     const d = dir();
     const spec = JSON.stringify(join(ROOT, 'vite', 'index.mjs').replace(/\\/g, '/'));
     writeFileSync(join(d, 'good.mts'), `import favseed, { favseedIcons } from ${spec};\nconst p = favseed({ input: 'src/logo.svg', sizes: [192, 512], mode: 'fast', base: '/x/' });\nconst icons: { src: string; sizes: string; type: string; purpose?: string }[] = favseedIcons({ sizes: [192] });\nexport { p, icons };\n`);
-    writeFileSync(join(d, 'bad.mts'), `import favseed from ${spec};\nexport const p = favseed({ out: 'dist', colours: 8 });\n`);
-    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(d, f)], { encoding: 'utf8' });
+    writeFileSync(join(d, 'bad.mts'), `import favseed from ${spec};\nexport const badOut = favseed({ out: 'dist' });\nexport const badColour = favseed({ colours: 8 });\n`);
+    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(d, f)], { encoding: 'utf8', timeout: 30000 });
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
     const bad = check('bad.mts');
     assert.notEqual(bad.status, 0);
-    assert.match(bad.stdout, /out|colours/);
+    assert.match(bad.stdout, /'out'/);
+    assert.match(bad.stdout, /'colours'/);
   });
 });
