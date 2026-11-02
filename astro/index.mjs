@@ -14,14 +14,14 @@
 //     in vite/cache.mjs, which every host shares.
 
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { lstat, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { FavseedError, linkTags } from '../lib/core.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
-import { cacheKey, favseedVersion } from '../vite/cache.mjs';
+import { cacheKey, favseedVersion, writeSlot } from '../vite/cache.mjs';
+import { generatedAsset, pruneCache, readCachedSet } from './cache.mjs';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 
@@ -30,16 +30,8 @@ const exists = async (p) => { try { await stat(p); return true; } catch { return
 /** `/` and `/blog/` both come out as a prefix ending in a single slash. */
 const basePrefix = (base) => (base && base !== '/' ? `/${base.replace(/^\/+|\/+$/g, '')}/` : '/');
 
-// Include the former logo.svg output so its existing ownership stamp can retire it.
-const generatedAsset = (name) => ['icon.svg', 'logo.svg', 'favicon.ico', 'apple-touch-icon.png', 'site.webmanifest'].includes(name)
-  || /^icon-[1-9]\d*\.png$/.test(name);
-
-/**
- * Copy a finished set into public/, refusing to clobber anything the integration did not
- * write itself. Overwriting a hand-tuned favicon.ico without a word is the worst possible
- * first impression, so the check is on content: a file favseed wrote has its hash in the stamp.
- */
-const publish = async ({ from, files, publicDir, stampPath, logger }) => {
+/** Check ownership without changing public files or the record during development. */
+const checkPublic = async ({ files, publicDir, stampPath }) => {
   let stamp = {};
   try {
     const value = JSON.parse(await readFile(stampPath, 'utf8'));
@@ -47,7 +39,7 @@ const publish = async ({ from, files, publicDir, stampPath, logger }) => {
   } catch { /* Missing or unreadable ownership metadata grants no ownership. */ }
 
   for (const f of files) {
-    const target = join(publicDir, f);
+    const target = join(publicDir, f.name);
     if (!(await exists(target))) continue;
     const current = sha256(await readFile(target));
     // Already the bytes about to be written. Nothing to protect, and no stamp needed. That
@@ -55,9 +47,9 @@ const publish = async ({ from, files, publicDir, stampPath, logger }) => {
     // public/ are still favseed's because the same input and the same tools produce the same
     // bytes. Without this, a clean install would accuse the user of hand-editing their own
     // generated favicon.
-    if (current === sha256(await readFile(join(from, f)))) continue;
-    if (stamp[f] === current) continue;                    // ours, from an earlier build
-    const starter = f === 'favicon.ico' && await exists(join(publicDir, 'favicon.svg'))
+    if (current === sha256(f.bytes)) continue;
+    if (stamp[f.name] === current) continue;              // ours, from an earlier build
+    const starter = f.name === 'favicon.ico' && await exists(join(publicDir, 'favicon.svg'))
       ? `\n       If migrating an Astro starter, also move ${join(publicDir, 'favicon.svg')} and remove its old <link rel="icon"> tags.`
       : '';
     throw new FavseedError(
@@ -66,21 +58,26 @@ const publish = async ({ from, files, publicDir, stampPath, logger }) => {
       `       Back up and move the existing file before rebuilding.${starter}`,
     );
   }
+  return stamp;
+};
 
+/** Production publishes independent copies, retaining the established ownership rules. */
+const publish = async ({ files, publicDir, stampPath, logger }) => {
+  const stamp = await checkPublic({ files, publicDir, stampPath });
   await mkdir(publicDir, { recursive: true });
   const next = {};
   for (const f of files) {
-    const src = join(from, f), dst = join(publicDir, f);
+    const dst = join(publicDir, f.name);
     await rm(dst, { force: true });
     // Public edits must not mutate cached bytes. Otherwise reintroducing an edited
     // orphan can adopt those mutated bytes as generated, then delete the user's file.
-    await copyFile(src, dst);
-    next[f] = sha256(await readFile(dst));
+    await writeFile(dst, f.bytes);
+    next[f.name] = sha256(f.bytes);
   }
 
   // Use actual directory entries, never stamp keys as paths. Only unchanged regular
   // generated files are ours to remove; user replacements and symlinks stay intact.
-  const active = new Set(files);
+  const active = new Set(files.map((f) => f.name));
   for (const entry of await readdir(publicDir, { withFileTypes: true })) {
     const name = entry.name;
     if (active.has(name) || !generatedAsset(name) || !entry.isFile()
@@ -112,7 +109,12 @@ export default function favseed(options = {}) {
     throw new Error(`favseed: head must be true, 'inject', 'component' or false, got ${JSON.stringify(head)}`);
   }
 
-  const state = { links: '', inputPath: '', publicDir: '', cacheDir: '', base: '/' };
+  const state = { links: '', inputPath: '', publicDir: '', cacheDir: '', base: '/', devFiles: new Map(), devStamp: {} };
+  const stampPath = () => join(state.cacheDir, 'written.json');
+  const prune = async (key, logger) => {
+    try { await pruneCache(state.cacheDir, key); }
+    catch (error) { logger?.warn(`could not prune favicon cache: ${error.message}`); }
+  };
 
   /** One build, cache-first. `mode` is 'full' or 'fast'. */
   const runBuild = async (mode, logger) => {
@@ -127,37 +129,18 @@ export default function favseed(options = {}) {
     normaliseOptions(opts); // Validate before cache lookup, including values that share a key.
     // Config, sync, preview and dev:skip need only the shared options and links.
     // Even a cache hit can inspect engine identity without initializing SVG/native engines.
-    const { build, engineVersions } = await import('../bin/favseed.mjs');
+    const { buildFiles, engineVersions } = await import('../bin/favseed.mjs');
     const key = cacheKey({ version: favseedVersion(), source, options: opts, engine: engineVersions() });
     const slot = join(state.cacheDir, key);
-    const stampPath = join(state.cacheDir, 'written.json');
-
-    if (await exists(join(slot, 'index.json'))) {
-      const { files } = JSON.parse(await readFile(join(slot, 'index.json'), 'utf8'));
+    const cached = await readCachedSet(slot);
+    if (cached) {
       logger?.info(`cache hit (${key.slice(0, 12)})`);
-      await publish({ from: slot, files, publicDir: state.publicDir, stampPath, logger });
-      return;
+      return { files: cached, key };
     }
 
-    // Build into a temp directory and move the finished set into the cache, so an
-    // interrupted build cannot leave a half-populated slot that later reads as a hit.
-    const staging = await mkdtemp(join(tmpdir(), 'favseed-astro.'));
-    try {
-      const result = await build({ ...opts, input: state.inputPath, out: staging, onWarn: (m) => logger?.warn(m) });
-      await writeFile(join(staging, 'index.json'), JSON.stringify({ files: result.files }));
-      await rm(slot, { recursive: true, force: true });
-      await mkdir(dirname(slot), { recursive: true });
-      try {
-        await rename(staging, slot);
-      } catch {
-        // Across filesystems rename fails; copy the slot instead.
-        await mkdir(slot, { recursive: true });
-        for (const f of [...result.files, 'index.json']) await copyFile(join(staging, f), join(slot, f));
-      }
-      await publish({ from: slot, files: result.files, publicDir: state.publicDir, stampPath, logger });
-    } finally {
-      await rm(staging, { recursive: true, force: true });
-    }
+    const { files } = await buildFiles({ ...opts, input: state.inputPath, onWarn: (m) => logger?.warn(m) });
+    await writeSlot(state.cacheDir, key, files, Object.fromEntries(files.map((f) => [f.name, sha256(f.bytes)])));
+    return { files, key };
   };
 
   return {
@@ -199,13 +182,45 @@ export default function favseed(options = {}) {
         }
       },
 
-      // Dev has no build directory and these files need fixed root URLs, so they go to
-      // public/ in both modes. The server hook is where a dev build belongs: config:setup
-      // runs on every restart and must stay instant.
-      'astro:server:setup': async ({ logger }) => {
+      // Register before Astro's public/router middleware. Responses own their bytes;
+      // neither a dev restart nor disk-cache eviction needs to modify public/.
+      'astro:server:setup': async ({ server, logger }) => {
         if (!state.inputPath || dev === 'skip') return;
+        const warned = new Set();
+        const warnOnce = (message) => { if (!warned.has(message)) { warned.add(message); logger?.warn(message); } };
+        const types = { ico: 'image/x-icon', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json' };
+        server.middlewares.use(async (req, res, next) => {
+          if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+          // Astro strips base from req.url before integrations; Connect keeps the original.
+          const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
+          if (!path.startsWith(state.base)) return next();
+          const file = state.devFiles.get(path.slice(state.base.length));
+          if (!file) return next();
+          try {
+            let current;
+            try {
+              const target = join(state.publicDir, file.name);
+              if ((await lstat(target)).isSymbolicLink()) return next();
+              current = sha256(await readFile(target));
+            }
+            catch (error) { if (error.code !== 'ENOENT') throw error; }
+            // Recheck on requests: an author may replace a public file after startup.
+            if (current && current !== sha256(file.bytes) && current !== state.devStamp[file.name]) {
+              warnOnce(`kept public/${file.name}: it differs from the generated file; serving yours`);
+              return next();
+            }
+            res.setHeader('Content-Type', types[file.name.split('.').pop()]);
+            res.setHeader('Content-Length', file.bytes.byteLength);
+            res.setHeader('Cache-Control', 'no-cache');
+            res.end(req.method === 'HEAD' ? undefined : file.bytes);
+          } catch (error) { warnOnce(String(error?.message ?? error)); next(); }
+        });
         try {
-          await runBuild(dev === 'full' ? 'full' : 'fast', logger);
+          const { files, key } = await runBuild(dev === 'full' ? 'full' : 'fast', logger);
+          const stamp = await checkPublic({ files, publicDir: state.publicDir, stampPath: stampPath() });
+          state.devFiles = new Map(files.map((f) => [f.name, f]));
+          state.devStamp = stamp;
+          await prune(key, logger);
         } catch (e) {
           // A dev server that will not start because the favicon is unhappy is worse than a
           // dev server with no favicon. The production build still fails, and says why.
@@ -215,7 +230,9 @@ export default function favseed(options = {}) {
 
       'astro:build:start': async ({ logger }) => {
         if (!state.inputPath) return;
-        await runBuild('full', logger);
+        const { files, key } = await runBuild('full', logger);
+        await publish({ files, publicDir: state.publicDir, stampPath: stampPath(), logger });
+        await prune(key, logger);
       },
     },
   };

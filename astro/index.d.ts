@@ -32,8 +32,8 @@ export interface FavseedOptions {
   /**
    * What to build while the dev server runs.
    * `'fast'` (default) is one 256 px size; Zopfli runs at 15 iterations only when opted in.
-   * `'full'` builds the real set. `'skip'`
-   * builds nothing.
+   * `'full'` builds the real set. Both serve from memory without changing public files
+   * or their ownership record. `'skip'` builds and serves nothing.
    */
   dev?: 'fast' | 'skip' | 'full';
   /**
