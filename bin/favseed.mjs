@@ -53,7 +53,6 @@ import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { builtinPlugins, optimize } from 'svgo';
 
 // The isomorphic half of favseed, shared verbatim with the website. lib/core.mjs explains why
 // it is a second file and what the three seams are.
@@ -70,10 +69,15 @@ import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
 // integration, the test suite and bench/ all import these from here.
 export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone };
 
-// svgo's Node build. The website hands createSvgStage svgo/browser instead and gets the same
-// plugin list, because the list lives in core rather than in either caller.
-const { optimiseSvg } = createSvgStage({ optimize, builtinPlugins });
-export { optimiseSvg };
+const require = createRequire(import.meta.url);
+// Keep this API synchronous while help, version and validation avoid SVGO entirely.
+// Its supported require entry also avoids racing an external dynamic ESM import.
+// The shared plugin configuration and browser parity checks cover both distributions.
+let svgStage;
+export const optimiseSvg = (source, options) => {
+  svgStage ??= createSvgStage(require('svgo'));
+  return svgStage.optimiseSvg(source, options);
+};
 export { defineConfig };
 
 // The engine's libraries load on first use, inside build(), so a platform without a prebuilt
@@ -93,7 +97,6 @@ export const loadEngine = () => (enginePromise ??= (async () => {
   }
 })());
 
-const require = createRequire(import.meta.url);
 /** Package versions and compression build identity: inputs to the integration cache key. */
 export const engineVersions = () => ({
   '@napi-rs/image': require('@napi-rs/image/package.json').version,

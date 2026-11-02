@@ -383,6 +383,10 @@ both change their output across releases, so a cache keyed only on the SVG would
 stale files after an upgrade, with no sign of it. A hit copies cached files into `public/`.
 Published files are independent copies, so editing them cannot change cached output.
 
+Build dependencies load on demand: Astro configuration, `sync`, `preview`, and `dev: 'skip'`
+avoid the Node build module. CLI help/version and early option validation skip SVGO; the synchronous
+SVG helper initializes it on first use. Generated icons and cache identity are unchanged.
+
 For a cold first run, `dev: 'fast'` (the default) builds one 256 px size. With Zopfli opted in,
 it uses 15 iterations; otherwise it skips extra compression. `dev: 'full'` generates the
 production set.
