@@ -347,6 +347,18 @@ when both are on.
 
 ## Astro
 
+Put your SVG at `src/logo.svg`, then run this from your Astro project:
+
+```sh
+npx astro add favseed
+```
+
+Astro installs the package and adds `import favseed from 'favseed'` with
+`integrations: [favseed()]`. Edit that call to configure another input or other options.
+The package-root default is the Astro integration; named library imports such as `build`
+and `defineConfig` keep their existing behavior. Manual installation can use the explicit
+`favseed/astro` entry:
+
 ```js
 // astro.config.mjs
 import favseed from 'favseed/astro'
@@ -355,6 +367,10 @@ export default defineConfig({
   integrations: [favseed({ input: 'src/logo.svg' })],
 })
 ```
+
+When replacing a starter favicon, remove its old `<link rel="icon">` tags and any
+`public/favicon.ico` you intend Favseed to own. Existing files remain protected, and an
+existing icon link causes automatic injection to skip that page.
 
 During `astro build`, the files land in `public/`. During `astro dev`, they are served from
 memory without changing public files or their ownership record. The `<link>` tags go into
@@ -397,8 +413,10 @@ cache sets with verified integrity metadata, including the current verified set.
 records, staging directories, symlinks, modified or unrecognized entries, and older slots
 without integrity metadata are preserved. Older slots remain readable. An evicted set is rebuilt when needed.
 
-Build dependencies load on demand: Astro configuration, `sync`, `preview`, and `dev: 'skip'`
-avoid the Node build module. CLI help/version and early option validation skip SVGO; the synchronous
+Build dependencies load on demand: the explicit `favseed/astro` entry avoids the Node build
+module during configuration, `sync`, `preview`, and `dev: 'skip'`. The package-root entry also
+loads the named library API, but neither entry initializes SVGO or the native engine during
+import. CLI help/version and early option validation skip SVGO; the synchronous
 SVG helper initializes it on first use. Generated icons and cache identity are unchanged.
 
 For a cold first run, `dev: 'fast'` (the default) builds one 256 px size. With Zopfli opted in,

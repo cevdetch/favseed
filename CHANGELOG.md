@@ -28,6 +28,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Export the Astro integration as the package-root default so `astro add favseed` writes
+  a working config. Preserve existing named library exports and the CLI executable, and
+  verify automatic installation with a packed-package build and repeat-install checks.
 - Keep Astro HTML responses streaming after bounded head inspection instead of buffering
   the whole page. Detect existing icons only in the head, handle tags split across chunks,
   and pass through unchanged when a closing head is absent from the first 64 KiB.

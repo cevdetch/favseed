@@ -1,4 +1,4 @@
-import { build, defineConfig, type BuildResult, type FavseedConfig } from 'favseed';
+import favseed, { build, defineConfig, type BuildResult, type FavseedConfig } from 'favseed';
 import favseedVite, { favseedIcons, type ManifestIcon } from 'favseed/vite';
 import favseedAstro, { type FavseedOptions } from 'favseed/astro';
 import type { Plugin } from 'vite';
@@ -17,4 +17,7 @@ const options: FavseedOptions = {
   sizes: [48], vars: { brand: '#123456' }, manifest: { name: 'Example' }, animation: false,
 };
 const integration: AstroIntegration = favseedAstro(options);
-export { config, result, plugin, icons, integration };
+const rootIntegration: AstroIntegration = favseed(options);
+const defaultIntegration: AstroIntegration = favseed();
+const sameFactory: typeof favseedAstro = favseed;
+export { config, result, plugin, icons, integration, rootIntegration, defaultIntegration, sameFactory };

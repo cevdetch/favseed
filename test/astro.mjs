@@ -18,16 +18,16 @@ const fixture = fileURLToPath(new URL('./astro/', import.meta.url));
 const originalCwd = process.cwd();
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const json = async (path) => JSON.parse(await readFile(path, 'utf8'));
-let workspace, installed, astro;
+let workspace, installed, astro, tarball;
 const restoreNodeEnv = (value) => {
   if (value === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = value;
 };
 
-const command = async (file, args, cwd) => {
+const command = async (file, args, cwd, env = {}) => {
   try {
     return await exec(file, args, { cwd, timeout: 180000, maxBuffer: 5 * 1024 * 1024,
-      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', NO_UPDATE_NOTIFIER: '1' } });
+      env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1', NO_UPDATE_NOTIFIER: '1', ...env } });
   } catch (error) {
     error.message += `\n${error.stderr ?? ''}\n${error.stdout ?? ''}`;
     throw error;
@@ -59,6 +59,7 @@ before(async () => {
   workspace = await mkdtemp(join(tmpdir(), 'favseed Astro consumer '));
   const { stdout } = await command('npm', ['pack', '--json', '--pack-destination', workspace], repo);
   const parsed = JSON.parse(stdout), packed = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
+  tarball = join(workspace, packed.filename);
   const host = await json(join(fixture, 'package.json'));
   // Same direct dependency versions as the checkout, without linking checkout code.
   for (const name of ['@napi-rs/image', 'svgo', 'vite', 'typescript']) {
@@ -133,17 +134,90 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
         assert.ok(Number.isInteger(error.code) && error.code > 0, 'expected compiler diagnostics, not a startup error');
         // Separate calls prevent the first invalid property from masking the next.
         const propertyErrors = error.stdout.split('\n').filter((line) => /error TS(?:2353|2561):/.test(line));
-        for (const [property, count] of [['colours', 2], ['out', 2], ['base', 1], ['imput', 1]]) {
+        for (const [property, count] of [['colours', 2], ['out', 3], ['base', 1], ['imput', 1]]) {
           assert.equal(propertyErrors.filter((line) => line.includes(`'${property}'`)).length, count, error.stdout);
         }
         assert.match(error.stdout, /Property 'input' is missing/);
-        assert.match(error.stdout, /error TS2322:.*'"maybe"'/);
+        assert.equal(error.stdout.split('\n').filter((line) => /error TS2322:.*'"maybe"'/.test(line)).length, 2, error.stdout);
         assert.match(error.stdout, /error TS2322:.*'string'.*'number'/);
-        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 9, error.stdout);
+        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 11, error.stdout);
         return true;
       });
     });
   }
+
+  it('type-checks root imports without installing the optional Astro peer', async (t) => {
+    const root = await mkdtemp(join(tmpdir(), 'favseed without Astro '));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    await mkdir(join(root, 'node_modules'));
+    await cp(installed, join(root, 'node_modules/favseed'), { recursive: true });
+    await writeFile(join(root, 'consumer.mts'), `
+      import favseed, { build, defineConfig, type BuildResult } from 'favseed';
+      const config = defineConfig({input:'logo.svg',sizes:[48]});
+      const result: Promise<BuildResult> = build({ ...config, input: 'logo.svg' });
+      const integration = favseed({dev:'skip'});
+      export {result, integration};
+    `);
+    const tsc = join(workspace, 'node_modules/typescript/bin/tsc');
+    await command(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'NodeNext',
+      '--moduleResolution', 'NodeNext', '--pretty', 'false', 'consumer.mts'], root);
+  });
+
+  it('builds the config written by astro add using the packed package and default input', async (t) => {
+    const pkg = await json(join(installed, 'package.json')), bytes = await readFile(tarball);
+    let origin;
+    // Only this unpublished package is served locally. Existing dependencies still
+    // resolve from npm; neither the installer nor the installed code is replaced.
+    const registry = createServer((req, res) => {
+      const path = new URL(req.url, 'http://127.0.0.1').pathname;
+      const metadata = { ...pkg, dist: { tarball: origin + '/favseed/-/favseed.tgz',
+        integrity: 'sha512-' + createHash('sha512').update(bytes).digest('base64') } };
+      if (path === '/favseed/-/favseed.tgz') {
+        res.setHeader('content-type', 'application/octet-stream'); res.end(bytes);
+      } else if (path === '/favseed/latest' || path === `/favseed/${pkg.version}` || path === '/favseed') {
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify(path === '/favseed'
+          ? { name: 'favseed', 'dist-tags': { latest: pkg.version }, versions: { [pkg.version]: metadata } } : metadata));
+      } else if (path.startsWith('/@astrojs/favseed')) {
+        res.writeHead(404); res.end('{}');
+      } else {
+        const target = new URL('https://registry.npmjs.org'); target.pathname = path;
+        res.writeHead(302, { location: target.href }); res.end();
+      }
+    });
+    await new Promise((resolve, reject) => {
+      registry.once('error', reject); registry.listen(0, '127.0.0.1', resolve);
+    });
+    t.after(() => new Promise((resolve, reject) => registry.close((error) => error ? reject(error) : resolve())));
+    origin = `http://127.0.0.1:${registry.address().port}`;
+    const configPath = join(workspace, 'astro.config.mjs');
+    await writeFile(configPath, `import { defineConfig } from 'astro/config';\nexport default defineConfig({ base: '/blog/' });\n`);
+    await mkdir(join(workspace, 'src/pages'), { recursive: true });
+    await cp(join(repo, 'test/fixtures/flat.svg'), join(workspace, 'src/logo.svg'));
+    await writeFile(join(workspace, 'src/pages/index.astro'), '<html><head><title>Automatic installation</title></head><body>Example</body></html>');
+    const astroPackage = await json(join(workspace, 'node_modules/astro/package.json'));
+    const cli = join(workspace, 'node_modules/astro', astroPackage.bin.astro);
+    const env = { npm_config_registry: origin, npm_config_ignore_scripts: 'true',
+      npm_config_audit: 'false', npm_config_fund: 'false', npm_config_package_lock: 'false' };
+    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], workspace, env);
+    const config = await readFile(configPath, 'utf8');
+    assert.match(config, /import favseed from ["']favseed["']/);
+    assert.match(config, /integrations:\s*\[favseed\(\)\]/);
+    await command(process.execPath, [cli, 'build'], workspace);
+    const names = ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg'];
+    assert.deepEqual((await readdir(join(workspace, 'public'))).sort(), names);
+    await command(process.execPath, [join(installed, 'bin/favseed.mjs'), 'src/logo.svg', '--out', 'cli-output', '--quiet'], workspace);
+    for (const name of names) {
+      const expected = await readFile(join(workspace, 'cli-output', name));
+      assert.deepEqual(await readFile(join(workspace, 'dist', name)), expected, name);
+    }
+    const html = await readFile(join(workspace, 'dist/index.html'), 'utf8');
+    for (const name of ['favicon.ico', 'icon.svg', 'apple-touch-icon.png']) {
+      assert.equal(html.split(`href="/blog/${name}"`).length - 1, 1, html);
+    }
+    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], workspace, env);
+    assert.equal(await readFile(configPath, 'utf8'), config, 'repeat installation changed the config');
+  });
 
   it('builds the packed CLI bytes, resolves both head paths and reuses/prunes cache through Astro', async () => {
     const p = await project(); await p.build();

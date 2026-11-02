@@ -24,6 +24,19 @@ const guard = (blockBuild = false) => `
 `;
 
 describe('lazy build dependencies', () => {
+  it('exposes the Astro factory and existing library API at the package root without loading engines', async () => {
+    await probe(guard() + `
+      const api = await import('favseed');
+      const { default: favseed } = await import('favseed/astro');
+      const cli = await import(${JSON.stringify(CLI)});
+      assert.equal(api.default, favseed, 'package root must expose the Astro integration');
+      assert.equal(api.default().name, 'favseed');
+      assert.throws(() => api.default({imput:'logo.svg'}), /input/);
+      for (const name of Object.keys(cli)) assert.equal(api[name], cli[name], name);
+      assert.deepEqual(Object.keys(api).filter((name) => name !== 'default'), Object.keys(cli));
+    `);
+  });
+
   it('runs help and version without loading SVG or native engines', async () => {
     const { stdout } = await probe(guard() + `
       const api = await import(${JSON.stringify(CLI)});

@@ -308,8 +308,8 @@ describe('defineConfig from favseed', () => {
 
   it('declares its types through the package exports', () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-    assert.deepEqual(pkg.exports['.'], { types: './bin/favseed.d.mts', default: './bin/favseed.mjs' });
-    assert.ok(existsSync(join(ROOT, 'bin', 'favseed.d.mts')));
+    assert.deepEqual(pkg.exports['.'], { types: './bin/index.d.mts', default: './bin/index.mjs' });
+    assert.ok(existsSync(join(ROOT, 'bin', 'index.d.mts')));
   });
 
   const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');

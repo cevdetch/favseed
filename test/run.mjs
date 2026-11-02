@@ -901,6 +901,9 @@ describe('the published tarball', () => {
     const pkg = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
     const files = pkg.files.map((f) => f.path);
     assert.ok(files.includes('bin/favseed.mjs'), 'bin/favseed.mjs is missing');
+    for (const name of ['bin/index.mjs', 'bin/index.d.mts', 'bin/favseed.d.mts', 'astro/index.d.ts', 'astro/types.d.mts']) {
+      assert.ok(files.includes(name), `${name} is missing from the tarball`);
+    }
     // bin/favseed.mjs imports lib/core.mjs, so a tarball without it installs and then throws
     // ERR_MODULE_NOT_FOUND on first run. This assertion is the only thing standing between
     // the split and a broken publish.
