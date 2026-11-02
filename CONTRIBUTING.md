@@ -35,6 +35,9 @@ and streaming SSR responses. The stream body waits for an explicit release reque
 test proves head delivery before the body completes. It also type-checks the public `favseed`,
 `favseed/vite` and `favseed/astro` imports under NodeNext and bundler resolution, accepting
 valid options and verifying every intentional invalid call's compiler diagnostic.
+It also runs `astro add favseed` against locally served packed-package metadata, builds
+the config it writes with the default `src/logo.svg`, and checks repeat installation.
+The installer and npm run normally; lifecycle scripts stay disabled and no package is published.
 Servers and temporary files are cleaned
 up after success or failure. This does not expand the published Astro peer range.
 

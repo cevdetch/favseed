@@ -1,4 +1,4 @@
-import { build, defineConfig } from 'favseed';
+import favseed, { build, defineConfig } from 'favseed';
 import favseedVite from 'favseed/vite';
 import favseedAstro from 'favseed/astro';
 
@@ -11,3 +11,5 @@ favseedAstro({ base: '/other/' });
 favseedAstro({ imput: 'logo.svg' });
 favseedAstro({ head: 'maybe' });
 favseedAstro({ quality: 'small' });
+favseed({ out: 'public' });
+favseed({ head: 'maybe' });
