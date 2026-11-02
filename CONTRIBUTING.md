@@ -23,13 +23,19 @@ node bench/bench.mjs colors    # one sweep only
 node bench/bench.mjs --write   # regenerate docs/BENCHMARKS.md
 ```
 
+TypeScript is a pinned root development dependency. `pnpm test` always runs the config and
+Vite option type checks; a missing compiler fails instead of skipping them.
+
 `test:astro` runs separately in Linux CI because it needs npm registry access. It installs
 the packed package in a temporary external consumer with Astro 7.3.8 and Node adapter 11.1.9,
-plus the checkout's installed image/SVGO/Vite versions. Direct test-host versions are pinned;
+plus the checkout's installed image/SVGO/Vite/TypeScript versions. Direct test-host versions are pinned;
 the temporary npm install resolves transitive dependencies normally and disables lifecycle
 scripts. It checks CLI bytes, base paths, both head paths, dev modes, cache/public ownership
 and streaming SSR responses. The stream body waits for an explicit release request, so the
-test proves head delivery before the body completes. Servers and temporary files are cleaned
+test proves head delivery before the body completes. It also type-checks the public `favseed`,
+`favseed/vite` and `favseed/astro` imports under NodeNext and bundler resolution, accepting
+valid options and verifying every intentional invalid call's compiler diagnostic.
+Servers and temporary files are cleaned
 up after success or failure. This does not expand the published Astro peer range.
 
 A change that costs bytes to save build time needs explicit approval and measured tradeoffs.
