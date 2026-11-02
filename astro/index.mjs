@@ -57,10 +57,13 @@ const publish = async ({ from, files, publicDir, stampPath, logger }) => {
     // generated favicon.
     if (current === sha256(await readFile(join(from, f)))) continue;
     if (stamp[f] === current) continue;                    // ours, from an earlier build
+    const starter = f === 'favicon.ico' && await exists(join(publicDir, 'favicon.svg'))
+      ? `\n       If migrating an Astro starter, also move ${join(publicDir, 'favicon.svg')} and remove its old <link rel="icon"> tags.`
+      : '';
     throw new FavseedError(
-      `public/${f} already exists and favseed did not write it.\n` +
-      `       Delete it, or point the integration somewhere else, and run again.\n` +
-      `       (favseed will happily replace a file it wrote itself; it will not replace yours.)`,
+      `${target} already exists and differs from the generated file.\n` +
+      `       Favseed cannot verify ownership: the file may be edited or its ownership record missing.\n` +
+      `       Back up and move the existing file before rebuilding.${starter}`,
     );
   }
 
@@ -106,7 +109,7 @@ export default function favseed(options = {}) {
     throw new Error(`favseed: dev must be 'fast', 'skip' or 'full', got ${JSON.stringify(dev)}`);
   }
   if (![true, false, 'inject', 'component'].includes(head)) {
-    throw new Error(`favseed: head must be 'inject', 'component' or false, got ${JSON.stringify(head)}`);
+    throw new Error(`favseed: head must be true, 'inject', 'component' or false, got ${JSON.stringify(head)}`);
   }
 
   const state = { links: '', inputPath: '', publicDir: '', cacheDir: '', base: '/' };
@@ -185,7 +188,7 @@ export default function favseed(options = {}) {
           },
         });
 
-        if (head === 'inject') {
+        if (head === true || head === 'inject') {
           // 'post' so the splice happens after the page has produced its HTML.
           addMiddleware({ entrypoint: 'favseed/astro/middleware', order: 'post' });
         } else if (head === false) {

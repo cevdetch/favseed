@@ -38,10 +38,11 @@ export interface FavseedOptions {
   dev?: 'fast' | 'skip' | 'full';
   /**
    * `'inject'` (default) splices the tags before `</head>`, skipping any page that already
-   * has a `<link rel="icon">`. `'component'` leaves it to `favseed/astro/Head.astro`. `false` logs the
+   * has a `<link rel="icon">`. `true` is an alias for `'inject'`.
+   * `'component'` leaves it to `favseed/astro/Head.astro`. `false` logs the
    * block for you to paste.
    */
-  head?: 'inject' | 'component' | false;
+  head?: true | 'inject' | 'component' | false;
 }
 
 export default function favseed(options?: FavseedOptions): AstroIntegration;
