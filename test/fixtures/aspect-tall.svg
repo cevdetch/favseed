@@ -1,0 +1,5 @@
+<!-- The tall counterpart must keep the circle round and detail horizontal. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 128">
+  <circle cx="32" cy="64" r="16" fill="#175d8d"/>
+  <rect x="16" y="16" width="32" height="16" fill="#e9b44c"/>
+</svg>

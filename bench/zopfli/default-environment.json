@@ -1,0 +1,92 @@
+{
+  "node": "v26.12.1",
+  "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+  "engine": {
+    "@napi-rs/image": "1.15.0",
+    "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+  },
+  "repetitions": 3,
+  "marks": [
+    "tiles",
+    "general",
+    "heavy",
+    "gradient"
+  ],
+  "arms": [
+    "before-release",
+    "before-no-zopfli",
+    "current-default"
+  ],
+  "beforeHashes": {
+    "core.mjs": "aba091eb4084591efa946ee5cdde271d5560d991edeb75a8279228daf4c2cefd",
+    "pipeline.mjs": "456a5920e538e58eca9675403063814b270a4d43a8a13c16965a666cfffefd59",
+    "config.mjs": "e8ec6d0e5ba09bc48c62d4b1c4d8551b3cbcc14b62f455add5336e5e517fbdc8",
+    "engine.mjs": "6e13aeff4f5f26d16964a2f87bf57b16a1a51acbb67e01958c5212a6b1365005"
+  },
+  "currentHashes": {
+    "core.mjs": "9f51a2faccd1799291b63b95b762772cad4d3d5036c69dd29b84152f2b2173f2",
+    "pipeline.mjs": "7bf8e6393d4df6b2c6d7fc3a6cadc776a80aef0cc63d1a50bb4e5031427e6d99",
+    "config.mjs": "29ae9d0f594ae350be44a71bc7d48ffb013e1472719251f0db75cfd0ac3834f9",
+    "engine.mjs": "420d7ca23df6895e9f3553f8b2d177efa776b1259d054cf611477b4707e87e06"
+  },
+  "note": "Paired/interleaved full buildSet generation, manifest enabled; includes source read, SVG optimization, placement and PNG/ICO/manifest creation. Excludes module imports, disk writes and validation. First repetition excluded. Before release uses120; before-no-zopfli isolates remaining changes. One-vs-two SVG output differs: raster bytes reported separately. All PNG/ICO dimensions and pixels must match before-no-zopfli; old compressed outputs also lossless relative to that control.",
+  "competitor": {
+    "node": "v26.12.1",
+    "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+    "cores": 16,
+    "section": "generator",
+    "favseedVersion": "0.2.0",
+    "sourceSha256": {
+      "lib/engine.mjs": "420d7ca23df6895e9f3553f8b2d177efa776b1259d054cf611477b4707e87e06",
+      "lib/pipeline.mjs": "7bf8e6393d4df6b2c6d7fc3a6cadc776a80aef0cc63d1a50bb4e5031427e6d99",
+      "lib/core.mjs": "9f51a2faccd1799291b63b95b762772cad4d3d5036c69dd29b84152f2b2173f2",
+      "lib/config.mjs": "29ae9d0f594ae350be44a71bc7d48ffb013e1472719251f0db75cfd0ac3834f9"
+    },
+    "engine": {
+      "@napi-rs/image": "1.15.0",
+      "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+    },
+    "assetsGenerator": "2.0.0",
+    "sharp": {
+      "aom": "3.15.1",
+      "archive": "3.8.9",
+      "cairo": "1.18.6",
+      "cgif": "0.5.4",
+      "exif": "0.6.26",
+      "expat": "2.8.5",
+      "ffi": "3.8.0",
+      "fontconfig": "2.18.3",
+      "freetype": "2.14.3",
+      "fribidi": "1.0.17",
+      "glib": "2.90.0",
+      "harfbuzz": "14.5.0",
+      "heif": "1.23.5",
+      "highway": "1.4.0",
+      "imagequant": "2.4.1",
+      "lcms": "2.19.1",
+      "mozjpeg": "0826579",
+      "pango": "1.58.2",
+      "pixman": "0.46.4",
+      "png": "1.6.58",
+      "proxy-libintl": "0.5",
+      "rsvg": "2.63.2",
+      "tiff": "4.7.2",
+      "uhdr": "2.0.2",
+      "vips": "8.18.7",
+      "webp": "1.6.0",
+      "xml2": "2.15.4",
+      "zlib-ng": "2.3.3",
+      "sharp": "0.35.5"
+    },
+    "importMs": 190.10635200000002,
+    "repetitions": 3,
+    "note": "Full default presets differ in file counts, framing, backgrounds and SVG processing. Do not attribute their total byte differences to compression alone. Generator timings include source reads, instructions/buildSet, PNG/ICO writes and manifest serialization; exclude module imports and post-run validation. Plugin timings include the same minimal PWA service-worker setup in both arms; cache state is explicit."
+  },
+  "competitorLockSha256": "923933a97034347256481f6bc0a294096d61c4b83717e6b23d30cc6f73b89cf9",
+  "browserMemory": {
+    "chromiumExecutable": "cached chromium-1234/chrome-linux64/chrome",
+    "measurement": "renderer /proc smaps_rollup after initialization/build, not peak",
+    "runs": 6,
+    "control": "upstream250MiB/unbounded spare preload with same current pipeline"
+  }
+}

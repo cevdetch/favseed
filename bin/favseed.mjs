@@ -2,10 +2,9 @@
 //
 // Build a complete icon set from one SVG.
 //
-//   logo.svg              the mark itself: optimised, animation intact
-//   icon.svg              the same optimisation plus a structural animation strip.
+//   icon.svg              the optimised mark, animation and styling intact
 //                         Every raster below is rendered from this file.
-//   favicon.ico           32px PNG wrapped in a 22-byte ICO container
+//   favicon.ico           48px PNG wrapped in a 22-byte ICO container
 //   apple-touch-icon.png  180px on an opaque ground, the mark placed in the safe zone: iOS
 //   icon-<size>.png       one padded set on the same ground, the mark placed in the safe zone:
 //                         the manifest's "any maskable" icons. --bg none keeps them
@@ -22,16 +21,14 @@
 //     optimised after packing. The payload has to be final before it goes in.
 //   * Zopfli runs once, on the file that already won the lossy/lossless comparison.
 //     Running it on both sides costs three times as much for the same bytes.
-//   * The rasters are built one at a time. Decision 13 measured that on the native
-//     pipeline, where oxipng spread one file across every core; decision 27 measured it
-//     again on the engine, where the largest job bounds any parallel build.
-//   * icon.svg is the rasteriser's input, not only an output. Animation never reaches a
-//     PNG, which makes "the rasters are the rest frame" a property of the pipeline
-//     rather than of resvg's CSS support.
+//   * Raster jobs and complete alignment searches use bounded batches; large custom sizes
+//     stay serial. Active native work drains before a failed build returns.
+//   * icon.svg preserves animation and styling. The rasterizer uses the mark's base appearance;
+//     keep the geometry in that rest frame, including for reduced-motion viewers.
 //   * resvg does NOT stretch to fill when given both -w and -h. It preserves the aspect
 //     ratio and derives the second dimension, so a 128x64 mark rendered at -w 32 -h 32
-//     comes out 32x16. Making the box authoritative takes a square intrinsic size AND
-//     preserveAspectRatio="none"; see squareIconSvg in lib/core.mjs.
+//     comes out 32x16. Center the original viewport in a square raster canvas;
+//     see squareIconSvg in lib/core.mjs.
 //   * The masked icons are placed by measurement, not by a padding percentage. The safe zone
 //     is a circle of radius 40% of the icon, and what has to sit inside it is the mark's
 //     opaque extent, not its viewBox, because most marks carry a margin of their own. So
@@ -56,7 +53,6 @@ import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { builtinPlugins, optimize } from 'svgo';
 
 // The isomorphic half of favseed, shared verbatim with the website. lib/core.mjs explains why
 // it is a second file and what the three seams are.
@@ -64,18 +60,24 @@ import {
   createSvgStage, DEFAULT_BG, FAST_ZOPFLI_ITERATIONS, FavseedError,
   icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone, ZOPFLI_ITERATIONS,
 } from '../lib/core.mjs';
-import { checkConfig, defineConfig, normaliseOptions, resolveOptions } from '../lib/config.mjs';
+import { checkConfig, defineConfig, normaliseOptions, resolveOptions, resolveQuality } from '../lib/config.mjs';
 import { createEngine } from '../lib/engine.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
+import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
 
 // Re-exported so the public API is the same as before the split: the Astro
 // integration, the test suite and bench/ all import these from here.
 export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone };
 
-// svgo's Node build. The website hands createSvgStage svgo/browser instead and gets the same
-// plugin list, because the list lives in core rather than in either caller.
-const { optimiseSvg } = createSvgStage({ optimize, builtinPlugins });
-export { optimiseSvg };
+const require = createRequire(import.meta.url);
+// Keep this API synchronous while help, version and validation avoid SVGO entirely.
+// Its supported require entry also avoids racing an external dynamic ESM import.
+// The shared plugin configuration and browser parity checks cover both distributions.
+let svgStage;
+export const optimiseSvg = (source, options) => {
+  svgStage ??= createSvgStage(require('svgo'));
+  return svgStage.optimiseSvg(source, options);
+};
 export { defineConfig };
 
 // The engine's libraries load on first use, inside build(), so a platform without a prebuilt
@@ -83,7 +85,8 @@ export { defineConfig };
 let enginePromise = null;
 export const loadEngine = () => (enginePromise ??= (async () => {
   try {
-    const [image, zopfli] = await Promise.all([import('@napi-rs/image'), import('@gfx/zopfli')]);
+    const image = await import('@napi-rs/image');
+    const zopfli = createZopfli({ loadWasm: () => readFileSync(new URL('../lib/zopfli.wasm', import.meta.url)) });
     return createEngine({ image, zopfli, inflate: (bytes) => inflateSync(bytes) });
   } catch (e) {
     enginePromise = null;
@@ -94,11 +97,10 @@ export const loadEngine = () => (enginePromise ??= (async () => {
   }
 })());
 
-const require = createRequire(import.meta.url);
-/** The engine's package versions: what the bytes depend on, and the Astro cache key's input. */
+/** Package versions and compression build identity: inputs to the integration cache key. */
 export const engineVersions = () => ({
   '@napi-rs/image': require('@napi-rs/image/package.json').version,
-  '@gfx/zopfli': require('@gfx/zopfli/package.json').version,
+  '@gfx/zopfli': ZOPFLI_VERSION,
 });
 
 const PROG = 'favseed';
@@ -241,8 +243,8 @@ const USAGE = `Usage:
 
 Options:
   -o, --out DIR     Output directory (default: current)
-      --colors N    Palette size, 2-256 (default: 256, a ceiling: a flat mark still uses
-                    only the colours it has). Lower it to trade accuracy for bytes.
+      --colors N    Explicit palette ceiling, 2-256. Given alone, selects quality 100.
+                    Lower it to trade accuracy for bytes.
       --sizes LIST  Padded PNG sizes, the manifest's "any maskable" icons (default:
                     "192 512", the pair Chrome's install criteria document).
       --bg COLOR    Ground of the padded icons, apple-touch-icon.png (180px) and
@@ -258,8 +260,11 @@ Options:
                     Without it, var(--x, fallback) resolves to its fallback, the way a
                     browser resolves an undefined property.
       --no-animation
-                    Build logo.svg static too, so it equals icon.svg. Animation never
-                    reaches a raster in either mode.
+                    Explicitly remove motion from icon.svg. Default: preserve it.
+      --quality N   PNG quality target, 1-100 (default: 80; 100 restores previous fidelity).
+                    Lower trades fidelity for size; below 100 cannot combine with --colors.
+      --zopfli      Opt in to extra lossless PNG compression (slower; off by default).
+      --no-zopfli   Disable it, including when enabled by a config file.
       --manifest    Also write site.webmanifest with the icon entries.
       --html        Print the <link> tags for the generated set.
   -q, --quiet       Suppress the size summary.
@@ -271,7 +276,7 @@ Long options also take --opt=value. Use -- to end options.
 Options may also come from favseed.config.js, .mjs or .ts in the working directory,
 which can set input, base and mode too; flags win over it.
 
-Outputs: logo.svg  icon.svg  favicon.ico  apple-touch-icon.png  icon-<size>.png
+Outputs: icon.svg  favicon.ico  apple-touch-icon.png  icon-<size>.png
          [site.webmanifest]`;
 
 const readVersion = () => {
@@ -282,8 +287,8 @@ const readVersion = () => {
 
 export async function cli(argv) {
   const opts = {
-    out: undefined, colors: undefined, sizes: undefined, bg: undefined, padding: undefined,
-    vars: new Map(), animation: undefined, manifest: undefined, html: false, quiet: false,
+    out: undefined, colors: undefined, quality: undefined, sizes: undefined, bg: undefined, padding: undefined,
+    vars: new Map(), animation: undefined, manifest: undefined, zopfli: undefined, html: false, quiet: false,
   };
   let input = null;
 
@@ -308,6 +313,7 @@ export async function cli(argv) {
     switch (flag) {
       case '-o': case '--out':   opts.out = need(); break;
       case '--colors':           opts.colors = need(); break;
+      case '--quality':          opts.quality = need(); break;
       case '--sizes':            opts.sizes = need(); break;
       case '--bg':               opts.bg = need(); break;
       case '--padding':          opts.padding = need(); break;
@@ -319,6 +325,8 @@ export async function cli(argv) {
         break;
       }
       case '--no-animation':     opts.animation = false; break;
+      case '--zopfli':           opts.zopfli = true; break;
+      case '--no-zopfli':        opts.zopfli = false; break;
       case '--manifest':         opts.manifest = true; break;
       case '--html':             opts.html = true; break;
       case '-q': case '--quiet': opts.quiet = true; break;
@@ -352,9 +360,9 @@ export async function cli(argv) {
   for (const f of loaded.ignored) warn(`${f} ignored: ${loaded.file} is the config file in use`);
 
   const options = resolveOptions({}, loaded.config, {
-    input: input ?? undefined, out: opts.out, colors: opts.colors, sizes: opts.sizes, bg: opts.bg,
+    input: input ?? undefined, out: opts.out, colors: opts.colors, quality: opts.quality, sizes: opts.sizes, bg: opts.bg,
     padding: opts.padding, vars: opts.vars.size ? opts.vars : undefined,
-    animation: opts.animation, manifest: opts.manifest,
+    animation: opts.animation, manifest: opts.manifest, zopfli: opts.zopfli,
   });
 
   if (options.input === undefined) { process.stderr.write(USAGE + '\n'); process.exit(1); }
@@ -379,7 +387,7 @@ export async function cli(argv) {
   if (!opts.quiet) {
     for (const f of result.files) {
       let note = '';
-      if (f === 'logo.svg') note = result.animated ? '  animated' : '  static (no animation in the source)';
+      if (f === 'icon.svg') note = result.animated ? '  animation preserved' : '  static';
       else if (f === 'apple-touch-icon.png' || f.startsWith('icon-')) {
         const where = f === 'apple-touch-icon.png' ? result.fit.apple : result.fit.icons[Number(f.slice(5, -4))];
         // Under --bg none the size icons are transparent and unpadded, so there is no fit.
@@ -390,7 +398,9 @@ export async function cli(argv) {
       process.stdout.write(`${f.padEnd(22)} ${String(result.bytes[f]).padStart(6)} B${note}\n`);
     }
     const mode = options.mode ?? 'release';
-    process.stdout.write(mode === 'fast'
+    const quality = Number(resolveQuality(options));
+    if (quality < 100) process.stdout.write(`PNG quality target: ${quality}\n`);
+    process.stdout.write(!options.zopfli ? 'standard build (Zopfli disabled)\n' : mode === 'fast'
       ? `fast build (zopfli at ${FAST_ZOPFLI_ITERATIONS} iterations; not the release bytes)\n`
       : `release build (zopfli at ${ZOPFLI_ITERATIONS} iterations)\n`);
   }

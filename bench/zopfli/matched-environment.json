@@ -1,0 +1,306 @@
+{
+  "node": "v26.12.1",
+  "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+  "cores": 16,
+  "engine": {
+    "@napi-rs/image": "1.15.0",
+    "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+  },
+  "vitePwa": "2.0.0",
+  "sharp": {
+    "aom": "3.15.1",
+    "archive": "3.8.9",
+    "cairo": "1.18.6",
+    "cgif": "0.5.4",
+    "exif": "0.6.26",
+    "expat": "2.8.5",
+    "ffi": "3.8.0",
+    "fontconfig": "2.18.3",
+    "freetype": "2.14.3",
+    "fribidi": "1.0.17",
+    "glib": "2.90.0",
+    "harfbuzz": "14.5.0",
+    "heif": "1.23.5",
+    "highway": "1.4.0",
+    "imagequant": "2.4.1",
+    "lcms": "2.19.1",
+    "mozjpeg": "0826579",
+    "pango": "1.58.2",
+    "pixman": "0.46.4",
+    "png": "1.6.58",
+    "proxy-libintl": "0.5",
+    "rsvg": "2.63.2",
+    "tiff": "4.7.2",
+    "uhdr": "2.0.2",
+    "vips": "8.18.7",
+    "webp": "1.6.0",
+    "xml2": "2.15.4",
+    "zlib-ng": "2.3.3",
+    "sharp": "0.35.5"
+  },
+  "sourceSha256": {
+    "lib/core.mjs": "9f51a2faccd1799291b63b95b762772cad4d3d5036c69dd29b84152f2b2173f2",
+    "lib/config.mjs": "29ae9d0f594ae350be44a71bc7d48ffb013e1472719251f0db75cfd0ac3834f9",
+    "lib/engine.mjs": "420d7ca23df6895e9f3553f8b2d177efa776b1259d054cf611477b4707e87e06",
+    "lib/pipeline.mjs": "7bf8e6393d4df6b2c6d7fc3a6cadc776a80aef0cc63d1a50bb4e5031427e6d99"
+  },
+  "inputSha256": {
+    "tiles-180": "659a8f9e5b5d41c55599b7d35a8ff7e9ca426136bc2746ae7ce27415b6899c8a",
+    "tiles-192": "31361d5bb63d69c59b0f9cfbc85089fd28c636de5ded04375a8b3cac04d69504",
+    "tiles-32": "fec0341b666fcb75cb00206102bc87cdb24b90444b50597e2ca9fe0c1eed1ae9",
+    "tiles-512": "ac030149f2af1ad224775a1072c88b36069605e5611542a5efe203127817662a",
+    "general-180": "12bc59fcebb53705dbc527f166eb63cff47d64543a610ae55b620328d1ef831b",
+    "general-192": "bc372644d3076d4ac257b14823e46bbf3976bb03126e433c53b46499dc926cef",
+    "general-32": "a4201d73e8c36beba2b92564bc1e4fcda9a0d8dfa7d618e074837c6ea5b95095",
+    "general-512": "24417a5a70f5b9bb942488768787f20acb30c4feca5596a14a260f80034c921a",
+    "heavy-180": "7ab87bf2b3e982190e6f81f29cf69ee14ead5d58ece4820de6437e478708b039",
+    "heavy-192": "308ef418ea6ec04ec51ee795976a9fe4bff267034b2ffc7a28a37369506e0544",
+    "heavy-32": "ed224cdc30db64f72ce8ad49944e869f5c6128b4a7e40c4f5b6865bcca7760ec",
+    "heavy-512": "32939f2cb5315d7780d1fb6f8ac31aa0f4fe2376cff22bd981cd5824677e44d9",
+    "gradient-180": "e75859645aab2d49fbafda6efef4babc1950663d6b652152001058c3f38b05c6",
+    "gradient-192": "20eef8a30b50b4c74c7cab056838f46d023c5de8106faa6d6e9b0c7245773e7c",
+    "gradient-32": "f4c5302ff77a0c9b23d6d14382d92ae2a4b9de1156d7e501bec0f758797429aa",
+    "gradient-512": "b0284e5b685a728f7bb845c7b90bc588730eb048376bd2c045abf2412a90aaf8"
+  },
+  "arms": [
+    "vite-default",
+    "vite-quality-100",
+    "favseed-0",
+    "favseed-120"
+  ],
+  "lowEffort": 3,
+  "qualityLevels": [
+    100
+  ],
+  "repetitions": 2,
+  "options": {
+    "compressionLevel": 9,
+    "quality": 60
+  },
+  "note": "Encoding only on fixed already-placed pixels, no SVG/raster/placement/file-count difference. Vite API with padding0/identity resize. Pixel error is vs raw rendered pixels, not original SVG. 32px ICO is reported separately from the default 1% accuracy gate.",
+  "comparisonNote": "16 matched raster files: 32px ICO plus180/192/512px PNG for each of4fixtures. Same raw pixels, dimensions, backgrounds and placement. Real Vite generateFavicon route; Favseed ICO wrapper. SVG/manifest excluded. ICO pixels verified unchanged after repacking.",
+  "sourceAccuracy": [
+    {
+      "arm": "vite-default",
+      "worstPct": 10.911941528320312,
+      "worstNonGradientPct": 1.3888888888888888,
+      "worstIcoPct": 9.5703125,
+      "overOnePercent": [
+        {
+          "id": "general-180",
+          "pct": 1.1512345679012346
+        },
+        {
+          "id": "general-192",
+          "pct": 1.2559678819444444
+        },
+        {
+          "id": "heavy-180",
+          "pct": 1.324074074074074
+        },
+        {
+          "id": "heavy-192",
+          "pct": 1.3888888888888888
+        },
+        {
+          "id": "gradient-180",
+          "pct": 9.833333333333332
+        },
+        {
+          "id": "gradient-192",
+          "pct": 10.28103298611111
+        },
+        {
+          "id": "gradient-512",
+          "pct": 10.911941528320312
+        }
+      ],
+      "overOnePercentNonGradient": [
+        {
+          "id": "general-180",
+          "pct": 1.1512345679012346
+        },
+        {
+          "id": "general-192",
+          "pct": 1.2559678819444444
+        },
+        {
+          "id": "heavy-180",
+          "pct": 1.324074074074074
+        },
+        {
+          "id": "heavy-192",
+          "pct": 1.3888888888888888
+        }
+      ]
+    },
+    {
+      "arm": "vite-quality-100",
+      "worstPct": 1.8988715277777777,
+      "worstNonGradientPct": 0.11393229166666667,
+      "worstIcoPct": 2.5390625,
+      "overOnePercent": [
+        {
+          "id": "gradient-180",
+          "pct": 1.6481481481481481
+        },
+        {
+          "id": "gradient-192",
+          "pct": 1.8988715277777777
+        },
+        {
+          "id": "gradient-512",
+          "pct": 1.7242431640625
+        }
+      ],
+      "overOnePercentNonGradient": []
+    },
+    {
+      "arm": "favseed-0",
+      "worstPct": 1.7415364583333333,
+      "worstNonGradientPct": 0.11393229166666667,
+      "worstIcoPct": 2.5390625,
+      "overOnePercent": [
+        {
+          "id": "gradient-180",
+          "pct": 1.6450617283950617
+        },
+        {
+          "id": "gradient-192",
+          "pct": 1.7415364583333333
+        },
+        {
+          "id": "gradient-512",
+          "pct": 1.6292572021484375
+        }
+      ],
+      "overOnePercentNonGradient": []
+    },
+    {
+      "arm": "favseed-120",
+      "worstPct": 1.7415364583333333,
+      "worstNonGradientPct": 0.11393229166666667,
+      "worstIcoPct": 2.5390625,
+      "overOnePercent": [
+        {
+          "id": "gradient-180",
+          "pct": 1.6450617283950617
+        },
+        {
+          "id": "gradient-192",
+          "pct": 1.7415364583333333
+        },
+        {
+          "id": "gradient-512",
+          "pct": 1.6292572021484375
+        }
+      ],
+      "overOnePercentNonGradient": []
+    }
+  ],
+  "matchedSummaries": [
+    {
+      "arm": "vite-default",
+      "rasterBytes": 36624,
+      "byMark": {
+        "tiles": 1552,
+        "general": 4104,
+        "heavy": 4088,
+        "gradient": 26880
+      }
+    },
+    {
+      "arm": "vite-quality-100",
+      "rasterBytes": 52240,
+      "byMark": {
+        "tiles": 1960,
+        "general": 6943,
+        "heavy": 6621,
+        "gradient": 36716
+      }
+    },
+    {
+      "arm": "favseed-0",
+      "rasterBytes": 40449,
+      "byMark": {
+        "tiles": 757,
+        "general": 5756,
+        "heavy": 6070,
+        "gradient": 27866
+      }
+    },
+    {
+      "arm": "favseed-120",
+      "rasterBytes": 39266,
+      "byMark": {
+        "tiles": 746,
+        "general": 5421,
+        "heavy": 5789,
+        "gradient": 27310
+      }
+    }
+  ],
+  "pngEncodingSummaries": [
+    {
+      "arm": "vite-default",
+      "bytes": 36099,
+      "medianMs": 289.7572380000038,
+      "worstPct": 5.023956298828125,
+      "worstIcoPct": 3.7109375,
+      "overOnePercent": [
+        {
+          "id": "general-180",
+          "pct": 1.1512345679012346
+        },
+        {
+          "id": "general-192",
+          "pct": 1.2559678819444444
+        },
+        {
+          "id": "heavy-180",
+          "pct": 1.3641975308641976
+        },
+        {
+          "id": "heavy-192",
+          "pct": 1.3454861111111112
+        },
+        {
+          "id": "gradient-180",
+          "pct": 4.098765432098765
+        },
+        {
+          "id": "gradient-192",
+          "pct": 4.364691840277778
+        },
+        {
+          "id": "gradient-512",
+          "pct": 5.023956298828125
+        }
+      ]
+    },
+    {
+      "arm": "vite-quality-100",
+      "bytes": 51857,
+      "medianMs": 341.4609420000106,
+      "worstPct": 0.0545501708984375,
+      "worstIcoPct": 0,
+      "overOnePercent": []
+    },
+    {
+      "arm": "favseed-0",
+      "bytes": 40361,
+      "medianMs": 740.3691669999844,
+      "worstPct": 0.00762939453125,
+      "worstIcoPct": 0,
+      "overOnePercent": []
+    },
+    {
+      "arm": "favseed-120",
+      "bytes": 39178,
+      "medianMs": 58570.65059799998,
+      "worstPct": 0.00762939453125,
+      "worstIcoPct": 0,
+      "overOnePercent": []
+    }
+  ]
+}

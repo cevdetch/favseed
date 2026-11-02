@@ -1,0 +1,415 @@
+{
+  "effort": {
+    "fingerprint": "1f51915ccd1aafb2a0443e0a3c0dae5ede6e2d2f6c8a449ffebb0ddc015bec54",
+    "engine": {
+      "@napi-rs/image": "1.15.0",
+      "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+    },
+    "iterations": [
+      0,
+      1,
+      3,
+      5,
+      10,
+      15,
+      30,
+      60,
+      120
+    ],
+    "repetitions": 2,
+    "runtime": {
+      "node": "v26.12.1",
+      "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+      "cores": 16,
+      "platform": "linux",
+      "arch": "x64"
+    },
+    "samples": [
+      {
+        "id": "general-180",
+        "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2",
+        "pixels": "dd89eae0791df668c10bf67208b7d2a0d4f5bc2c33b813c90636cef9b24f3256",
+        "bytes": 1095
+      },
+      {
+        "id": "general-192",
+        "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6",
+        "pixels": "a10c7dc477b7a7973b3fbfc344cff7713c5b255f55912014680333b8cc7f985a",
+        "bytes": 1163
+      },
+      {
+        "id": "general-512",
+        "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec",
+        "pixels": "e93d9daf324a9db3aad0f7ff22b46915833adc9790b72842e7a38ed225d6ada3",
+        "bytes": 3029
+      },
+      {
+        "id": "general-32",
+        "sha256": "cea4db906af9b1590aaad4d2293ec4b2ad5dde8eac235930b6d8e6bc69d3b656",
+        "pixels": "96f49abcc6c42fd2ac4dc3a623aedd289eccfc410344472bab4ddf5c1c1ee6e8",
+        "bytes": 447
+      },
+      {
+        "id": "flat-180",
+        "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b",
+        "pixels": "670a7a2e80d22bd4162dce982813f28b08101ab30df71e7cf02875f6aca29982",
+        "bytes": 1124
+      },
+      {
+        "id": "flat-192",
+        "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a",
+        "pixels": "fc992fe886637ea0471b1c738ae84480e1d84489127bff9771623342438a53f6",
+        "bytes": 1223
+      },
+      {
+        "id": "flat-512",
+        "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654",
+        "pixels": "69ea70b6bd99813b1ef664b5f58511169e1380ece1b44602aaea2e4b3c34f7e6",
+        "bytes": 3358
+      },
+      {
+        "id": "flat-32",
+        "sha256": "64edf119c7de867996829c000b4785da08b999e721cc0a4b80e760deff7517df",
+        "pixels": "a3a9d7f7db49bc7b0a3096ce6f7370365e742c49dcddcdec56dc01787dfba9b4",
+        "bytes": 303
+      },
+      {
+        "id": "second-180",
+        "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee",
+        "pixels": "d2f3cf9744a0dc3df7003878212f02793fa58d3bd04b6c3af0c33ff640d3b18a",
+        "bytes": 596
+      },
+      {
+        "id": "second-192",
+        "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d",
+        "pixels": "f4a23b33b97429b02a28189de91185bcfb0170f6ec8c17977495d9f961d5ba55",
+        "bytes": 603
+      },
+      {
+        "id": "second-512",
+        "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3",
+        "pixels": "d1731e38859793fabe90bf8d6633e8cf700992929468e35c036a034eab895151",
+        "bytes": 1863
+      },
+      {
+        "id": "second-32",
+        "sha256": "714af318167c1295d8a5abfe8ebef304530500299f8c7eaf068d4f758da711c8",
+        "pixels": "e3ef18a30a78e0ea65800a6dcc2667f6d0f80c3325519735082b17966029f521",
+        "bytes": 231
+      },
+      {
+        "id": "mask-180",
+        "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236",
+        "pixels": "1c9193cbbd1dfa26cb6ad5f540769d4b389560a509afc74ef3476a74c07af5b9",
+        "bytes": 930
+      },
+      {
+        "id": "mask-192",
+        "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4",
+        "pixels": "290ee1e53977be57ab27d91e15f5afc205b3e6a57bca5974ee927b5bf2db089b",
+        "bytes": 1055
+      },
+      {
+        "id": "mask-512",
+        "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7",
+        "pixels": "5d86b2755ad8537a89dd9c4cb33061864d6c4de044f925d8adc829d19ed6bd22",
+        "bytes": 2707
+      },
+      {
+        "id": "mask-32",
+        "sha256": "3977dcc5e4d6fe2dc0f48b6e1e102c65e77cae9f201da2e8d6b89dc29344d1de",
+        "pixels": "1ff58309cc0257eeba79d9149199f9ff9a42419422c7f20f63f32c367a53f6fb",
+        "bytes": 359
+      },
+      {
+        "id": "heavy-180",
+        "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa",
+        "pixels": "6a1c4552f59e0fb1cd09d90e39bd5886ea5a4630c3eed86af1c0d4f12b66ab5d",
+        "bytes": 1079
+      },
+      {
+        "id": "heavy-192",
+        "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3",
+        "pixels": "e4a53862d816ac2438255e16e35397df5b33022831caec4a1cddb7273d913d12",
+        "bytes": 1108
+      },
+      {
+        "id": "heavy-512",
+        "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43",
+        "pixels": "6cf3f9ae73b192bd7fdc63a33794c07e06bcb2cfb085e454dd4ed52f3a0d661b",
+        "bytes": 3432
+      },
+      {
+        "id": "heavy-32",
+        "sha256": "421a5dde88a72b1cce1e5e1701d7e0ba13a761d8ee3f85211eb8a27451552d03",
+        "pixels": "f47cb7974ea7e55be20ac2aacd3ff52c6d515ea286f7cde451659f785b4db5dc",
+        "bytes": 429
+      },
+      {
+        "id": "animated-180",
+        "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38",
+        "pixels": "6a463d58f029d28f9c59b3eafb91b243314b5425e9e292223f9621d3465fa1fd",
+        "bytes": 1535
+      },
+      {
+        "id": "animated-192",
+        "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b",
+        "pixels": "a81bee501e8498d0ff1c83a64cbac8e96d236bcfdc88aec7dea2108e0e768a55",
+        "bytes": 1602
+      },
+      {
+        "id": "animated-512",
+        "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea",
+        "pixels": "d0ddc5b03dd51b31cab695e55abeac6d9ae9d01133e77a98356301fd887b4311",
+        "bytes": 4795
+      },
+      {
+        "id": "animated-32",
+        "sha256": "eceda55191250e8c48ff274c7237e2fe26d5c5c52223c8564cf0e588db54495e",
+        "pixels": "75618af3e2dde56b5ae9cc02747d54ffb9bc3f8f61f722f48c255121ac03ce96",
+        "bytes": 415
+      },
+      {
+        "id": "tiles-180",
+        "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa",
+        "pixels": "29b6811f47541b92c8c1ea15cc1ee5892cc7c8fefec08a1bc24ab9467fbaf37b",
+        "bytes": 152
+      },
+      {
+        "id": "tiles-192",
+        "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa",
+        "pixels": "6e60edc2c02c839f374a49991defa06ed15d6487963f874aa29e97030de2a46f",
+        "bytes": 164
+      },
+      {
+        "id": "tiles-512",
+        "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b",
+        "pixels": "d9498128aee98777d1834e8206d213eed77df36158e9543b0227328cf0f3bec5",
+        "bytes": 294
+      },
+      {
+        "id": "tiles-32",
+        "sha256": "5fad0f9f1c1ec3d6f3a718485079e2220b97cb94825b9e5b568a78c0af8f8690",
+        "pixels": "d169780be9b30ea2e743d9e107b64700dc7b67410ad8e6dfb3a60303e6129226",
+        "bytes": 125
+      },
+      {
+        "id": "wide-180",
+        "sha256": "9fc26fd473dcaf33b01f77f2937c4d1d1e2d9ae57c0f904871e448f73ca5d924",
+        "pixels": "40539e8280a4dbdee62b483e2242a639a085b8501914bdae612dda634c5d1ffa",
+        "bytes": 440
+      },
+      {
+        "id": "wide-192",
+        "sha256": "e4d1a5a5a8faf1b3d3001c7e380b31077bade1ca1ad6728c270ca4b9f8346287",
+        "pixels": "31cd05e148b0c9713568ec84c9641ed6cbfde4e8ec2c0479af6cc66a2d096453",
+        "bytes": 478
+      },
+      {
+        "id": "wide-512",
+        "sha256": "8cacf88c15e2d971f8928f9227407f0d4603913aeb829f3f7fd15eeb08ccafd8",
+        "pixels": "ff970764389173ac03893e0b8222762eeb3922d205e8a300aeac25abfce8713b",
+        "bytes": 1173
+      },
+      {
+        "id": "wide-32",
+        "sha256": "07d8d6ff15ddb4289a9106c044da91b31a30e4b2dd428d06ac0af7d5b520e7e9",
+        "pixels": "fdc8439be98a599a8a0d9985d87763c4c4ffe3766442081fed9d36bfa5a0ffdb",
+        "bytes": 220
+      },
+      {
+        "id": "gradient-180",
+        "sha256": "f892861902666fadd72323bb17129151ce8260f85cb24e7451ac8ad864c98f77",
+        "pixels": "34d74c58361beb3c86a50b0fb93aecea3ea4b5a67ee61b9a1aeb5e450a33bcc0",
+        "bytes": 5390
+      },
+      {
+        "id": "gradient-192",
+        "sha256": "84d5f79870d9348d4840c66177a6ce9ae29733e32063478a9f285beb9470f0db",
+        "pixels": "9a6ea394280ed931de8b669d4cbab939f5ecc921be654d186a325deee3337e7e",
+        "bytes": 5407
+      },
+      {
+        "id": "gradient-512",
+        "sha256": "e6e69987b366ba3ec0f10c67ee1839e39eacd7c00e7fede49746b5d69b529dad",
+        "pixels": "23b9c7879dc9070543fa47e454ad86beca474b00b938d83ea958e9c29a1ab8be",
+        "bytes": 15570
+      },
+      {
+        "id": "gradient-32",
+        "sha256": "d9f7f7c074def2ad9fae418fe84db261ab5f3f789fbe0a48d56d65618dd69b6f",
+        "pixels": "eb072ca8427dbd910e09aba7fcc8789106b6d0ad232499fce83f203a4c845c46",
+        "bytes": 1477
+      },
+      {
+        "id": "smil-180",
+        "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c",
+        "pixels": "a4b80a2692dde9aea3f31219f396443916038e0531f74025fcf89d9e1925d4db",
+        "bytes": 724
+      },
+      {
+        "id": "smil-192",
+        "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1",
+        "pixels": "d79d24fa6873341349e409c4b3b09c041e4f39dbc9667e244ce35460a11245e3",
+        "bytes": 749
+      },
+      {
+        "id": "smil-512",
+        "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6",
+        "pixels": "ba0b25dc4ce92696bee6ea21dbd843601ee13472df3c28f74caaa3554a07681a",
+        "bytes": 2260
+      },
+      {
+        "id": "smil-32",
+        "sha256": "1892c25b223a3f7256c44a63d3b9799d45660ece2654f6cbc2cebfe9f34da6b3",
+        "pixels": "0ce157a1f858175a9235f5657412569ddd9606dcf8cbd7c933fb5b9035fcd339",
+        "bytes": 234
+      },
+      {
+        "id": "dark-180",
+        "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe",
+        "pixels": "14c4d5066c61d18ea00695206d5a2d0af0c48d0b979ddb0ad9661be14bf76e52",
+        "bytes": 855
+      },
+      {
+        "id": "dark-192",
+        "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801",
+        "pixels": "ee9ec41bd469dcf7f89f00ca50efbb2be9a38f1734aefc43f3a3f387996b0dd5",
+        "bytes": 920
+      },
+      {
+        "id": "dark-512",
+        "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8",
+        "pixels": "2b0cb9ad1e7b623d7418cca182fafd88d3c0f660536bb33d857a9d9a78d83eec",
+        "bytes": 2506
+      },
+      {
+        "id": "dark-32",
+        "sha256": "185434f5863bcce76c64c8f8659a774ab8491e277d3502f8797ffcb979decc20",
+        "pixels": "c3c81ddb28d6b2f59eee3fe57c4b2395691fdfd8859089f791b8a5b827b04051",
+        "bytes": 319
+      }
+    ],
+    "node": "v26.12.1",
+    "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+    "cores": 16,
+    "prepMs": 7723.748665,
+    "note": "Fixed default-option PNG winners; 32px PNG is the ICO payload. No SVG/header bytes. Times cover finish only. Decode/hash checks run after timing."
+  },
+  "encoderControl": {
+    "node": "v26.12.1",
+    "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+    "cores": 16,
+    "engine": {
+      "@napi-rs/image": "1.15.0",
+      "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+    },
+    "vitePwa": "2.0.0",
+    "sharp": {
+      "aom": "3.15.1",
+      "archive": "3.8.9",
+      "cairo": "1.18.6",
+      "cgif": "0.5.4",
+      "exif": "0.6.26",
+      "expat": "2.8.5",
+      "ffi": "3.8.0",
+      "fontconfig": "2.18.3",
+      "freetype": "2.14.3",
+      "fribidi": "1.0.17",
+      "glib": "2.90.0",
+      "harfbuzz": "14.5.0",
+      "heif": "1.23.5",
+      "highway": "1.4.0",
+      "imagequant": "2.4.1",
+      "lcms": "2.19.1",
+      "mozjpeg": "0826579",
+      "pango": "1.58.2",
+      "pixman": "0.46.4",
+      "png": "1.6.58",
+      "proxy-libintl": "0.5",
+      "rsvg": "2.63.2",
+      "tiff": "4.7.2",
+      "uhdr": "2.0.2",
+      "vips": "8.18.7",
+      "webp": "1.6.0",
+      "xml2": "2.15.4",
+      "zlib-ng": "2.3.3",
+      "sharp": "0.35.5"
+    },
+    "lowEffort": 3,
+    "repetitions": 2,
+    "options": {
+      "compressionLevel": 9,
+      "quality": 60
+    },
+    "note": "Encoding only on fixed already-placed pixels, no SVG/raster/placement/file-count difference. Vite API with padding0/identity resize. Pixel error is vs raw rendered pixels, not original SVG. 32px ICO is reported separately from the default 1% accuracy gate."
+  },
+  "encoderQuality": {
+    "node": "v26.12.1",
+    "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+    "cores": 16,
+    "engine": {
+      "@napi-rs/image": "1.15.0",
+      "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+    },
+    "vitePwa": "2.0.0",
+    "sharp": {
+      "aom": "3.15.1",
+      "archive": "3.8.9",
+      "cairo": "1.18.6",
+      "cgif": "0.5.4",
+      "exif": "0.6.26",
+      "expat": "2.8.5",
+      "ffi": "3.8.0",
+      "fontconfig": "2.18.3",
+      "freetype": "2.14.3",
+      "fribidi": "1.0.17",
+      "glib": "2.90.0",
+      "harfbuzz": "14.5.0",
+      "heif": "1.23.5",
+      "highway": "1.4.0",
+      "imagequant": "2.4.1",
+      "lcms": "2.19.1",
+      "mozjpeg": "0826579",
+      "pango": "1.58.2",
+      "pixman": "0.46.4",
+      "png": "1.6.58",
+      "proxy-libintl": "0.5",
+      "rsvg": "2.63.2",
+      "tiff": "4.7.2",
+      "uhdr": "2.0.2",
+      "vips": "8.18.7",
+      "webp": "1.6.0",
+      "xml2": "2.15.4",
+      "zlib-ng": "2.3.3",
+      "sharp": "0.35.5"
+    },
+    "lowEffort": 3,
+    "qualityLevels": [
+      60,
+      80,
+      90,
+      100
+    ],
+    "repetitions": 2,
+    "options": {
+      "compressionLevel": 9,
+      "quality": 60
+    },
+    "note": "Encoding only on fixed already-placed pixels, no SVG/raster/placement/file-count difference. Vite API with padding0/identity resize. Pixel error is vs raw rendered pixels, not original SVG. 32px ICO is reported separately from the default 1% accuracy gate."
+  },
+  "fixtureSha256": {
+    "general": "a2193038f8cfb7e709572dd90cfd19f06b78c41fa0f0c29b5b84b5cc86a548c5",
+    "flat": "8a4b63903ba65d69d3a57a7b4950b9ac3c19aa5f2b88e409a66d8631d8cb29dd",
+    "second": "ffdce4ebb050371bc3959a884301d4ba7cccfdee13b0f5c463c43ba67c448ae8",
+    "mask": "a39a8fe87cd121d75fcae2cf3366b24be0dbc7af26b4d85cb24691c7d6b40305",
+    "heavy": "67eef872c8da420ab4b385426795647d0e169153094262cc7dbb4fba059a8fbd",
+    "animated": "c5c6c7b7fb546d1a11abbaf9e01201272e595f628011c34f8b0483a732826886",
+    "tiles": "87a4b78f445d92188875a4050396b365a206e8a0bf69f53efa2667b483a2fd43",
+    "wide": "6072602c4f1fd1ebbc94a3ab5babdbf7d57c84572edb7cce1bc0642d15b9ad91",
+    "gradient": "f4a4c3e9205cb8a55bdd7e887e5b072953c845f8e599954f3a0dce62fde9811e",
+    "smil": "fa4c62897946bf232e2b2cd56b0a3962f8d1d3d9576db1a76bde1f7cf9278cb6",
+    "dark": "9f871be64816b6e1f9e96a6ce4232f33894af30d4d8d2be513da58af8026c592"
+  },
+  "note": "Fixture hashes recorded at source-accuracy grading. Timed inputs/outputs identified in raw artifacts; original temporary competitor dependency lockfile unavailable."
+}

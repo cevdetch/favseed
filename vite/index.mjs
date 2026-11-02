@@ -68,7 +68,7 @@ export default function favseed(options = {}) {
     }
     if (pwa) merged.manifest = false;
     const o = normaliseOptions(merged);
-    const names = ['logo.svg', 'icon.svg', 'favicon.ico', 'apple-touch-icon.png',
+    const names = ['icon.svg', 'favicon.ico', 'apple-touch-icon.png',
       ...o.sizes.map((s) => `icon-${s}.png`), ...(o.manifest ? ['site.webmanifest'] : [])];
     return { merged, o, names, links: linkTags(o.base, Boolean(o.manifest)) };
   };

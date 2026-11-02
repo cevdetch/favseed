@@ -18,11 +18,12 @@ describe('normaliseOptions', () => {
   it('fills the defaults', () => {
     const o = normaliseOptions({});
     assert.equal(o.colors, 256);
+    assert.equal(o.quality, 80);
     assert.deepEqual(o.sizes, [192, 512]);
     assert.equal(o.bg, '#000000');
     assert.equal(o.padding, 'auto');
     assert.equal(o.base, '/');
-    assert.equal(o.iterations, 120);
+    assert.equal(o.iterations, 0);
     assert.equal(o.out, '.');
   });
 
@@ -33,9 +34,24 @@ describe('normaliseOptions', () => {
     fails(() => normaliseOptions({ mode: 'slow' }), /^mode must be 'release' or 'fast', got 'slow'$/);
   });
 
-  it('maps fast mode and zopfli: false to their iteration counts', () => {
-    assert.equal(normaliseOptions({ mode: 'fast' }).iterations, 15);
+  it('requires an explicit opt-in before either mode runs Zopfli', () => {
+    assert.equal(normaliseOptions({ mode: 'fast' }).iterations, 0);
+    assert.equal(normaliseOptions({ zopfli: true }).iterations, 120);
+    assert.equal(normaliseOptions({ mode: 'fast', zopfli: true }).iterations, 15);
     assert.equal(normaliseOptions({ zopfli: false }).iterations, 0);
+    for (const zopfli of ['yes', 1, null]) fails(() => normaliseOptions({ zopfli }), /^zopfli must be true or false/);
+  });
+
+  it('validates PNG quality and refuses a palette that would override it', () => {
+    for (const quality of [1, 60, 80, 100, '80']) assert.equal(normaliseOptions({ quality }).quality, Number(quality));
+    for (const quality of [0, 101, 1.5, true, null, '', '0x50', '80px', [80], 80n, new Number(80), Symbol(80)]) {
+      fails(() => normaliseOptions({ quality }), /^--quality must be an integer 1-100/);
+    }
+    fails(() => normaliseOptions({ quality: 80, colors: 256 }), /quality.*colors/);
+    fails(() => normaliseOptions({ quality: 80, colors: 32 }), /quality.*colors/);
+    assert.equal(normaliseOptions({ quality: 100, colors: 32 }).colors, 32);
+    assert.equal(normaliseOptions({ colors: 32 }).quality, 100);
+    assert.equal(normaliseOptions({ colors: 256 }).quality, 100);
   });
 
   it('turns bg none and bg null into a transparent set', () => {
@@ -87,7 +103,7 @@ describe('resolveOptions', () => {
 
 describe('checkConfig', () => {
   it('lists the keys it knows', () => {
-    assert.deepEqual(CONFIG_KEYS, ['input', 'out', 'colors', 'sizes', 'bg', 'padding', 'vars', 'animation', 'manifest', 'mode', 'base']);
+    assert.deepEqual(CONFIG_KEYS, ['input', 'out', 'colors', 'quality', 'sizes', 'bg', 'padding', 'vars', 'animation', 'manifest', 'mode', 'zopfli', 'base']);
   });
 
   it('refuses a default export that is not an object', () => {
@@ -98,7 +114,7 @@ describe('checkConfig', () => {
 
   it('names every unknown key and the keys it accepts', () => {
     fails(() => checkConfig({ colours: 8, quiet: true }, 'favseed.config.mjs'),
-      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, sizes, bg, padding, vars, animation, manifest, mode, base$/);
+      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, mode, zopfli, base$/);
   });
 
   it('defineConfig returns what it was given', () => {
@@ -138,14 +154,29 @@ const read = (dir, f) => readFileSync(join(dir, 'public', f), 'utf8');
 const noStack = (r) => assert.ok(!/at .*\.m?[jt]s:\d+/.test(r.stderr), `a stack trace leaked:\n${r.stderr}`);
 
 describe('the CLI with a config file', () => {
+  it('accepts PNG quality from config and lets the CLI override it', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, quality: 60 };` });
+    copyFileSync(join(ROOT, 'test/fixtures/gradient.svg'), join(dir, 'logo.svg'));
+    const low = await run(dir);
+    assert.equal(low.code, 0, low.stderr);
+    const before = readFileSync(join(dir, 'public/apple-touch-icon.png'));
+    const higher = await run(dir, ['--quality=80']);
+    assert.equal(higher.code, 0, higher.stderr);
+    assert.notDeepEqual(readFileSync(join(dir, 'public/apple-touch-icon.png')), before);
+    const bad = await run(dir, ['--quality', '101']);
+    assert.equal(bad.code, 1);
+    assert.match(bad.stderr, /--quality must be an integer 1-100/);
+    noStack(bad);
+  });
+
   it('builds from the config alone and names the mode', async () => {
     const dir = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
     const r = await run(dir);
     assert.equal(r.code, 0, r.stderr);
-    for (const f of ['logo.svg', 'icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
+    for (const f of ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
       assert.ok(existsSync(join(dir, 'public', f)), f);
     }
-    assert.match(r.stdout, /^fast build \(zopfli at 15 iterations; not the release bytes\)$/m);
+    assert.match(r.stdout, /^standard build \(Zopfli disabled\)$/m);
     assert.ok(!/--bg not given/.test(r.stderr), 'the config gave bg, so no warning');
   });
 
@@ -170,7 +201,7 @@ describe('the CLI with a config file', () => {
     const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, base: 'blog' };` });
     const r = await run(dir, ['--html', '--manifest']);
     assert.equal(r.code, 0, r.stderr);
-    assert.match(r.stdout, /<link rel="icon" href="\/blog\/favicon\.ico" sizes="32x32">/);
+    assert.match(r.stdout, /<link rel="icon" href="\/blog\/favicon\.ico" sizes="48x48">/);
     assert.match(r.stdout, /<link rel="manifest" href="\/blog\/site\.webmanifest">/);
     assert.equal(JSON.parse(read(dir, 'site.webmanifest')).icons[0].src, '/blog/icon-32.png');
   });
@@ -246,11 +277,21 @@ describe('the CLI with a config file', () => {
     assert.match(r.stderr, /^Usage:/m);
   });
 
-  it('names release mode in the summary by default', async () => {
+  it('skips Zopfli in the summary by default', async () => {
     const dir = project({});
     const r = await run(dir, ['--sizes', '32', '--bg', '#000', '-o', 'public', 'logo.svg']);
     assert.equal(r.code, 0, r.stderr);
-    assert.match(r.stdout, /^release build \(zopfli at 120 iterations\)$/m);
+    assert.match(r.stdout, /^standard build \(Zopfli disabled\)$/m);
+  });
+
+  it('lets --zopfli opt in and --no-zopfli override an enabled config', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, zopfli: true };` });
+    const enabled = await run(dir, ['--zopfli']);
+    assert.equal(enabled.code, 0, enabled.stderr);
+    assert.match(enabled.stdout, /fast build \(zopfli at 15 iterations/);
+    const disabled = await run(dir, ['--no-zopfli']);
+    assert.equal(disabled.code, 0, disabled.stderr);
+    assert.match(disabled.stdout, /standard build \(Zopfli disabled\)/);
   });
 });
 
@@ -271,14 +312,15 @@ describe('defineConfig from favseed', () => {
     assert.ok(existsSync(join(ROOT, 'bin', 'favseed.d.mts')));
   });
 
-  const tsc = join(ROOT, 'site', 'node_modules', 'typescript', 'bin', 'tsc');
-  it('type-checks a config, and catches a misspelt key', { skip: existsSync(tsc) ? false : 'typescript not installed' }, () => {
+  const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+  it('type-checks a config, and catches a misspelt key', () => {
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
     const dir = join(scratch, `tsc${++n}`);
     mkdirSync(dir);
     const spec = JSON.stringify(CLI.replace(/\\/g, '/'));
     writeFileSync(join(dir, 'good.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, mode: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`);
     writeFileSync(join(dir, 'bad.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ colours: 8 });\n`);
-    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(dir, f)], { encoding: 'utf8' });
+    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(dir, f)], { encoding: 'utf8', timeout: 30000 });
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
     const bad = check('bad.mts');

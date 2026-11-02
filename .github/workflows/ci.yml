@@ -107,6 +107,22 @@ jobs:
           merge-multiple: true
       - run: diff hashes-linux.txt hashes-macos.txt && diff hashes-linux.txt hashes-windows.txt
 
+  astro:
+    # Install the tarball as an external consumer: static/dev/Node SSR, not hook stubs.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          runtime: node@24
+          require-lockfile: true
+      - run: pnpm test:astro
+        env:
+          ASTRO_TELEMETRY_DISABLED: '1'
+
   site:
     # The website imports lib/core.mjs by path, so a change to the shared half can break it
     # without touching site/. Build it and run the real pipeline in a headless browser.

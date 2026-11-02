@@ -11,6 +11,91 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Require the pinned development TypeScript compiler for config/Vite type checks, and test
+  packed public imports with valid and invalid options under NodeNext and bundler resolution.
+- Keep installed Astro middleware in Vite's transform pipeline so its virtual head-tag
+  module resolves during dev, prerendering and Node SSR. Add packed-package integration
+  coverage for static/dev/SSR behavior in a dedicated CI job.
+- Validate Astro options before generation, including typos, unsupported `out`/`base` options
+  and production values masked by fast development. Keep configuration paths lazy and use
+  configuration property names in validation and renderer diagnostics.
+- Serve Astro development icons from memory/cache without editing `public/` or its ownership
+  record. Keep production publishing and owned legacy-file cleanup, and retain eight recently
+  used verified cache sets while preserving older unverified slots, modified entries and symlinks.
+- Defer SVGO initialization until SVG optimization, preserving the synchronous helper API.
+  CLI help/version and early validation avoid loading it; Astro loads the Node build module
+  only when building icons. Generated output and cache identity are unchanged.
+
+### Fixed
+
+- Keep Astro HTML responses streaming after bounded head inspection instead of buffering
+  the whole page. Detect existing icons only in the head, handle tags split across chunks,
+  and pass through unchanged when a closing head is absent from the first 64 KiB.
+- Reject malformed root viewBox number lists before source rendering or output writes,
+  including missing values, hexadecimal numbers and repeated commas. Retain supported signed
+  decimal/exponent notation and whitespace/comma separators. Bump to 0.8.0 for shared-pipeline
+  cache invalidation; valid output bytes remain unchanged.
+- Diagnose SVG text/font and external-image dependencies in the shared reference pass, and
+  show the same guidance in CLI/API and browser, including cached browser builds. Preserve
+  source content; outline text and embed images for consistent raster results across hosts.
+  Reject unusable root dimensions with viewBox guidance before source rendering or writes.
+  Bump to 0.7.0 for shared-pipeline cache invalidation; valid self-contained output bytes stay unchanged.
+- Make Astro `head: true` an alias for automatic injection and include it in the public types.
+  Report actual paths and ownership-recovery steps for asset conflicts, including starter
+  favicon links and clean checkouts with missing ownership metadata. Existing files remain
+  protected; generated image bytes are unchanged.
+- Remove discontinued Astro-generated sizes, manifests and owned legacy SVGs from `public/`,
+  including on cache hits and development-to-production transitions. Delete only unchanged
+  regular files recorded as owned; preserve edited files, symlinks and unrelated assets.
+  Keep the previous set intact when an incoming asset conflicts. Unstamped leftovers still
+  require manual cleanup.
+- Publish independent Astro asset copies so public edits cannot alter cached output and
+  later be reclaimed and deleted. Bump to 0.5.1 to invalidate previously hardlinked caches;
+  generated image bytes remain unchanged.
+
+### Changed
+
+- Bound placement-probe canvases to twice the target size, using target-size probes for
+  searches above that threshold. Keep small marks enlarged into the safe zone, retain
+  ordinary render reuse, the full candidate walk and existing selection/scheduling rules.
+  Account for actual dimensions in the work estimate. Bump to 0.6.0 for integration caches.
+
+- Use one 48×48 PNG-backed ICO fallback and matching link metadata across CLI, browser,
+  Vite, Astro and the site. Keep explicit 32px PNGs and all non-ICO file bytes unchanged.
+  Bump to 0.5.0 so integration caches regenerate the ICO.
+
+- Preserve wide/tall logo proportions in square PNG/ICO output, including percentage geometry
+  and shifted viewBox origins. Keep the exported SVG viewport and square-input bytes unchanged.
+  Update the non-square warning and source-reference framing; retain existing safe-zone search,
+  quality and opt-in compression. Bump to 0.4.0 for integration cache identity.
+
+- Select SVG precision against the source's static 512px appearance with a 1% error budget.
+  Keep compact precision 1 for passing marks; retry higher precision and retain unrounded
+  source geometry if no candidate passes. Preserve animation/style/accessibility and use
+  the same selector in browser and CLI. Reuse accepted pixels in the bounded placement cache.
+  Correct gradient-stop rounding and small-viewBox geometry, and bump to 0.3.0 for cache identity.
+  Refresh the Vite PWA comparison for corrected inputs; the old 2.9%-smaller claim no longer applies.
+
+- Add PNG/ICO quality 1–100 across CLI, config/API, integrations and browser. Default 80
+  balances size and fidelity; explicit 100 uses the higher-fidelity fixed-palette path. Custom colors without quality
+  retain the fixed-palette path; explicit quality below 100 cannot combine with colors.
+  Keep Zopfli independent and opt-in.
+
+- Skip Zopfli by default; opt in with `--zopfli`, `zopfli: true`, or the browser's extra
+  compression control. Release/fast effort remains 120/15 when enabled.
+- Emit one optimized `icon.svg` preserving animation, styling and accessibility for both
+  favicon and page use. Keep `--no-animation` as an explicit static option; retire `logo.svg`.
+- Run complete alignment searches and raster outputs in bounded batches, with a canvas
+  budget, serial fallback for large custom sizes, drained failures and owned native bytes.
+
+- Try lossless Sub filtering before final compression for bare PNGs with full palettes,
+  retaining the smaller preliminary encode. Both hosts share the change; 120/15 iterations
+  remain unchanged. Bump to 0.2.0 so integration caches cannot reuse previous output bytes.
+- Reduce browser image-engine initial shared memory from 250 to 64 MiB and cap spare worker
+  preload at four, preserving memory growth, fallback spawning and cleanup.
+- Rebuild the same Zopfli source with LLVM23 for the browser and CLI, retaining 120/15
+  compression iterations and exact output bytes. Include the binary hash in engine/cache
+  identity, ship licenses, and add reproducible build and performance scripts.
 - Validate WASM requirements inside the image worker as well as the page, so missing worker
   isolation fails clearly even when a browser still exposes shared memory.
 - Add CI browser parity and lifecycle checks for Firefox, WebKit and Chromium, with mobile

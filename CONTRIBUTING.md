@@ -17,13 +17,29 @@ not evidence, and neither is a screenshot.
 
 ```sh
 pnpm test                      # the definition of done, as node:test
+pnpm test:astro                # install the tarball and exercise real Astro static/dev/SSR
 node bench/bench.mjs           # every sweep, printed
 node bench/bench.mjs colors    # one sweep only
 node bench/bench.mjs --write   # regenerate docs/BENCHMARKS.md
 ```
 
-A change that costs bytes to save build time is rejected by default. Smaller output beats
-faster build: the bytes ship to every visitor forever, the build happens once.
+TypeScript is a pinned root development dependency. `pnpm test` always runs the config and
+Vite option type checks; a missing compiler fails instead of skipping them.
+
+`test:astro` runs separately in Linux CI because it needs npm registry access. It installs
+the packed package in a temporary external consumer with Astro 7.3.8 and Node adapter 11.1.9,
+plus the checkout's installed image/SVGO/Vite/TypeScript versions. Direct test-host versions are pinned;
+the temporary npm install resolves transitive dependencies normally and disables lifecycle
+scripts. It checks CLI bytes, base paths, both head paths, dev modes, cache/public ownership
+and streaming SSR responses. The stream body waits for an explicit release request, so the
+test proves head delivery before the body completes. It also type-checks the public `favseed`,
+`favseed/vite` and `favseed/astro` imports under NodeNext and bundler resolution, accepting
+valid options and verifying every intentional invalid call's compiler diagnostic.
+Servers and temporary files are cleaned
+up after success or failure. This does not expand the published Astro peer range.
+
+A change that costs bytes to save build time needs explicit approval and measured tradeoffs.
+The current default skips Zopfli; `--zopfli` opts into its additional lossless compression.
 
 ## Measure before you believe it
 
@@ -54,26 +70,26 @@ resvg, pngquant and oxipng for its native reference arm.
 
 `test/run.mjs` automates every line.
 
-1. Produces `logo.svg`, `icon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`,
+1. Produces `icon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`,
    `icon-512.png`, and nothing else.
-2. Dimensions are exact: 180×180, 192×192, 512×512; the ICO reports a single 32×32 entry.
-3. `icon.svg`, in **every** mode (including a default build of an animated source), contains no
-   `role`, no `aria-*`, no `class`, no `style=`, no `<style>`, no `<defs`, no `var(`, no
-   `<desc>`, no `<title>`, and keeps `xmlns` and `viewBox`. One exception: a source with a
-   `prefers-color-scheme` block keeps that block in one `<style>`, with the classes it selects
-   (decision 25).
+2. Dimensions are exact: 180×180, 192×192, 512×512; the ICO reports a single 48×48 entry.
+3. `icon.svg` preserves animation, styling and accessibility by default, including referenced
+   classes/IDs, reduced-motion rules, `xmlns` and `viewBox`. Explicit `--no-animation` strips
+   motion and accessibility while retaining color-scheme styling when present.
 4. `--var name=value` overrides the fallback, and the old value is gone from the output.
 5. An unresolvable `var()` with no fallback fails with an error and a non-zero exit, and writes
    nothing.
 6. A referenced id survives; unreferenced ids are dropped.
 7. `favicon.ico` starts `00 00 01 00`, its payload is a PNG (`89 50 4E 47`), and the container is
    byte-identical to `icotool -c -r` wherever icotool is available.
-8. Every emitted raster meets `pct <= 1.0 %`; the padded icons are scored against
-   **background-matched references, padded the same way**.
+8. Default-quality padded PNGs in the accuracy fixtures meet `pct <= 1.0 %`, scored against
+   **background-matched references, padded the same way**. ICO source error is reported separately:
+   the 48px ICO reaches 1.215% on two small-grid fixtures. See the [ICO report](bench/ico-size/README.md).
+   The SVG's static 512px budget does not guarantee this threshold at every raster size or quality.
 9. `apple-touch-icon.png` has no alpha channel when `--bg` is set (the default).
 10. `--manifest` writes valid JSON: the size icons as `"any maskable"` when `--bg` is opaque
     and `"any"` alone when it is `none`, and never `icon.svg`; `--html` emits the `<link>` set with
-    `sizes="32x32"` on the ICO.
+    `sizes="48x48"` on the ICO.
     Every opaque pixel of every padded icon lies inside the safe circle; a pixel-grid mark is
     snapped to whole pixels, a curved one keeps its exact fit.
 11. Re-running with identical inputs and identical engine versions produces byte-identical outputs.
@@ -81,17 +97,20 @@ resvg, pngquant and oxipng for its native reference arm.
     set intact, and leaves no staging directory behind.
 13. `--colors` outside 2–256, a missing input, a non-SVG input and an unknown flag all fail with a
     clear `favseed: …` message and **no stack trace**.
-14. Animation lands in `logo.svg` and nowhere else: it keeps its reduced-motion guard, has `var()`
-    resolved inside it, carries no `role`/`aria-*`, and every surviving class is a live selector.
-    `--no-animation` makes `logo.svg` equal `icon.svg`; a static source does the same. `icon.svg`
-    equals the same source with its animation deleted and is byte-identical in both modes, as is
-    every raster. A `var()` used only by an animation fails the `logo.svg` pass, naming
-    `--no-animation`, and never the `icon.svg` one.
+14. The single `icon.svg` retains motion and resolves its custom properties. Rasters use the
+    base appearance; explicit `--no-animation` yields the same raster bytes on the fixtures.
+    An unresolved motion variable fails the preserved SVG, naming `--no-animation`.
+    PNG quality defaults to 80; explicit colors without quality retain the quality-100 path.
+    Quality 100 uses the higher-fidelity fixed-palette path; SVG accuracy selection remains active.
+    Reject quality outside integer 1–100 and explicit colors combined with quality below 100.
+
 15. Long options accept `--opt=value`; a flag that takes no argument rejects one.
-16. `--sizes 32` renders twice on purpose: once padded for `icon-32.png`, once unpadded for
-    the ICO payload. Under `--bg none` the icon is unpadded too, and the two are the same
-    bytes again.
-17. A non-square viewBox warns on stderr.
+16. `--sizes 48` renders twice when padded: once for `icon-48.png`, once unpadded for
+    the ICO payload. Under `--bg none` they share one render and identical PNG bytes.
+    An explicit `--sizes 32` still writes a separate 32px PNG.
+17. Non-square raster sources retain their rectangular viewport inside a centered square
+    canvas, including percentage lengths and shifted origins. `icon.svg` keeps its original
+    viewport. ViewBoxes differing by more than 1% warn on stderr; near-square ones remain quiet.
 18. `npm pack` contains only `bin/`, `lib/`, `astro/`, `vite/`, `README.md`, `LICENSE`,
     `CHANGELOG.md`, and `lib/core.mjs` by name, since the package cannot run without it.
 19. A `favseed.config.js`, `.mjs` or `.ts` in the working directory supplies any option; flags win,
@@ -103,12 +122,16 @@ resvg, pngquant and oxipng for its native reference arm.
     and nowhere in an SSR build; links them in `index.html` unless the page already has a
     `<link rel="icon">`; serves them in dev at `base`; and never replaces a different file in
     `public/`.
+22. Full builds select the first precision in 1/2/3/4/6/8 whose static 512px render meets a
+    1% source-error budget on both black and white composites. Whole-mark disappearance fails.
+    If no candidate passes, preserve source geometry. This does not grade every animation frame,
+    media state or display size. Keep browser/CLI bytes identical and invalidate integration caches.
 
 ---
 
 ## Fixtures
 
-`test/fixtures/` is thirteen neutral SVGs authored for this repo. No brand content, ever.
+`test/fixtures/` contains neutral SVGs authored for this repo. No brand content, ever.
 Each one exists to exercise something specific; `test/run.mjs` names it. If you add a
 fixture, say in a comment what it is for; if it is generated, commit the generator and its
 output together (`heavy.gen.mjs` is the pattern).

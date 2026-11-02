@@ -36,14 +36,17 @@ const CHANNEL_TOLERANCE = 8;      // out of 255
 export async function reference({ source, px, bg, vars, fitted = false, padding = 'auto' }) {
   const engine = await loadEngine();
   let svg = resolveVars(readFileSync(source, 'utf8'), vars);
-  // Match what favseed does to a non-square mark, so the gate measures quantisation error
-  // rather than the framing difference it would otherwise see at every pixel.
+  // Keep the source's rectangular viewport intact and center it in a square.
+  // Literal geometric goldens in engine/pipeline tests independently verify framing.
   const vb = /\bviewBox\s*=\s*"([^"]*)"/.exec(svg);
   if (vb) {
     const [, , w, h] = vb[1].trim().split(/[\s,]+/).map(Number);
     if (w > 0 && h > 0 && w !== h) {
       const box = Math.max(w, h);
-      svg = svg.replace(/<svg\b/, `<svg width="${box}" height="${box}" preserveAspectRatio="none"`);
+      const start = svg.indexOf('<svg');
+      const prolog = svg.slice(0, start), sourceRoot = svg.slice(start).replace(/<svg\b([^>]*?)(\/?)>/, (_m, attrs, close) =>
+        `<svg${attrs.replace(/\s(?:x|y|width|height)\s*=\s*"[^"]*"/g, '')} x="${(box - w) / 2}" y="${(box - h) / 2}" width="${w}" height="${h}"${close}>`);
+      svg = `${prolog}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}">${sourceRoot}</svg>`;
     }
   }
   if (fitted) {

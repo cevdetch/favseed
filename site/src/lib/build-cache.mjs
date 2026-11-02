@@ -1,5 +1,5 @@
 // One completed build, owned by the worker. Transfer/caller mutation never reaches this copy.
-import { manifestJson } from '../../../lib/core.mjs';
+import { DEFAULT_QUALITY, manifestJson } from '../../../lib/core.mjs';
 export const createBuildCache = (limit = 16 * 1024 * 1024) => {
   let entry;
   return {
@@ -18,7 +18,7 @@ export const buildKey = (source, o) => {
   const manifest = o.manifest ? manifestJson({ sizes: o.sizes, base: o.base,
     purpose: o.bg !== null ? 'any maskable' : null,
     extra: typeof o.manifest === 'object' ? o.manifest : null }) : null;
-  return JSON.stringify([source, o.colors, o.sizes, o.padding,
+  return JSON.stringify([source, o.colors, o.quality ?? DEFAULT_QUALITY, o.sizes, o.padding,
     o.bg, [...o.vars].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0), o.animation,
     manifest, o.base, o.iterations]);
 };

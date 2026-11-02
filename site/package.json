@@ -11,7 +11,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@gfx/zopfli": "1.0.15",
+    "@astrojs/sitemap": "^3.7.4",
     "@napi-rs/image-wasm32-wasi": "1.15.0",
     "astro": "^7.3.8",
     "buffer": "^6.0.3",

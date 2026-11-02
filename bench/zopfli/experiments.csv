@@ -1,0 +1,25 @@
+experiment,arm,iterations,bytes,milliseconds,exact_baseline_pixels,source_worse_cases,worst_source_error_pct,timing_scope
+png-screen,default,0,73936,904.656528,44,0,,single screen: lossless pass only
+png-screen,filter-0,0,73938,677.000692,44,0,,single screen: lossless pass only
+png-screen,filter-1,0,73899,927.260174,44,0,,single screen: lossless pass only
+png-screen,filter-2,0,73938,893.652235,44,0,,single screen: lossless pass only
+png-screen,filter-3,0,73938,891.297982,44,0,,single screen: lossless pass only
+png-screen,filter-4,0,73938,872.425642,44,0,,single screen: lossless pass only
+png-screen,filter-all,0,73936,869.442881,44,0,,single screen: lossless pass only
+quantize-screen,c256-s1,0,73938,1648.204477,44,0,1.7415364583333333,single screen: quantization only
+quantize-screen,c256-s3,0,73938,1629.201863,44,0,1.7415364583333333,single screen: quantization only
+quantize-screen,c256-s5,0,73938,1639.469504,44,0,1.7415364583333333,single screen: quantization only
+quantize-screen,c128-s1,0,66765,1455.982977,40,4,2.169753086419753,single screen: quantization only
+quantize-screen,c64-s1,0,61790,1440.138568,40,4,3.6919487847222223,single screen: quantization only
+quantize-screen,c32-s1,0,61526,1494.038299,20,24,7.573784722222222,single screen: quantization only
+quantize-screen,quality99-merge,0,75039,1664.859040,40,3,1.7550998263888888,single screen: quantization only
+concurrency-zero,serial,0,45293,1131.437156,,0,,median of two warm four-fixture native buildSet totals; no writes
+concurrency-zero,parallel,0,45293,941.236664,,0,,median of two warm four-fixture native buildSet totals; no writes
+filter-finish-original-run,original,5,10707,657.460332,2,0,,median of two paired two-gradient totals; extra lossless pass + finish; measured before palette production change
+filter-finish-original-run,sub-filter,5,10579,594.865209,2,0,,median of two paired two-gradient totals; extra lossless pass + finish; measured before palette production change
+filter-finish-original-run,original,120,10669,3481.071287,2,0,,median of two paired two-gradient totals; extra lossless pass + finish; measured before palette production change
+filter-finish-original-run,sub-filter,120,10560,3058.927667,2,0,,median of two paired two-gradient totals; extra lossless pass + finish; measured before palette production change
+filter-finish-reproduced,original,5,10707,672.697277,2,0,,corrected counterfactual control; median of two paired two-gradient totals; one extra pass + finish
+filter-finish-reproduced,sub-filter,5,10579,601.631674,2,0,,corrected counterfactual control; median of two paired two-gradient totals; one extra pass + finish
+filter-finish-reproduced,original,120,10669,3344.543602,2,0,,corrected counterfactual control; median of two paired two-gradient totals; one extra pass + finish
+filter-finish-reproduced,sub-filter,120,10560,3062.864218,2,0,,corrected counterfactual control; median of two paired two-gradient totals; one extra pass + finish

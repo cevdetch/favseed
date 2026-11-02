@@ -13,6 +13,24 @@ import { createServer, build as viteBuild } from 'vite';
 import { build, buildFiles } from '../bin/favseed.mjs';
 import { declaresIcon, manifestIcons, manifestJson } from '../lib/core.mjs';
 import { cacheKey, favseedVersion, readSlot, writeSlot } from '../vite/cache.mjs';
+
+it('persistent cache normalizes default quality 80 and preserves explicit palette keys', () => {
+  const shared = { version: 'test', source: Buffer.from('<svg/>'), engine: {} };
+  const key = (options) => cacheKey({ ...shared, options });
+  assert.equal(key({}), key({ quality: 80 }));
+  assert.equal(key({ colors: 32 }), key({ colors: 32, quality: 100 }));
+  assert.equal(key({ colors: 256 }), key({ colors: 256, quality: 100 }));
+  assert.equal(key({ quality: 80 }), key({ quality: '80' }));
+  assert.notEqual(key({}), key({ quality: 100 }));
+});
+
+it('persistent cache distinguishes explicit Zopfli from the default', () => {
+  const shared = { version: 'test', source: Buffer.from('<svg/>'), engine: {} };
+  assert.notEqual(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { zopfli: true } }));
+  assert.equal(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { zopfli: false } }));
+  assert.equal(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { mode: 'fast' } }),
+    'disabled compression should share a cache entry across effort modes');
+});
 import favseed, { favseedIcons } from '../vite/index.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -117,11 +135,11 @@ describe('favseed/vite in a build', () => {
   it('emits the set at the output root and links it in index.html', async () => {
     const root = app();
     await vbuild(root, [favseed(FAST)]);
-    for (const f of ['favicon.ico', 'icon.svg', 'logo.svg', 'apple-touch-icon.png', 'icon-32.png']) {
+    for (const f of ['favicon.ico', 'icon.svg', 'apple-touch-icon.png', 'icon-32.png']) {
       assert.ok(existsSync(join(root, 'dist', f)), f);
     }
     const html = readFileSync(join(root, 'dist', 'index.html'), 'utf8');
-    assert.match(html, /<link rel="icon" href="\/favicon\.ico" sizes="32x32">/);
+    assert.match(html, /<link rel="icon" href="\/favicon\.ico" sizes="48x48">/);
     assert.match(html, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png">/);
   });
 
@@ -296,17 +314,19 @@ describe('favseed/vite types', () => {
     assert.equal(pkg.peerDependenciesMeta.vite.optional, true);
   });
 
-  const tsc = join(ROOT, 'site', 'node_modules', 'typescript', 'bin', 'tsc');
-  it('type-checks a vite.config, and catches out and a misspelt key', { skip: existsSync(tsc) ? false : 'typescript not installed' }, () => {
+  const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+  it('type-checks a vite.config, and catches out and a misspelt key', () => {
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
     const d = dir();
     const spec = JSON.stringify(join(ROOT, 'vite', 'index.mjs').replace(/\\/g, '/'));
     writeFileSync(join(d, 'good.mts'), `import favseed, { favseedIcons } from ${spec};\nconst p = favseed({ input: 'src/logo.svg', sizes: [192, 512], mode: 'fast', base: '/x/' });\nconst icons: { src: string; sizes: string; type: string; purpose?: string }[] = favseedIcons({ sizes: [192] });\nexport { p, icons };\n`);
-    writeFileSync(join(d, 'bad.mts'), `import favseed from ${spec};\nexport const p = favseed({ out: 'dist', colours: 8 });\n`);
-    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(d, f)], { encoding: 'utf8' });
+    writeFileSync(join(d, 'bad.mts'), `import favseed from ${spec};\nexport const badOut = favseed({ out: 'dist' });\nexport const badColour = favseed({ colours: 8 });\n`);
+    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(d, f)], { encoding: 'utf8', timeout: 30000 });
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
     const bad = check('bad.mts');
     assert.notEqual(bad.status, 0);
-    assert.match(bad.stdout, /out|colours/);
+    assert.match(bad.stdout, /'out'/);
+    assert.match(bad.stdout, /'colours'/);
   });
 });

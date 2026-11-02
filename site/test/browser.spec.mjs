@@ -12,6 +12,11 @@ const summary = ({ files, fit, links, animated }) => ({
   files: files.map(({ name, bytes }) => ({ name, hash: hash(bytes), size: bytes.length })),
   fit, links, animated,
 });
+const downloads = (page) => page.locator('#files a').evaluateAll(async (links) => Promise.all(links.map(async (link) => {
+  const bytes = await (await fetch(link.href)).arrayBuffer();
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return { name: link.download, size: bytes.byteLength, hash: Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('') };
+})));
 const checkPage = async (page) => {
   const response = await page.goto('/check');
   for (const [name, value] of Object.entries(isolationHeaders)) expect(await response.headerValue(name)).toBe(value);
@@ -24,11 +29,15 @@ test('files and metadata match the CLI; archives, cache and page timers work', a
   page.on('pageerror', (error) => errors.push(error.message));
   await checkPage(page);
   const selected = isMobile ? cases.filter((item) =>
-    ['gradient/fast', 'tiles/release', 'transparent-aliases', 'custom-manifest'].includes(item.name)) : cases;
+    ['small-mark/placement', 'aspect-wide/proportions', 'aspect-tall/proportions', 'aspect-percent/transparent',
+      'grid-1/precision', 'grid-tiny/precision', 'grid-fallback/precision', 'gradient/fast', 'tiles/release', 'gradient/quality60-zopfli', 'transparent-aliases', 'custom-manifest'].includes(item.name)) : cases;
   let fileCount = 0;
   for (const item of selected) {
     await test.step(item.name, async () => {
-      const input = fixture(item.mark), source = await readFile(input, 'utf8');
+      const input = fixture(item.mark), original = await readFile(input, 'utf8');
+      // Export annotations must not change bytes, including the source fallback.
+      const source = item.mark.startsWith('grid-')
+        ? `<!-- exported <svg> --><?export metadata?>${original}<!-- exported logo --><?export done?>` : original;
       const options = { manifest: true, ...item.options };
       const expected = summary(await buildFiles({ input, ...options }));
       const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
@@ -45,6 +54,79 @@ test('files and metadata match the CLI; archives, cache and page timers work', a
   console.log(`${test.info().project.name}: ${fileCount} files match native across ${selected.length} cases`);
 });
 
+test('site favicon metadata and actual ICO payload both declare48px', async ({ page }) => {
+  for (const path of ['/', '/404']) {
+    await page.goto(path);
+    const icon = page.locator('link[rel="icon"][href="/favicon.ico"]');
+    await expect(icon).toHaveAttribute('sizes', '48x48');
+  }
+  const response = await page.request.get('/favicon.ico');
+  expect(response.ok()).toBe(true);
+  const ico = await response.body();
+  expect(ico.readUInt16LE(4)).toBe(1);
+  expect([...ico.subarray(6, 8)]).toEqual([48, 48]);
+  const offset = ico.readUInt32LE(18);
+  expect([ico.readUInt32BE(offset + 16), ico.readUInt32BE(offset + 20)]).toEqual([48, 48]);
+});
+
+test('SVG diagnostics match native and replay once on a cached build', async ({ page }) => {
+  await checkPage(page);
+  const input = fixture('dependent'), source = await readFile(input, 'utf8');
+  const options = { manifest: true, sizes: [32], padding: 20, bg: '#fff' }, warnings = [];
+  const expected = summary(await buildFiles({ input, ...options, onWarn: (w) => warnings.push(w) }));
+  expect(warnings).toHaveLength(2);
+  for (let i = 0; i < 2; i++) {
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+    expect(actual.warnings).toEqual(warnings);
+    // The fixture intentionally depends on host fonts: native can substitute one
+    // while WASM omits text. The self-contained corpus above checks all raster bytes.
+    const reusable = (files) => files.filter((file) => /\.(svg|webmanifest)$/.test(file.name));
+    expect(reusable(actual.files)).toEqual(reusable(expected.files));
+    expect({ fit: actual.fit, links: actual.links, animated: actual.animated })
+      .toEqual({ fit: expected.fit, links: expected.links, animated: expected.animated });
+    if (i) expect(actual.progress).toEqual([]);
+  }
+});
+
+test('form keeps SVG guidance through failed builds and clears it on the next build', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[name=file]').setInputFiles(fixture('dependent'));
+  await page.locator('input[name=sizes]').fill('32');
+  const generate = page.getByRole('button', { name: 'Generate', exact: true });
+  await generate.click();
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings li')).toHaveCount(2);
+  await expect(page.locator('#warnings')).toContainText('Convert text to paths');
+  const previous = await downloads(page);
+  await generate.click(); // Replaying the cached build must not lose or duplicate guidance.
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings li')).toHaveCount(2);
+  await page.locator('input[name=file]').setInputFiles({ name: 'text.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text font-family="FavseedOutlineOnlyMissingFont">F</text></svg>') });
+  await generate.click();
+  await expect(page.locator('output')).toContainText('renders nothing');
+  await expect(page.locator('#warnings li')).toHaveCount(1);
+  await expect(page.locator('#warnings')).toContainText('Convert text to paths');
+  expect(await downloads(page)).toEqual(previous);
+  await page.locator('input[name=file]').setInputFiles({ name: 'unsized.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>') });
+  await generate.click();
+  await expect(page.locator('output')).toContainText('add a viewBox');
+  await expect(page.locator('#warnings')).toBeHidden();
+  expect(await downloads(page)).toEqual(previous);
+  for (const box of [',0 64 64', '0 0 0x40 64', '0 0 64,,64']) {
+    await page.locator('input[name=file]').setInputFiles({ name: 'malformed.svg', mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`) });
+    await generate.click();
+    await expect(page.locator('output')).toContainText('add a viewBox');
+    expect(await downloads(page)).toEqual(previous);
+  }
+  await page.locator('input[name=file]').setInputFiles(fixture('flat'));
+  await generate.click();
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('#warnings')).toBeHidden();
+});
+
 test('invalid options, cancellation and worker retry leave the engine usable', async ({ page }) => {
   await checkPage(page);
   const source = await readFile(fixture('general'), 'utf8'), options = { mode: 'fast', sizes: [32] };
@@ -56,6 +138,29 @@ test('invalid options, cancellation and worker retry leave the engine usable', a
     { source, options: { ...options, padding: 20 } })).toBe(true);
   const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
   expect(actual.files).toEqual(summary(await buildFiles({ input: fixture('general'), manifest: true, ...options })).files);
+});
+
+test('a 1024px raster matches native after shared memory grows', async ({ page }) => {
+  let worker;
+  page.on('worker', (value) => { if (value.url().includes('engine-worker-')) worker = value; });
+  await page.route('**/engine-worker-*.js', async (route) => {
+    const response = await route.fetch();
+    const observe = `const memories = []; const OriginalMemory = WebAssembly.Memory;
+      WebAssembly.Memory = new Proxy(OriginalMemory, { construct(Target, [descriptor]) {
+        const memory = new Target(descriptor);
+        if (descriptor.shared) memories.push({memory, initial: descriptor.initial * 65536});
+        return memory;
+      } });
+      globalThis.favseedMemoryGrew = () => memories.some(({memory, initial}) => memory.buffer.byteLength > initial);\n`;
+    await route.fulfill({ response, body: observe + await response.text() });
+  });
+  await checkPage(page);
+  const input = fixture('general'), source = await readFile(input, 'utf8');
+  const options = { mode: 'fast', sizes: [1024], padding: 0, bg: 'none' };
+  const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+  expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated })
+    .toEqual(summary(await buildFiles({ input, manifest: true, ...options })));
+  expect(await worker.evaluate(() => globalThis.favseedMemoryGrew())).toBe(true);
 });
 
 test('form downloads match native and survive failed and cancelled builds', async ({ page, isMobile }) => {
@@ -75,11 +180,7 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   await expect(page.locator('output')).toHaveClass('good', { timeout: 90_000 });
   await expect(page.locator('#result')).toBeVisible();
   const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', manifest: true }));
-  const actual = await page.locator('#files a').evaluateAll(async (links) => Promise.all(links.map(async (link) => {
-    const bytes = await (await fetch(link.href)).arrayBuffer();
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    return { name: link.download, size: bytes.byteLength, hash: Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('') };
-  })));
+  const actual = await downloads(page);
   expect(actual).toEqual(expected.files);
   const downloadEvent = page.waitForEvent('download');
   if (isMobile) await page.locator('#zip').tap(); else await page.locator('#zip').click();
@@ -95,6 +196,7 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   await expect(page.locator('#zip')).toHaveAttribute('href', url);
   await page.locator('input[name=bg]').fill('#000000');
   await page.locator('input[name=padding]').fill('20');
+  await page.locator('input[name=zopfli]').check();
   await generate.click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('output')).toHaveText('Cancelled.');
@@ -110,6 +212,49 @@ test('form downloads match native and survive failed and cancelled builds', asyn
     }
   }
   expect(errors).toEqual([]);
+});
+
+test('PNG quality controls palette availability and downloads match native', async ({ page }) => {
+  await page.goto('/');
+  const quality = page.locator('[name=quality]'), colors = page.locator('[name=colors]');
+  await expect(quality).toHaveValue('80');
+  await expect(colors).toBeDisabled();
+  await quality.fill('100');
+  await colors.fill('32');
+  await quality.fill('80');
+  await expect(colors).toBeDisabled();
+  await quality.fill('100');
+  await expect(colors).toBeEnabled();
+  await expect(colors).toHaveValue('32');
+  await quality.fill('80');
+  await page.locator('input[type=file]').setInputFiles(fixture('gradient'));
+  await quality.fill('0');
+  expect(await page.locator('form').evaluate((form) => form.checkValidity())).toBe(false);
+  await quality.fill('80');
+  expect(await page.locator('form').evaluate((form) => form.checkValidity())).toBe(true);
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('output')).toContainText('Done in', { timeout: 120_000 });
+  const expected = summary(await buildFiles({ input: fixture('gradient'), quality: 80, manifest: true }));
+  expect(await downloads(page)).toEqual(expected.files);
+  await expect(colors).toBeDisabled();
+  await quality.fill('100');
+  await expect(colors).toBeEnabled();
+  await expect(colors).toHaveValue('32');
+});
+
+test('form defaults skip extra compression and opt-in matches native bytes', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('input[name=zopfli]')).not.toBeChecked();
+  expect(await page.locator('header img').getAttribute('src'))
+    .toBe(await page.locator('link[type="image/svg+xml"]').getAttribute('href'));
+  await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
+  await page.locator('select[name=mode]').selectOption('fast');
+  await page.locator('input[name=zopfli]').check();
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('output')).toHaveClass('good', { timeout: 90_000 });
+  const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', zopfli: true, manifest: true }));
+  expect(await downloads(page)).toEqual(expected.files);
+  expect(expected.files.filter((f) => f.name.endsWith('.svg')).map((f) => f.name)).toEqual(['icon.svg']);
 });
 
 test('missing document isolation gives the CLI alternative and restores form controls', async ({ page }) => {

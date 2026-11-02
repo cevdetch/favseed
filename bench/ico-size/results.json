@@ -1,0 +1,6617 @@
+{
+  "metadata": {
+    "base": "f526aff07fd28aa7e97f93aef6eef66a10f7dc26",
+    "node": "v26.12.1",
+    "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+    "engine": {
+      "@napi-rs/image": "1.15.0",
+      "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+    },
+    "beforeHashes": {
+      "core.mjs": "6c0aba1da34630c194b89a0c2bd2362491cedf947d1110a5b3be1a51ee37377b",
+      "config.mjs": "a3c4141f6d9dea4d49030185d85b4bfe807b06100e00e93160db67b6045c510c",
+      "pipeline.mjs": "7900bdee77f07c3cf04ee66ed95389522321a2aeb600b4f102b4bed882b66721",
+      "svg-precision.mjs": "f9d6b5810cb9f0ee1968f10a0b7cbe3ef30a15d8228a77ad25b89308a8fb6f9b"
+    },
+    "currentHashes": {
+      "core.mjs": "da1d0f0c465716d3ad83a549f0d2fecbfb93ccaab695c53f911a713513def709",
+      "config.mjs": "a3c4141f6d9dea4d49030185d85b4bfe807b06100e00e93160db67b6045c510c",
+      "pipeline.mjs": "6383fc24b84c5ba10e759e8dea385acb4de17f8499eb8fd10710d635b9ee8893",
+      "engine.mjs": "0ff36e4d378d83fa50bebaf3b2fd8b0fbde4800271dbca4f1e2f6a768b61e880",
+      "svg-precision.mjs": "f9d6b5810cb9f0ee1968f10a0b7cbe3ef30a15d8228a77ad25b89308a8fb6f9b"
+    },
+    "sourceHashes": {
+      "general": "a2193038f8cfb7e709572dd90cfd19f06b78c41fa0f0c29b5b84b5cc86a548c5",
+      "flat": "8a4b63903ba65d69d3a57a7b4950b9ac3c19aa5f2b88e409a66d8631d8cb29dd",
+      "second": "ffdce4ebb050371bc3959a884301d4ba7cccfdee13b0f5c463c43ba67c448ae8",
+      "mask": "a39a8fe87cd121d75fcae2cf3366b24be0dbc7af26b4d85cb24691c7d6b40305",
+      "heavy": "67eef872c8da420ab4b385426795647d0e169153094262cc7dbb4fba059a8fbd",
+      "animated": "c5c6c7b7fb546d1a11abbaf9e01201272e595f628011c34f8b0483a732826886",
+      "tiles": "87a4b78f445d92188875a4050396b365a206e8a0bf69f53efa2667b483a2fd43",
+      "wide": "6072602c4f1fd1ebbc94a3ab5babdbf7d57c84572edb7cce1bc0642d15b9ad91",
+      "gradient": "f4a4c3e9205cb8a55bdd7e887e5b072953c845f8e599954f3a0dce62fde9811e",
+      "smil": "fa4c62897946bf232e2b2cd56b0a3962f8d1d3d9576db1a76bde1f7cf9278cb6",
+      "dark": "9f871be64816b6e1f9e96a6ce4232f33894af30d4d8d2be513da58af8026c592",
+      "grid-1": "c005490842f45ab6ce2ecb40d35c6ecb91044ae36d77ee2832d14e8788da5588",
+      "grid-16": "7671901259ee314fe594b92b90a7061848cf8ccee7dd5d0478e4a83f8176bd8d",
+      "grid-24": "2d7271b5312d770ec4d2ae008deb4e51e787fb32e7d80859f446a48421979b77",
+      "grid-tiny": "85815ea165a049ce487751f9901ce45622c86682da30bf8730718fd8aaa04fff",
+      "grid-fallback": "e00f8161d674a72ee4e523716e9812be49adb49dcd4eb8aa6f205f212d31b6b5",
+      "aspect-wide": "254f99ea4701c2986881d39e50e2d57c95b1bcccda553cbe86b6ea2dc98855ce",
+      "aspect-tall": "0514f7610a94a401a4a2fb7aad6f3646707485f9628454a20bbf836d8e7dfc8c",
+      "aspect-offset": "48d5ca099d9b50891f1582a59715fb80ee006b90d4b0d585396cb5c0fa256b59",
+      "aspect-percent": "57d7d8fca6fb2f133561e10fdd35c9e4abf628d724d22f9a1a9a7203693fa306"
+    },
+    "repetitions": 3,
+    "warmupRepetition": 0,
+    "arms": [
+      "before32",
+      "current48"
+    ],
+    "nonIcoFilesByteIdentical": true,
+    "note": "Alternating native full in-memory builds at quality80, default no Zopfli, manifest enabled. Warmup repetition0 excluded; median of two whole-corpus totals. Includes SVG validation, placement, render and encoding; excludes imports, source reads, independent references, post-build scoring and file writes. ICO source error against unoptimized source at its own resolution; encoding error against raw selected-SVG pixels. All non-ICO files asserted byte-identical across arms; all files deterministic across repetitions. No browser timing, downsampling quality or all-size 1% guarantee."
+  },
+  "summaries": {
+    "original11": [
+      {
+        "arm": "before32",
+        "marks": 11,
+        "ms": 2685.242999500003,
+        "icoBytes": 4394,
+        "rasterBytes": 69675,
+        "totalBytes": 76747,
+        "worstIcoSourceErrorPct": 1.66015625,
+        "worstIcoEncodingErrorPct": 0,
+        "icoOverOnePercent": [
+          {
+            "mark": "heavy",
+            "pct": 1.66015625
+          }
+        ]
+      },
+      {
+        "arm": "current48",
+        "marks": 11,
+        "ms": 2686.7682195000098,
+        "icoBytes": 5519,
+        "rasterBytes": 70800,
+        "totalBytes": 77872,
+        "worstIcoSourceErrorPct": 0.3472222222222222,
+        "worstIcoEncodingErrorPct": 0,
+        "icoOverOnePercent": []
+      }
+    ],
+    "all20": [
+      {
+        "arm": "before32",
+        "marks": 20,
+        "ms": 4669.267514999997,
+        "icoBytes": 7537,
+        "rasterBytes": 116147,
+        "totalBytes": 127260,
+        "worstIcoSourceErrorPct": 1.66015625,
+        "worstIcoEncodingErrorPct": 0,
+        "icoOverOnePercent": [
+          {
+            "mark": "heavy",
+            "pct": 1.66015625
+          },
+          {
+            "mark": "grid-1",
+            "pct": 1.46484375
+          },
+          {
+            "mark": "grid-24",
+            "pct": 1.171875
+          },
+          {
+            "mark": "grid-tiny",
+            "pct": 1.46484375
+          }
+        ]
+      },
+      {
+        "arm": "current48",
+        "marks": 20,
+        "ms": 4693.849281000007,
+        "icoBytes": 9483,
+        "rasterBytes": 118093,
+        "totalBytes": 129206,
+        "worstIcoSourceErrorPct": 1.215277777777778,
+        "worstIcoEncodingErrorPct": 0,
+        "icoOverOnePercent": [
+          {
+            "mark": "grid-1",
+            "pct": 1.215277777777778
+          },
+          {
+            "mark": "grid-tiny",
+            "pct": 1.215277777777778
+          }
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "rep": 0,
+      "mark": "general",
+      "arm": "before32",
+      "px": 32,
+      "ms": 484.6742200000001,
+      "icoBytes": 469,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 469,
+          "sha256": "fd02eb79c0d6a63c4a04ecd2643ca2b1d738e1dbf8967d5d08f0efd363325e7c"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5756,
+      "totalBytes": 6368
+    },
+    {
+      "rep": 0,
+      "mark": "general",
+      "arm": "current48",
+      "px": 48,
+      "ms": 425.82108900000003,
+      "icoBytes": 564,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 564,
+          "sha256": "ce1653f3f35672c4c470e53bb8d476699ee19344d79827091f3d7d57e1c02520"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5851,
+      "totalBytes": 6463
+    },
+    {
+      "rep": 0,
+      "mark": "flat",
+      "arm": "current48",
+      "px": 48,
+      "ms": 669.619531,
+      "icoBytes": 396,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 396,
+          "sha256": "2192a9ccdcd54f03176eaa1d93aac3f23bc66b8d666657eb9032980581acfb84"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6101,
+      "totalBytes": 6480
+    },
+    {
+      "rep": 0,
+      "mark": "flat",
+      "arm": "before32",
+      "px": 32,
+      "ms": 731.4542210000004,
+      "icoBytes": 325,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 325,
+          "sha256": "c84c8c9377338813761fe34c16e9caf6a2bd5cf82d430ab080c8c24cf1af3978"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6030,
+      "totalBytes": 6409
+    },
+    {
+      "rep": 0,
+      "mark": "second",
+      "arm": "before32",
+      "px": 32,
+      "ms": 463.74057300000004,
+      "icoBytes": 253,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 253,
+          "sha256": "e47d2c6fddbd6cf6bbfb156283d674f79333383607ee9b432d07b597ffc87261"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3315,
+      "totalBytes": 3717
+    },
+    {
+      "rep": 0,
+      "mark": "second",
+      "arm": "current48",
+      "px": 48,
+      "ms": 439.54725899999994,
+      "icoBytes": 326,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 326,
+          "sha256": "9494090de096bc0095c2e102eb8519c7c4bb3e0058e78ee214615a5d53f359f4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3388,
+      "totalBytes": 3790
+    },
+    {
+      "rep": 0,
+      "mark": "mask",
+      "arm": "current48",
+      "px": 48,
+      "ms": 497.09088500000007,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "cfa339af21dc2746233548b6a14e87242319f9dfbb35a00f82412fc520b9bff3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5194,
+      "totalBytes": 5695
+    },
+    {
+      "rep": 0,
+      "mark": "mask",
+      "arm": "before32",
+      "px": 32,
+      "ms": 531.6547680000003,
+      "icoBytes": 381,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 381,
+          "sha256": "e765afd26d3c8f61264a9ec2eb63ee3cda680424d982afe5d21a98af95297fe4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5073,
+      "totalBytes": 5574
+    },
+    {
+      "rep": 0,
+      "mark": "heavy",
+      "arm": "before32",
+      "px": 32,
+      "ms": 369.9390570000005,
+      "icoBytes": 451,
+      "sourceError": {
+        "pct": 1.66015625,
+        "rmse": 1.6671223335436425,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 451,
+          "sha256": "dd681a0adf8313351c95b537c3a2c768759cac8b6ef5df71a235ea7acb31b5e8"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6070,
+      "totalBytes": 7817
+    },
+    {
+      "rep": 0,
+      "mark": "heavy",
+      "arm": "current48",
+      "px": 48,
+      "ms": 424.33122099999946,
+      "icoBytes": 632,
+      "sourceError": {
+        "pct": 0.3472222222222222,
+        "rmse": 0.7610109930096158,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 632,
+          "sha256": "3e6e4cc3651d98bc0112386da4ffab88400e8e52953667a3e7f0835d300d4487"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6251,
+      "totalBytes": 7998
+    },
+    {
+      "rep": 0,
+      "mark": "animated",
+      "arm": "current48",
+      "px": 48,
+      "ms": 687.5681750000003,
+      "icoBytes": 590,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 590,
+          "sha256": "e84fe73594a54487862e46aa4ac8bef4855fb07a3bf1cf83eb2481ab498613e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8522,
+      "totalBytes": 9256
+    },
+    {
+      "rep": 0,
+      "mark": "animated",
+      "arm": "before32",
+      "px": 32,
+      "ms": 692.9461200000005,
+      "icoBytes": 437,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 437,
+          "sha256": "9a88a360c5d69d87a822dd04f06c20e8da35968ba7322e3b4439f866bd835e9f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8369,
+      "totalBytes": 9103
+    },
+    {
+      "rep": 0,
+      "mark": "tiles",
+      "arm": "before32",
+      "px": 32,
+      "ms": 131.51731399999971,
+      "icoBytes": 147,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 147,
+          "sha256": "6dbe0e2a23f766ab6b65a41949b174607110a7c31d644dc9f746030de0696558"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 757,
+      "totalBytes": 1487
+    },
+    {
+      "rep": 0,
+      "mark": "tiles",
+      "arm": "current48",
+      "px": 48,
+      "ms": 110.23083700000007,
+      "icoBytes": 156,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 156,
+          "sha256": "5875bd1e9c8138414cc2be6abcebafeafff44b60c5185bbe378412596e7b512a"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 766,
+      "totalBytes": 1496
+    },
+    {
+      "rep": 0,
+      "mark": "wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 285.59498299999996,
+      "icoBytes": 242,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 242,
+          "sha256": "8b76d5f3e265ffc1048efb97b49d27cdb82561dedf5ad3502a42e19ef38d9e41"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1797,
+      "totalBytes": 2145
+    },
+    {
+      "rep": 0,
+      "mark": "wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 290.31838400000015,
+      "icoBytes": 199,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 199,
+          "sha256": "1511db377e19b996bb38e55916e36aa3cf23c2cebc6b690cbbe471c979d5efc4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1754,
+      "totalBytes": 2102
+    },
+    {
+      "rep": 0,
+      "mark": "gradient",
+      "arm": "before32",
+      "px": 32,
+      "ms": 890.8690720000004,
+      "icoBytes": 1135,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1135,
+          "sha256": "ccf36fa627790874c4415525b874d791cfc0b2e340329a436119ca438de923fa"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 23940,
+      "totalBytes": 24499
+    },
+    {
+      "rep": 0,
+      "mark": "gradient",
+      "arm": "current48",
+      "px": 48,
+      "ms": 911.6277099999988,
+      "icoBytes": 1409,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1409,
+          "sha256": "8c798b2d642260e9bee5471aa516c4141890992bc21de96760d6d4cde0678bd5"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 24214,
+      "totalBytes": 24773
+    },
+    {
+      "rep": 0,
+      "mark": "smil",
+      "arm": "current48",
+      "px": 48,
+      "ms": 503.82674999999836,
+      "icoBytes": 305,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 305,
+          "sha256": "8b3f0776c75ddbb1256a7099a546ebe16878467f630682a2ff143f4c63012b44"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4038,
+      "totalBytes": 4633
+    },
+    {
+      "rep": 0,
+      "mark": "smil",
+      "arm": "before32",
+      "px": 32,
+      "ms": 460.7002270000012,
+      "icoBytes": 256,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 256,
+          "sha256": "153880d8beafa4ca3aefab31654aa19f2893346f0a42d93d643f5d40bc7aad3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3989,
+      "totalBytes": 4584
+    },
+    {
+      "rep": 0,
+      "mark": "dark",
+      "arm": "before32",
+      "px": 32,
+      "ms": 348.1743640000004,
+      "icoBytes": 341,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 341,
+          "sha256": "ace237fb3d178fa54e7d4e2b04b9af068bd97493e99baf05c042e18445435ca3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4622,
+      "totalBytes": 5087
+    },
+    {
+      "rep": 0,
+      "mark": "dark",
+      "arm": "current48",
+      "px": 48,
+      "ms": 324.03287400000045,
+      "icoBytes": 397,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 397,
+          "sha256": "f33c3939d474b169085beaaf9d702f2414d6863a163afdb4880f109d0cf48217"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4678,
+      "totalBytes": 5143
+    },
+    {
+      "rep": 0,
+      "mark": "grid-1",
+      "arm": "current48",
+      "px": 48,
+      "ms": 328.29069100000015,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8840
+    },
+    {
+      "rep": 0,
+      "mark": "grid-1",
+      "arm": "before32",
+      "px": 32,
+      "ms": 288.9261340000012,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8670
+    },
+    {
+      "rep": 0,
+      "mark": "grid-16",
+      "arm": "before32",
+      "px": 32,
+      "ms": 258.6356689999993,
+      "icoBytes": 510,
+      "sourceError": {
+        "pct": 0.87890625,
+        "rmse": 1.122537814879006,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 510,
+          "sha256": "9db38d0adfec68d70a2ab76fbf1c88985ddd417f6f770355cf6311b4443d6f71"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8147,
+      "totalBytes": 8593
+    },
+    {
+      "rep": 0,
+      "mark": "grid-16",
+      "arm": "current48",
+      "px": 48,
+      "ms": 256.48959599999944,
+      "icoBytes": 658,
+      "sourceError": {
+        "pct": 0.7378472222222222,
+        "rmse": 1.044717753838416,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 658,
+          "sha256": "33dfa612d089ebbb6e5349018bd4456752f4fad195dd173f72e41b47b91d773f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8295,
+      "totalBytes": 8741
+    },
+    {
+      "rep": 0,
+      "mark": "grid-24",
+      "arm": "current48",
+      "px": 48,
+      "ms": 262.9981650000009,
+      "icoBytes": 664,
+      "sourceError": {
+        "pct": 0.9114583333333334,
+        "rmse": 1.1136905822368093,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 664,
+          "sha256": "b27428b8d61ff82cef3784189ef06be46589aee7d23cb2fab7ac851f6ab99a14"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8333,
+      "totalBytes": 8792
+    },
+    {
+      "rep": 0,
+      "mark": "grid-24",
+      "arm": "before32",
+      "px": 32,
+      "ms": 262.1926190000013,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 1.171875,
+        "rmse": 1.228592733238589,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "89685e35ab62fa1f848abbd65ac7a9c1eb1aa42d91e658eefc4940c12a70c5ba"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8171,
+      "totalBytes": 8630
+    },
+    {
+      "rep": 0,
+      "mark": "grid-tiny",
+      "arm": "before32",
+      "px": 32,
+      "ms": 265.1947170000003,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8747
+    },
+    {
+      "rep": 0,
+      "mark": "grid-tiny",
+      "arm": "current48",
+      "px": 48,
+      "ms": 268.3011859999988,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8917
+    },
+    {
+      "rep": 0,
+      "mark": "grid-fallback",
+      "arm": "current48",
+      "px": 48,
+      "ms": 260.6965629999995,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "a1cca77951c81926254fbdb1eb7b810dced197bf32b85f91a801adae90b93f3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6504,
+      "totalBytes": 7206
+    },
+    {
+      "rep": 0,
+      "mark": "grid-fallback",
+      "arm": "before32",
+      "px": 32,
+      "ms": 267.4530360000008,
+      "icoBytes": 405,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 405,
+          "sha256": "95032d028c8f1d311ffb351856c0086ae8c1d293b59148f6ee1b7bd48cacd69f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6407,
+      "totalBytes": 7109
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 206.42826199999945,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2657
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 193.99221600000055,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2682
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-tall",
+      "arm": "current48",
+      "px": 48,
+      "ms": 199.87070099999983,
+      "icoBytes": 221,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 221,
+          "sha256": "34a567aa1a0e75b09763b2fff385e6538d204cbb92f7d75b9457ba06e095157f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2218,
+      "totalBytes": 2595
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-tall",
+      "arm": "before32",
+      "px": 32,
+      "ms": 199.2338579999996,
+      "icoBytes": 203,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 203,
+          "sha256": "bf59f35cd6bc34bf913712365f29c3907414021fbc222c13458548bc265c6537"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2200,
+      "totalBytes": 2577
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-offset",
+      "arm": "before32",
+      "px": 32,
+      "ms": 199.61657600000035,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2659
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-offset",
+      "arm": "current48",
+      "px": 48,
+      "ms": 190.12550999999985,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2684
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-percent",
+      "arm": "current48",
+      "px": 48,
+      "ms": 76.5426580000003,
+      "icoBytes": 129,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 129,
+          "sha256": "285e535264de6acce2634f5a2c033b744575fbdb5473c51e4a55664f86062d64"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 527,
+      "totalBytes": 877
+    },
+    {
+      "rep": 0,
+      "mark": "aspect-percent",
+      "arm": "before32",
+      "px": 32,
+      "ms": 71.94626299999982,
+      "icoBytes": 123,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 123,
+          "sha256": "92e56e283ab3de806cdfb38b392330715996fa844eb55f899ee7ed123f037389"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 521,
+      "totalBytes": 871
+    },
+    {
+      "rep": 1,
+      "mark": "general",
+      "arm": "current48",
+      "px": 48,
+      "ms": 222.79027599999972,
+      "icoBytes": 564,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 564,
+          "sha256": "ce1653f3f35672c4c470e53bb8d476699ee19344d79827091f3d7d57e1c02520"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5851,
+      "totalBytes": 6463
+    },
+    {
+      "rep": 1,
+      "mark": "general",
+      "arm": "before32",
+      "px": 32,
+      "ms": 219.0659140000007,
+      "icoBytes": 469,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 469,
+          "sha256": "fd02eb79c0d6a63c4a04ecd2643ca2b1d738e1dbf8967d5d08f0efd363325e7c"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5756,
+      "totalBytes": 6368
+    },
+    {
+      "rep": 1,
+      "mark": "flat",
+      "arm": "before32",
+      "px": 32,
+      "ms": 351.3054200000006,
+      "icoBytes": 325,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 325,
+          "sha256": "c84c8c9377338813761fe34c16e9caf6a2bd5cf82d430ab080c8c24cf1af3978"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6030,
+      "totalBytes": 6409
+    },
+    {
+      "rep": 1,
+      "mark": "flat",
+      "arm": "current48",
+      "px": 48,
+      "ms": 354.9894609999992,
+      "icoBytes": 396,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 396,
+          "sha256": "2192a9ccdcd54f03176eaa1d93aac3f23bc66b8d666657eb9032980581acfb84"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6101,
+      "totalBytes": 6480
+    },
+    {
+      "rep": 1,
+      "mark": "second",
+      "arm": "current48",
+      "px": 48,
+      "ms": 213.07415900000342,
+      "icoBytes": 326,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 326,
+          "sha256": "9494090de096bc0095c2e102eb8519c7c4bb3e0058e78ee214615a5d53f359f4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3388,
+      "totalBytes": 3790
+    },
+    {
+      "rep": 1,
+      "mark": "second",
+      "arm": "before32",
+      "px": 32,
+      "ms": 217.80766100000255,
+      "icoBytes": 253,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 253,
+          "sha256": "e47d2c6fddbd6cf6bbfb156283d674f79333383607ee9b432d07b597ffc87261"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3315,
+      "totalBytes": 3717
+    },
+    {
+      "rep": 1,
+      "mark": "mask",
+      "arm": "before32",
+      "px": 32,
+      "ms": 261.9166030000015,
+      "icoBytes": 381,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 381,
+          "sha256": "e765afd26d3c8f61264a9ec2eb63ee3cda680424d982afe5d21a98af95297fe4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5073,
+      "totalBytes": 5574
+    },
+    {
+      "rep": 1,
+      "mark": "mask",
+      "arm": "current48",
+      "px": 48,
+      "ms": 262.2395400000023,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "cfa339af21dc2746233548b6a14e87242319f9dfbb35a00f82412fc520b9bff3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5194,
+      "totalBytes": 5695
+    },
+    {
+      "rep": 1,
+      "mark": "heavy",
+      "arm": "current48",
+      "px": 48,
+      "ms": 195.0472669999981,
+      "icoBytes": 632,
+      "sourceError": {
+        "pct": 0.3472222222222222,
+        "rmse": 0.7610109930096158,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 632,
+          "sha256": "3e6e4cc3651d98bc0112386da4ffab88400e8e52953667a3e7f0835d300d4487"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6251,
+      "totalBytes": 7998
+    },
+    {
+      "rep": 1,
+      "mark": "heavy",
+      "arm": "before32",
+      "px": 32,
+      "ms": 200.0841619999992,
+      "icoBytes": 451,
+      "sourceError": {
+        "pct": 1.66015625,
+        "rmse": 1.6671223335436425,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 451,
+          "sha256": "dd681a0adf8313351c95b537c3a2c768759cac8b6ef5df71a235ea7acb31b5e8"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6070,
+      "totalBytes": 7817
+    },
+    {
+      "rep": 1,
+      "mark": "animated",
+      "arm": "before32",
+      "px": 32,
+      "ms": 309.3968279999972,
+      "icoBytes": 437,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 437,
+          "sha256": "9a88a360c5d69d87a822dd04f06c20e8da35968ba7322e3b4439f866bd835e9f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8369,
+      "totalBytes": 9103
+    },
+    {
+      "rep": 1,
+      "mark": "animated",
+      "arm": "current48",
+      "px": 48,
+      "ms": 317.0303320000021,
+      "icoBytes": 590,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 590,
+          "sha256": "e84fe73594a54487862e46aa4ac8bef4855fb07a3bf1cf83eb2481ab498613e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8522,
+      "totalBytes": 9256
+    },
+    {
+      "rep": 1,
+      "mark": "tiles",
+      "arm": "current48",
+      "px": 48,
+      "ms": 64.23843000000124,
+      "icoBytes": 156,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 156,
+          "sha256": "5875bd1e9c8138414cc2be6abcebafeafff44b60c5185bbe378412596e7b512a"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 766,
+      "totalBytes": 1496
+    },
+    {
+      "rep": 1,
+      "mark": "tiles",
+      "arm": "before32",
+      "px": 32,
+      "ms": 65.37203099999897,
+      "icoBytes": 147,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 147,
+          "sha256": "6dbe0e2a23f766ab6b65a41949b174607110a7c31d644dc9f746030de0696558"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 757,
+      "totalBytes": 1487
+    },
+    {
+      "rep": 1,
+      "mark": "wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 145.94095700000253,
+      "icoBytes": 199,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 199,
+          "sha256": "1511db377e19b996bb38e55916e36aa3cf23c2cebc6b690cbbe471c979d5efc4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1754,
+      "totalBytes": 2102
+    },
+    {
+      "rep": 1,
+      "mark": "wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 142.35935299999983,
+      "icoBytes": 242,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 242,
+          "sha256": "8b76d5f3e265ffc1048efb97b49d27cdb82561dedf5ad3502a42e19ef38d9e41"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1797,
+      "totalBytes": 2145
+    },
+    {
+      "rep": 1,
+      "mark": "gradient",
+      "arm": "current48",
+      "px": 48,
+      "ms": 406.30799000000115,
+      "icoBytes": 1409,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1409,
+          "sha256": "8c798b2d642260e9bee5471aa516c4141890992bc21de96760d6d4cde0678bd5"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 24214,
+      "totalBytes": 24773
+    },
+    {
+      "rep": 1,
+      "mark": "gradient",
+      "arm": "before32",
+      "px": 32,
+      "ms": 403.30670100000134,
+      "icoBytes": 1135,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1135,
+          "sha256": "ccf36fa627790874c4415525b874d791cfc0b2e340329a436119ca438de923fa"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 23940,
+      "totalBytes": 24499
+    },
+    {
+      "rep": 1,
+      "mark": "smil",
+      "arm": "before32",
+      "px": 32,
+      "ms": 262.1000239999994,
+      "icoBytes": 256,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 256,
+          "sha256": "153880d8beafa4ca3aefab31654aa19f2893346f0a42d93d643f5d40bc7aad3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3989,
+      "totalBytes": 4584
+    },
+    {
+      "rep": 1,
+      "mark": "smil",
+      "arm": "current48",
+      "px": 48,
+      "ms": 276.713716000002,
+      "icoBytes": 305,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 305,
+          "sha256": "8b3f0776c75ddbb1256a7099a546ebe16878467f630682a2ff143f4c63012b44"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4038,
+      "totalBytes": 4633
+    },
+    {
+      "rep": 1,
+      "mark": "dark",
+      "arm": "current48",
+      "px": 48,
+      "ms": 235.04979100000128,
+      "icoBytes": 397,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 397,
+          "sha256": "f33c3939d474b169085beaaf9d702f2414d6863a163afdb4880f109d0cf48217"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4678,
+      "totalBytes": 5143
+    },
+    {
+      "rep": 1,
+      "mark": "dark",
+      "arm": "before32",
+      "px": 32,
+      "ms": 227.91770299999916,
+      "icoBytes": 341,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 341,
+          "sha256": "ace237fb3d178fa54e7d4e2b04b9af068bd97493e99baf05c042e18445435ca3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4622,
+      "totalBytes": 5087
+    },
+    {
+      "rep": 1,
+      "mark": "grid-1",
+      "arm": "before32",
+      "px": 32,
+      "ms": 272.2756499999996,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8670
+    },
+    {
+      "rep": 1,
+      "mark": "grid-1",
+      "arm": "current48",
+      "px": 48,
+      "ms": 268.83437100000083,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8840
+    },
+    {
+      "rep": 1,
+      "mark": "grid-16",
+      "arm": "current48",
+      "px": 48,
+      "ms": 275.641510999998,
+      "icoBytes": 658,
+      "sourceError": {
+        "pct": 0.7378472222222222,
+        "rmse": 1.044717753838416,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 658,
+          "sha256": "33dfa612d089ebbb6e5349018bd4456752f4fad195dd173f72e41b47b91d773f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8295,
+      "totalBytes": 8741
+    },
+    {
+      "rep": 1,
+      "mark": "grid-16",
+      "arm": "before32",
+      "px": 32,
+      "ms": 256.0211390000004,
+      "icoBytes": 510,
+      "sourceError": {
+        "pct": 0.87890625,
+        "rmse": 1.122537814879006,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 510,
+          "sha256": "9db38d0adfec68d70a2ab76fbf1c88985ddd417f6f770355cf6311b4443d6f71"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8147,
+      "totalBytes": 8593
+    },
+    {
+      "rep": 1,
+      "mark": "grid-24",
+      "arm": "before32",
+      "px": 32,
+      "ms": 272.95070900000064,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 1.171875,
+        "rmse": 1.228592733238589,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "89685e35ab62fa1f848abbd65ac7a9c1eb1aa42d91e658eefc4940c12a70c5ba"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8171,
+      "totalBytes": 8630
+    },
+    {
+      "rep": 1,
+      "mark": "grid-24",
+      "arm": "current48",
+      "px": 48,
+      "ms": 262.07886599999983,
+      "icoBytes": 664,
+      "sourceError": {
+        "pct": 0.9114583333333334,
+        "rmse": 1.1136905822368093,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 664,
+          "sha256": "b27428b8d61ff82cef3784189ef06be46589aee7d23cb2fab7ac851f6ab99a14"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8333,
+      "totalBytes": 8792
+    },
+    {
+      "rep": 1,
+      "mark": "grid-tiny",
+      "arm": "current48",
+      "px": 48,
+      "ms": 274.86919599999965,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8917
+    },
+    {
+      "rep": 1,
+      "mark": "grid-tiny",
+      "arm": "before32",
+      "px": 32,
+      "ms": 268.92158899999777,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8747
+    },
+    {
+      "rep": 1,
+      "mark": "grid-fallback",
+      "arm": "before32",
+      "px": 32,
+      "ms": 264.1345880000008,
+      "icoBytes": 405,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 405,
+          "sha256": "95032d028c8f1d311ffb351856c0086ae8c1d293b59148f6ee1b7bd48cacd69f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6407,
+      "totalBytes": 7109
+    },
+    {
+      "rep": 1,
+      "mark": "grid-fallback",
+      "arm": "current48",
+      "px": 48,
+      "ms": 263.20661199999813,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "a1cca77951c81926254fbdb1eb7b810dced197bf32b85f91a801adae90b93f3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6504,
+      "totalBytes": 7206
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 201.20734200000152,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2682
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 188.78461699999752,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2657
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-tall",
+      "arm": "before32",
+      "px": 32,
+      "ms": 195.9941370000015,
+      "icoBytes": 203,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 203,
+          "sha256": "bf59f35cd6bc34bf913712365f29c3907414021fbc222c13458548bc265c6537"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2200,
+      "totalBytes": 2577
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-tall",
+      "arm": "current48",
+      "px": 48,
+      "ms": 198.95200699999987,
+      "icoBytes": 221,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 221,
+          "sha256": "34a567aa1a0e75b09763b2fff385e6538d204cbb92f7d75b9457ba06e095157f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2218,
+      "totalBytes": 2595
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-offset",
+      "arm": "current48",
+      "px": 48,
+      "ms": 199.37786199999755,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2684
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-offset",
+      "arm": "before32",
+      "px": 32,
+      "ms": 195.17762399999992,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2659
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-percent",
+      "arm": "before32",
+      "px": 32,
+      "ms": 73.99582499999815,
+      "icoBytes": 123,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 123,
+          "sha256": "92e56e283ab3de806cdfb38b392330715996fa844eb55f899ee7ed123f037389"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 521,
+      "totalBytes": 871
+    },
+    {
+      "rep": 1,
+      "mark": "aspect-percent",
+      "arm": "current48",
+      "px": 48,
+      "ms": 71.90992600000027,
+      "icoBytes": 129,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 129,
+          "sha256": "285e535264de6acce2634f5a2c033b744575fbdb5473c51e4a55664f86062d64"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 527,
+      "totalBytes": 877
+    },
+    {
+      "rep": 2,
+      "mark": "general",
+      "arm": "before32",
+      "px": 32,
+      "ms": 224.22565900000336,
+      "icoBytes": 469,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 469,
+          "sha256": "fd02eb79c0d6a63c4a04ecd2643ca2b1d738e1dbf8967d5d08f0efd363325e7c"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5756,
+      "totalBytes": 6368
+    },
+    {
+      "rep": 2,
+      "mark": "general",
+      "arm": "current48",
+      "px": 48,
+      "ms": 221.66981600000145,
+      "icoBytes": 564,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 392,
+          "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 564,
+          "sha256": "ce1653f3f35672c4c470e53bb8d476699ee19344d79827091f3d7d57e1c02520"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1095,
+          "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1163,
+          "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3029,
+          "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5851,
+      "totalBytes": 6463
+    },
+    {
+      "rep": 2,
+      "mark": "flat",
+      "arm": "current48",
+      "px": 48,
+      "ms": 352.6295510000018,
+      "icoBytes": 396,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 396,
+          "sha256": "2192a9ccdcd54f03176eaa1d93aac3f23bc66b8d666657eb9032980581acfb84"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6101,
+      "totalBytes": 6480
+    },
+    {
+      "rep": 2,
+      "mark": "flat",
+      "arm": "before32",
+      "px": 32,
+      "ms": 354.22399700000096,
+      "icoBytes": 325,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "52281b5bf3e3256218185935eecea1ba4809178f2a5619d537e77ea242e73395"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 325,
+          "sha256": "c84c8c9377338813761fe34c16e9caf6a2bd5cf82d430ab080c8c24cf1af3978"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1124,
+          "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1223,
+          "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3358,
+          "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6030,
+      "totalBytes": 6409
+    },
+    {
+      "rep": 2,
+      "mark": "second",
+      "arm": "before32",
+      "px": 32,
+      "ms": 217.1048840000003,
+      "icoBytes": 253,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 253,
+          "sha256": "e47d2c6fddbd6cf6bbfb156283d674f79333383607ee9b432d07b597ffc87261"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3315,
+      "totalBytes": 3717
+    },
+    {
+      "rep": 2,
+      "mark": "second",
+      "arm": "current48",
+      "px": 48,
+      "ms": 219.5268329999999,
+      "icoBytes": 326,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 182,
+          "sha256": "502a2bc090a890041e686745fce342064902225c7f7a63a82b4b12b6b9333ca7"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 326,
+          "sha256": "9494090de096bc0095c2e102eb8519c7c4bb3e0058e78ee214615a5d53f359f4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 596,
+          "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 603,
+          "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1863,
+          "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3388,
+      "totalBytes": 3790
+    },
+    {
+      "rep": 2,
+      "mark": "mask",
+      "arm": "current48",
+      "px": 48,
+      "ms": 262.1178910000017,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "cfa339af21dc2746233548b6a14e87242319f9dfbb35a00f82412fc520b9bff3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5194,
+      "totalBytes": 5695
+    },
+    {
+      "rep": 2,
+      "mark": "mask",
+      "arm": "before32",
+      "px": 32,
+      "ms": 264.12761399999727,
+      "icoBytes": 381,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 281,
+          "sha256": "d227620f9dc91387f059f4ecc88937b704c29e215127339836467113a204076c"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 381,
+          "sha256": "e765afd26d3c8f61264a9ec2eb63ee3cda680424d982afe5d21a98af95297fe4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 930,
+          "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1055,
+          "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2707,
+          "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 5073,
+      "totalBytes": 5574
+    },
+    {
+      "rep": 2,
+      "mark": "heavy",
+      "arm": "before32",
+      "px": 32,
+      "ms": 194.46493099999861,
+      "icoBytes": 451,
+      "sourceError": {
+        "pct": 1.66015625,
+        "rmse": 1.6671223335436425,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 451,
+          "sha256": "dd681a0adf8313351c95b537c3a2c768759cac8b6ef5df71a235ea7acb31b5e8"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6070,
+      "totalBytes": 7817
+    },
+    {
+      "rep": 2,
+      "mark": "heavy",
+      "arm": "current48",
+      "px": 48,
+      "ms": 192.49604900000122,
+      "icoBytes": 632,
+      "sourceError": {
+        "pct": 0.3472222222222222,
+        "rmse": 0.7610109930096158,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 1527,
+          "sha256": "b2e6d4ae43ac318c501c318fe9a15f32473257a86b31cc9ea9d7adfa9a42612b"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 632,
+          "sha256": "3e6e4cc3651d98bc0112386da4ffab88400e8e52953667a3e7f0835d300d4487"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1079,
+          "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1108,
+          "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3432,
+          "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6251,
+      "totalBytes": 7998
+    },
+    {
+      "rep": 2,
+      "mark": "animated",
+      "arm": "current48",
+      "px": 48,
+      "ms": 313.2562070000022,
+      "icoBytes": 590,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 590,
+          "sha256": "e84fe73594a54487862e46aa4ac8bef4855fb07a3bf1cf83eb2481ab498613e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8522,
+      "totalBytes": 9256
+    },
+    {
+      "rep": 2,
+      "mark": "animated",
+      "arm": "before32",
+      "px": 32,
+      "ms": 327.82274400000097,
+      "icoBytes": 437,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 514,
+          "sha256": "5992d8bc7d289c4e021102972fc9c92983c6e59ac40f18cb3945b860ec17f96f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 437,
+          "sha256": "9a88a360c5d69d87a822dd04f06c20e8da35968ba7322e3b4439f866bd835e9f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1535,
+          "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1602,
+          "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4795,
+          "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8369,
+      "totalBytes": 9103
+    },
+    {
+      "rep": 2,
+      "mark": "tiles",
+      "arm": "before32",
+      "px": 32,
+      "ms": 67.4127210000006,
+      "icoBytes": 147,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 147,
+          "sha256": "6dbe0e2a23f766ab6b65a41949b174607110a7c31d644dc9f746030de0696558"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 757,
+      "totalBytes": 1487
+    },
+    {
+      "rep": 2,
+      "mark": "tiles",
+      "arm": "current48",
+      "px": 48,
+      "ms": 65.96758799999952,
+      "icoBytes": 156,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 510,
+          "sha256": "e8f8328c88356b2d1391831e47d17fd5b655300748b0ad9a4e17b91dc5912150"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 156,
+          "sha256": "5875bd1e9c8138414cc2be6abcebafeafff44b60c5185bbe378412596e7b512a"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 152,
+          "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 164,
+          "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 294,
+          "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 766,
+      "totalBytes": 1496
+    },
+    {
+      "rep": 2,
+      "mark": "wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 145.5049429999999,
+      "icoBytes": 242,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 242,
+          "sha256": "8b76d5f3e265ffc1048efb97b49d27cdb82561dedf5ad3502a42e19ef38d9e41"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1797,
+      "totalBytes": 2145
+    },
+    {
+      "rep": 2,
+      "mark": "wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 142.33573500000057,
+      "icoBytes": 199,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 128,
+          "sha256": "be7012556e752574660974b73724cb92cd135255519dfb71a89f9340c90aee54"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 199,
+          "sha256": "1511db377e19b996bb38e55916e36aa3cf23c2cebc6b690cbbe471c979d5efc4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 395,
+          "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 349,
+          "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 811,
+          "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 1754,
+      "totalBytes": 2102
+    },
+    {
+      "rep": 2,
+      "mark": "gradient",
+      "arm": "before32",
+      "px": 32,
+      "ms": 419.6572699999997,
+      "icoBytes": 1135,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.49179465142136986,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1135,
+          "sha256": "ccf36fa627790874c4415525b874d791cfc0b2e340329a436119ca438de923fa"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 23940,
+      "totalBytes": 24499
+    },
+    {
+      "rep": 2,
+      "mark": "gradient",
+      "arm": "current48",
+      "px": 48,
+      "ms": 418.23896700000114,
+      "icoBytes": 1409,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0.6898109308864062,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 339,
+          "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 1409,
+          "sha256": "8c798b2d642260e9bee5471aa516c4141890992bc21de96760d6d4cde0678bd5"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 3960,
+          "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 3937,
+          "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 14908,
+          "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 24214,
+      "totalBytes": 24773
+    },
+    {
+      "rep": 2,
+      "mark": "smil",
+      "arm": "current48",
+      "px": 48,
+      "ms": 264.37142999999924,
+      "icoBytes": 305,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 305,
+          "sha256": "8b3f0776c75ddbb1256a7099a546ebe16878467f630682a2ff143f4c63012b44"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4038,
+      "totalBytes": 4633
+    },
+    {
+      "rep": 2,
+      "mark": "smil",
+      "arm": "before32",
+      "px": 32,
+      "ms": 265.80343899999934,
+      "icoBytes": 256,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 375,
+          "sha256": "70360611fcbd3dbcf5bbe96d4e0000c613724bb766c7351c388541b2bfa8033f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 256,
+          "sha256": "153880d8beafa4ca3aefab31654aa19f2893346f0a42d93d643f5d40bc7aad3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 724,
+          "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 749,
+          "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2260,
+          "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 3989,
+      "totalBytes": 4584
+    },
+    {
+      "rep": 2,
+      "mark": "dark",
+      "arm": "before32",
+      "px": 32,
+      "ms": 229.0930010000011,
+      "icoBytes": 341,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 341,
+          "sha256": "ace237fb3d178fa54e7d4e2b04b9af068bd97493e99baf05c042e18445435ca3"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4622,
+      "totalBytes": 5087
+    },
+    {
+      "rep": 2,
+      "mark": "dark",
+      "arm": "current48",
+      "px": 48,
+      "ms": 227.9168490000011,
+      "icoBytes": 397,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 245,
+          "sha256": "615e5b06957acc05d46856fd9efd71d14d55fe2d2d3f17426fe288a3e6dfaf24"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 397,
+          "sha256": "f33c3939d474b169085beaaf9d702f2414d6863a163afdb4880f109d0cf48217"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 855,
+          "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 920,
+          "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 2506,
+          "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 4678,
+      "totalBytes": 5143
+    },
+    {
+      "rep": 2,
+      "mark": "grid-1",
+      "arm": "current48",
+      "px": 48,
+      "ms": 280.95608100000027,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8840
+    },
+    {
+      "rep": 2,
+      "mark": "grid-1",
+      "arm": "before32",
+      "px": 32,
+      "ms": 267.5613369999992,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 217,
+          "sha256": "6f3f9b36469712947fd0a7d12a499b1342541929d0c092a14f83142dd3fe685f"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8670
+    },
+    {
+      "rep": 2,
+      "mark": "grid-16",
+      "arm": "before32",
+      "px": 32,
+      "ms": 258.7926289999996,
+      "icoBytes": 510,
+      "sourceError": {
+        "pct": 0.87890625,
+        "rmse": 1.122537814879006,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 510,
+          "sha256": "9db38d0adfec68d70a2ab76fbf1c88985ddd417f6f770355cf6311b4443d6f71"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8147,
+      "totalBytes": 8593
+    },
+    {
+      "rep": 2,
+      "mark": "grid-16",
+      "arm": "current48",
+      "px": 48,
+      "ms": 252.87984399999914,
+      "icoBytes": 658,
+      "sourceError": {
+        "pct": 0.7378472222222222,
+        "rmse": 1.044717753838416,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 226,
+          "sha256": "38617dcb6de5524618bb187ad31b9f2c8341cb29cd1933c7fd4ffbd87cbb1cfd"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 658,
+          "sha256": "33dfa612d089ebbb6e5349018bd4456752f4fad195dd173f72e41b47b91d773f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1591,
+          "sha256": "f39b4fbc0ac1f84f935dc2eb1550d14ed8d92511256a59d59d087d3af3cc537a"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1694,
+          "sha256": "b011b7d0a9cfc9d93ccd531be97e4ae0b079df2c1a0872f0dccc05ceb4c3daa6"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4352,
+          "sha256": "e678354db1410ce42d371890f71797a136ff9e391fe8d82cfc8b4aad907c1acd"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8295,
+      "totalBytes": 8741
+    },
+    {
+      "rep": 2,
+      "mark": "grid-24",
+      "arm": "current48",
+      "px": 48,
+      "ms": 263.27727199999936,
+      "icoBytes": 664,
+      "sourceError": {
+        "pct": 0.9114583333333334,
+        "rmse": 1.1136905822368093,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 664,
+          "sha256": "b27428b8d61ff82cef3784189ef06be46589aee7d23cb2fab7ac851f6ab99a14"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8333,
+      "totalBytes": 8792
+    },
+    {
+      "rep": 2,
+      "mark": "grid-24",
+      "arm": "before32",
+      "px": 32,
+      "ms": 267.14139499999874,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 1.171875,
+        "rmse": 1.228592733238589,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 239,
+          "sha256": "377e56e5c4e020413ab8ce0f1a5d431bcbaf24a134db5bbf629bd4c1a2b66519"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "89685e35ab62fa1f848abbd65ac7a9c1eb1aa42d91e658eefc4940c12a70c5ba"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1598,
+          "sha256": "4128ede9c5882358064595e913618103580a880f4a2872a8f2c5051051469b12"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1702,
+          "sha256": "21c5b202ac9e9fa634502785d4a01eab8454f610a52e430607ac356104aff088"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4369,
+          "sha256": "75bdca76908b229db05c652c9910a2eb35ee9d238815c2e7094a27e111fc9999"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8171,
+      "totalBytes": 8630
+    },
+    {
+      "rep": 2,
+      "mark": "grid-tiny",
+      "arm": "before32",
+      "px": 32,
+      "ms": 262.1607839999997,
+      "icoBytes": 500,
+      "sourceError": {
+        "pct": 1.46484375,
+        "rmse": 1.3339028731508153,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 500,
+          "sha256": "3e3943954db815df1cebb94d766817cc05b24ae9d075f9d6a5ba3e9ca4f707e7"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8233,
+      "totalBytes": 8747
+    },
+    {
+      "rep": 2,
+      "mark": "grid-tiny",
+      "arm": "current48",
+      "px": 48,
+      "ms": 268.3711169999988,
+      "icoBytes": 670,
+      "sourceError": {
+        "pct": 1.215277777777778,
+        "rmse": 1.232986062220344,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 294,
+          "sha256": "8f7ee03f4619aaba61000a655fc7ff6a38518b5074a632898a887bc8b67bd812"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 670,
+          "sha256": "0625d38a039d43e4976fe12239626521c6a8b7c8e75be0d3042432fb0adc4cf2"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1608,
+          "sha256": "2dfd2b91a44bad4c86e257b0054643cd0f32c716ee6d12de1800b9384251dda7"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1715,
+          "sha256": "ca2715e5467fb36392c6aaa729b3fbe00d86aa43a08e551df0a29ccb8c29946f"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 4410,
+          "sha256": "d08c22bed7140e308ca70c2a1306a8ea7144f9c2c794e0ed6cf50cc7a0a9130d"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 8403,
+      "totalBytes": 8917
+    },
+    {
+      "rep": 2,
+      "mark": "grid-fallback",
+      "arm": "current48",
+      "px": 48,
+      "ms": 269.65810200000124,
+      "icoBytes": 502,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 502,
+          "sha256": "a1cca77951c81926254fbdb1eb7b810dced197bf32b85f91a801adae90b93f3d"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6504,
+      "totalBytes": 7206
+    },
+    {
+      "rep": 2,
+      "mark": "grid-fallback",
+      "arm": "before32",
+      "px": 32,
+      "ms": 264.2911290000011,
+      "icoBytes": 405,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 482,
+          "sha256": "5ee523af00b9f4f4508ca02b23bf81a0765c0015d5f19e9487094bf13f92ba55"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 405,
+          "sha256": "95032d028c8f1d311ffb351856c0086ae8c1d293b59148f6ee1b7bd48cacd69f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 1307,
+          "sha256": "97355aedadf77c97608ad0062c2d3b45a4109f2feddd77d53c54a9c6ba24788c"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 1430,
+          "sha256": "b5da035bdd3535077bcf3bd693d38e40fdb38c4548adb57f6a9467c78ce81f54"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 3265,
+          "sha256": "e8dc0f7062188af20ef7edb0b3b13e8a4f19fb04c10891c625e24e6cd1a0b604"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 6407,
+      "totalBytes": 7109
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-wide",
+      "arm": "before32",
+      "px": 32,
+      "ms": 197.59599300000264,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2657
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-wide",
+      "arm": "current48",
+      "px": 48,
+      "ms": 197.53231600000436,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "9ed59cd19a9b62e87d0d1cb259e1b82ba8bdc00e889a5565aaad07d64aa6cd47"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2682
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-tall",
+      "arm": "current48",
+      "px": 48,
+      "ms": 196.88797299999715,
+      "icoBytes": 221,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 221,
+          "sha256": "34a567aa1a0e75b09763b2fff385e6538d204cbb92f7d75b9457ba06e095157f"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2218,
+      "totalBytes": 2595
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-tall",
+      "arm": "before32",
+      "px": 32,
+      "ms": 196.49398899999505,
+      "icoBytes": 203,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 157,
+          "sha256": "563ceea71dd88aba955be8a7d2d68f8dea98cab1d5b020eb4b06b5cb6a95dcfb"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 203,
+          "sha256": "bf59f35cd6bc34bf913712365f29c3907414021fbc222c13458548bc265c6537"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "42db00d373b0b0b221ef82bac9ebc8182b74a9cb1fcc4b1a0e0fc52af6bca3d9"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 419,
+          "sha256": "196d65756ee536c1578cc11d30597814f5e175c63a588612f5ca011f749885d5"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1165,
+          "sha256": "8dea92d1a958c843664d7ffec262b20398b4dbca6c3a78ab54ad1b050f7439c5"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2200,
+      "totalBytes": 2577
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-offset",
+      "arm": "before32",
+      "px": 32,
+      "ms": 191.720610999997,
+      "icoBytes": 200,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 200,
+          "sha256": "3fd687647d067dd00f59d38968025a721955e56e98c77f8280907338827d9c39"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2280,
+      "totalBytes": 2659
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-offset",
+      "arm": "current48",
+      "px": 48,
+      "ms": 197.25948800000333,
+      "icoBytes": 225,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 159,
+          "sha256": "d8305cd65b3ea0fdea920bf41bb89b7f2a4e2020739f008ed3762db5b6fa5567"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 225,
+          "sha256": "bb2b1a782af5dbf80c43b6483dc3680386c290be1f6767faa75845d2d21183e4"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 413,
+          "sha256": "a4d4a1790c85cfa43ca995c96a6c5f181e2ea81c1f0bb8b748281103d0c73970"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 420,
+          "sha256": "94a55283bb81ffaa2e6762f8b4884e2166b1177f76f7258ff5f34073f0816d7e"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 1247,
+          "sha256": "8396125e7b84aac60fb78c954618441a1045dcc787e1dc92a526cee6f9a2c356"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 2305,
+      "totalBytes": 2684
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-percent",
+      "arm": "current48",
+      "px": 48,
+      "ms": 71.26223699999537,
+      "icoBytes": 129,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 48,
+        "height": 48
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 129,
+          "sha256": "285e535264de6acce2634f5a2c033b744575fbdb5473c51e4a55664f86062d64"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 527,
+      "totalBytes": 877
+    },
+    {
+      "rep": 2,
+      "mark": "aspect-percent",
+      "arm": "before32",
+      "px": 32,
+      "ms": 74.03528599999845,
+      "icoBytes": 123,
+      "sourceError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "encodingError": {
+        "pct": 0,
+        "rmse": 0,
+        "width": 32,
+        "height": 32
+      },
+      "files": [
+        {
+          "name": "icon.svg",
+          "bytes": 130,
+          "sha256": "c248e4424257bed989a67f9115b702eb9af8ec6cbe4ad4f0bc7b2c895693732d"
+        },
+        {
+          "name": "favicon.ico",
+          "bytes": 123,
+          "sha256": "92e56e283ab3de806cdfb38b392330715996fa844eb55f899ee7ed123f037389"
+        },
+        {
+          "name": "apple-touch-icon.png",
+          "bytes": 113,
+          "sha256": "e55f4e0cbb28f7c319218ed8059dd736e8e4b27518a47b51deaaa27caf11e98b"
+        },
+        {
+          "name": "icon-192.png",
+          "bytes": 116,
+          "sha256": "477b320a44a4a0ee9ef1ca57120ad3c9568ebcf19624d317e7aa153894f8c1e7"
+        },
+        {
+          "name": "icon-512.png",
+          "bytes": 169,
+          "sha256": "8d887215db350a490cdeb44c369757650c6ae8a5f1ad04944d7a1305805742fb"
+        },
+        {
+          "name": "site.webmanifest",
+          "bytes": 220,
+          "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
+        }
+      ],
+      "rasterBytes": 521,
+      "totalBytes": 871
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "node": "v26.12.1",
+  "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+  "engine": {
+    "@napi-rs/image": "1.15.0",
+    "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a"
+  },
+  "marks": [
+    "general",
+    "flat",
+    "second",
+    "mask",
+    "heavy",
+    "animated",
+    "tiles",
+    "wide",
+    "gradient",
+    "smil",
+    "dark"
+  ],
+  "qualities": [
+    100,
+    80,
+    60
+  ],
+  "repetitions": 3,
+  "sourceSha256": {
+    "core.mjs": "9f51a2faccd1799291b63b95b762772cad4d3d5036c69dd29b84152f2b2173f2",
+    "config.mjs": "ea0ea3b8f71bcce33b22122aa1a10b31dc27890bed7e7c3f67d6fc070302e346",
+    "pipeline.mjs": "5f65371f9bdf9a8171a55e38529cfe62f149ca8dd43ed66cde814c99c85cc4d5",
+    "engine.mjs": "77e970a255e153b1a9941145dfa4512defff367d7813644386703839d3c175e6"
+  },
+  "beforeSha256": {
+    "core.mjs": "9f51a2faccd1799291b63b95b762772cad4d3d5036c69dd29b84152f2b2173f2",
+    "config.mjs": "29ae9d0f594ae350be44a71bc7d48ffb013e1472719251f0db75cfd0ac3834f9",
+    "pipeline.mjs": "7bf8e6393d4df6b2c6d7fc3a6cadc776a80aef0cc63d1a50bb4e5031427e6d99",
+    "engine.mjs": "420d7ca23df6895e9f3553f8b2d177efa776b1259d054cf611477b4707e87e06"
+  },
+  "note": "Full in-memory buildSet generation; source read/optimize/place/encode/artifact creation timed. Imports, baseline preparation, validation and output writes excluded. Three rotated/reversed repetitions, first excluded. No Zopfli. All quality100 outputs/metadata match saved pre-quality modules. Error vs unquantised already-placed render, not original SVG; original-SVG accuracy reported separately.",
+  "summaries": [
+    {
+      "quality": 100,
+      "repetitions": [
+        {
+          "rep": 0,
+          "ms": 2637.1774290000003,
+          "rasterBytes": 74180
+        },
+        {
+          "rep": 1,
+          "ms": 2665.434545,
+          "rasterBytes": 74180
+        },
+        {
+          "rep": 2,
+          "ms": 2690.0425620000024,
+          "rasterBytes": 74180
+        }
+      ]
+    },
+    {
+      "quality": 80,
+      "repetitions": [
+        {
+          "rep": 0,
+          "ms": 2600.9556779999984,
+          "rasterBytes": 69291
+        },
+        {
+          "rep": 1,
+          "ms": 2633.010243999999,
+          "rasterBytes": 69291
+        },
+        {
+          "rep": 2,
+          "ms": 2642.2136299999947,
+          "rasterBytes": 69291
+        }
+      ]
+    },
+    {
+      "quality": 60,
+      "repetitions": [
+        {
+          "rep": 0,
+          "ms": 2617.563359999999,
+          "rasterBytes": 64594
+        },
+        {
+          "rep": 1,
+          "ms": 2599.112269999998,
+          "rasterBytes": 64594
+        },
+        {
+          "rep": 2,
+          "ms": 2642.6801430000014,
+          "rasterBytes": 64594
+        }
+      ]
+    }
+  ],
+  "screenOptions": [
+    {
+      "name": "c256-s1",
+      "options": {
+        "colors": 256,
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 100
+      },
+      "errors": [],
+      "bytes": 73938,
+      "sourceWorse": [],
+      "exactBaselinePixels": 44,
+      "worstSourcePct": 1.7415364583333333,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1616.668556000007
+    },
+    {
+      "name": "q99",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 99
+      },
+      "errors": [],
+      "bytes": 75838,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 1.7415364583333333,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1588.6556879999944
+    },
+    {
+      "name": "q95",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 95
+      },
+      "errors": [],
+      "bytes": 74610,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 1.9259982638888888,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1523.6248890000124
+    },
+    {
+      "name": "q90",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 90
+      },
+      "errors": [],
+      "bytes": 72618,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 1.9938151041666667,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1501.1148830000043
+    },
+    {
+      "name": "q85",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 85
+      },
+      "errors": [],
+      "bytes": 71258,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-32",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 1.9965277777777777,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1508.406163000006
+    },
+    {
+      "name": "q80",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 80
+      },
+      "errors": [],
+      "bytes": 69049,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-32",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 2.096896701388889,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1503.3236870000005
+    },
+    {
+      "name": "q70",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 70
+      },
+      "errors": [],
+      "bytes": 66544,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-32",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 2.169753086419753,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1455.9035819999986
+    },
+    {
+      "name": "q60",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 60
+      },
+      "errors": [],
+      "bytes": 64352,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-32",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 2.608024691358025,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1430.3249769999975
+    },
+    {
+      "name": "q50",
+      "options": {
+        "speed": 1,
+        "minQuality": 0,
+        "maxQuality": 50
+      },
+      "errors": [],
+      "bytes": 62208,
+      "sourceWorse": [
+        "gradient-180",
+        "gradient-192",
+        "gradient-32",
+        "gradient-512"
+      ],
+      "exactBaselinePixels": 40,
+      "worstSourcePct": 3.6078559027777777,
+      "worstNonGradientSourcePct": 0.11393229166666667,
+      "quantiseMs": 1439.98879199999
+    }
+  ]
+}

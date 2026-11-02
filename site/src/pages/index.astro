@@ -3,6 +3,7 @@
 // is that the pipeline imports the shared engine and WASM packages, and something has to
 // resolve and bundle them.
 import '../styles/app.css';
+import { DEFAULT_QUALITY } from '../../../lib/core.mjs';
 
 const title = 'favseed: one SVG in, an optimised favicon set out';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
@@ -25,9 +26,8 @@ const jsonLd = JSON.stringify({
 }).replaceAll('<', '\\u003c');
 
 const outputs = [
-  ['logo.svg', 'The mark itself. Optimised, animation intact. For pages and READMEs.'],
-  ['icon.svg', 'The same optimisation plus a structural animation strip. The browser favicon, and what every raster below is rendered from.'],
-  ['favicon.ico', 'One 32x32 entry, a raw PNG in a 22-byte container.'],
+  ['icon.svg', 'One optimized SVG for the favicon and page images, preserving animation and styling.'],
+  ['favicon.ico', 'One 48x48 entry, a raw PNG in a 22-byte container.'],
   ['apple-touch-icon.png', '180x180 on the chosen ground, the mark placed in the safe zone.'],
   ['icon-192.png, icon-512.png', 'On the same ground, placed the same way. The manifest\'s "any maskable" icons.'],
   ['site.webmanifest', 'Icons only. Merge your own name and theme_color.'],
@@ -41,7 +41,7 @@ const outputs = [
 <title>{title}</title>
 <meta name="color-scheme" content="light dark" />
 <!-- The site's own set, built by favseed: the same block `favseed --html --manifest` prints. -->
-<link rel="icon" href="/favicon.ico" sizes="32x32" />
+<link rel="icon" href="/favicon.ico" sizes="48x48" />
 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/site.webmanifest" />
@@ -57,7 +57,7 @@ const outputs = [
 </head>
 <body>
 <header>
-  <h1><img src="/logo.svg" alt="" width="40" height="40" />favseed</h1>
+  <h1><img src="/icon.svg" alt="" width="40" height="40" />favseed</h1>
   <p>One SVG in, an optimised favicon set out.</p>
   <p><small>
     Everything below runs in this tab. There is no upload endpoint, because there is no server
@@ -72,9 +72,13 @@ const outputs = [
       <strong>Choose an SVG</strong>
       <small>or drop one here</small>
     </label>
+    <label>PNG quality
+      <input type="number" name="quality" value={DEFAULT_QUALITY} min="1" max="100" step="1" required />
+      <small>80 balances size and fidelity. Choose 100 for higher fidelity.</small>
+    </label>
     <label>Palette
-      <input type="number" name="colors" value="256" min="2" max="256" required />
-      <small>2–256. A ceiling: a flat mark uses only the colours it has.</small>
+      <input type="number" name="colors" value="256" min="2" max="256" required disabled />
+      <small>2–256. Available at quality 100; lower quality chooses the palette.</small>
     </label>
     <label>Sizes
       <input type="text" name="sizes" value="192 512" pattern="\s*\d+([\s,]+\d+)*\s*" required />
@@ -88,15 +92,17 @@ const outputs = [
       <input type="text" name="padding" value="auto" pattern="\s*(auto|\d+(\.\d+)?)\s*" required />
       <small>Percent per side, or <code>auto</code> to measure the mark.</small>
     </label>
-    <label><input type="checkbox" name="animation" checked /> Keep the animation in <code>logo.svg</code></label>
-    <label>Build mode
-      <select name="mode"><option value="release">Release — smallest files</option><option value="fast">Fast — quicker compression</option></select>
-      <small>Matches the CLI's <code>mode</code> config option. Fast files can be larger.</small>
+    <label><input type="checkbox" name="animation" checked /> Preserve SVG animation</label>
+    <label>Extra compression effort
+      <select name="mode"><option value="release">Maximum — smallest files</option><option value="fast">Fast — lower effort</option></select>
+      <small>Applies only when extra PNG compression is enabled. Standard builds skip it.</small>
     </label>
+    <label><input type="checkbox" name="zopfli" /> Extra PNG compression (slower)</label>
     <button type="submit">Generate</button>
     <button type="button" id="cancel" hidden>Cancel</button>
     <output aria-live="polite"></output>
   </form>
+  <ul id="warnings" aria-live="polite" hidden></ul>
 
   <section id="result" hidden>
     <h2>Your set</h2>
@@ -125,11 +131,14 @@ const outputs = [
     <p>This page runs the same pinned image engine and build pipeline as the command line.
       Matching SVG, options, and build mode produce identical SVG, PNG, ICO, and manifest
       files. Builds run in a worker so the page stays responsive; Cancel stops the build.</p>
-    <p>Release mode uses the CLI's full compression. Fast mode matches <code>mode: 'fast'</code>
-      in the CLI config and trades some file size for build time. This page includes a manifest; use
+    <p>In a four-logo benchmark using matching raster inputs, the default set used 0.5% more
+      PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel error.
+      <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
+    <p>Standard builds skip Zopfli. Enable extra PNG compression to trade generation time for
+      smaller files, matching <code>--zopfli</code> in the CLI. This page includes a manifest; use
       <code>--manifest</code> for the matching CLI set.</p>
     <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
-      compression and starts with 250 MiB of shared memory. A recent browser on HTTPS with
+      compression and starts with 64 MiB of growable shared memory. A recent browser on HTTPS with
       cross-origin isolation is required. Your SVG and generated files stay in this tab.</p>
   </aside>
 </main>
@@ -143,9 +152,12 @@ const outputs = [
 <script>
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
-  const { file } = form.elements;
+  const { file, quality, colors } = form.elements;
+  const updatePalette = () => { colors.disabled = Number(quality.value) < 100; };
+  quality.addEventListener('input', updatePalette);
+  updatePalette();
   const drop = file.labels[0], go = form.querySelector('button[type=submit]'), status = form.querySelector('output');
-  const cancel = $('cancel');
+  const cancel = $('cancel'), warnings = $('warnings');
   const TYPES = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon', webmanifest: 'application/manifest+json' };
   let urls = [], active;
 
@@ -183,6 +195,8 @@ const outputs = [
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
+    warnings.replaceChildren();
+    warnings.hidden = true;
     const nextUrls = [];
     const url = (bytes, type) => {
       const u = URL.createObjectURL(new Blob([bytes], { type }));
@@ -194,14 +208,23 @@ const outputs = [
       controller.signal.throwIfAborted();
       const t0 = performance.now();
       const built = await buildInBrowser(await data.get('file').text(), {
-        colors: data.get('colors'),
+        ...(data.has('colors') ? { colors: data.get('colors') } : {}),
+        quality: data.get('quality'),
         sizes: data.get('sizes').trim().split(/[\s,]+/).map(Number),
         bg: data.get('bg').trim(),
         padding: data.get('padding').trim(),
         animation: data.has('animation'),
         mode: data.get('mode'),
+        zopfli: data.has('zopfli'),
       }, {
         signal: controller.signal,
+        onWarn: (message) => {
+          if (active !== controller || controller.signal.aborted) return;
+          const item = document.createElement('li');
+          item.textContent = message;
+          warnings.append(item);
+          warnings.hidden = false;
+        },
         onProgress: ({ phase, completed, total }) => {
           if (active !== controller || controller.signal.aborted) return;
           say(phase === 'placement' ? 'Placing the mark…' : phase === 'complete'
@@ -232,7 +255,7 @@ const outputs = [
       $('result').hidden = false;
       for (const u of urls) URL.revokeObjectURL(u);
       urls = nextUrls;
-      say(`Done in ${ms} ms. ${built.animated ? 'logo.svg keeps its animation.' : 'The source is static.'}`, 'good');
+      say(`Done in ${ms} ms. ${built.animated ? 'icon.svg preserves its animation.' : 'The source is static.'}`, 'good');
     } catch (e) {
       for (const u of nextUrls) URL.revokeObjectURL(u);
       if (active === controller) say(e?.name === 'AbortError' ? 'Cancelled.' : e?.message ?? String(e), e?.name === 'AbortError' ? '' : 'bad');

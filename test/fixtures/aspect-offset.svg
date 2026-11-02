@@ -1,0 +1,5 @@
+<!-- Same geometry as aspect-wide with nonzero and negative viewBox origins. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 -20 128 64">
+  <circle cx="74" cy="12" r="16" fill="#175d8d"/>
+  <rect x="26" y="-4" width="16" height="32" fill="#e9b44c"/>
+</svg>

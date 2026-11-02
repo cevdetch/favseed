@@ -4,6 +4,24 @@ import { createBuildCache, buildKey } from '../src/lib/build-cache.mjs';
 import { createWorkerClient } from '../src/lib/worker-client.mjs';
 import { normaliseOptions } from '../../lib/config.mjs';
 import { zip } from '../src/lib/zip.mjs';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { wasiRuntime } from '../build/wasi-runtime.mjs';
+
+test('WASI tuning accepts only the pinned loader and refuses unexpected defaults', () => {
+  const require = createRequire(import.meta.url);
+  const id = require.resolve('@napi-rs/image-wasm32-wasi/image.wasi-browser.js');
+  const source = readFileSync(id, 'utf8');
+  const plugin = wasiRuntime();
+  const result = plugin.transform(source, id);
+  assert.ok(result.code.includes('initial: 1024'));
+  assert.ok(result.code.includes('Math.min(4, Math.max('));
+  assert.equal(plugin.transform(source, '/unrelated/image.wasi-browser.js'), undefined);
+  assert.equal(plugin.transform(source, '/unrelated/index.js'), undefined);
+  assert.throws(() => plugin.transform(source.replace('initial: 4000', 'initial: 4096'), id), /WASI loader/);
+  assert.throws(() => plugin.transform(source.replace('const __workerPoolSize', 'const __otherPoolSize'), id), /WASI loader/);
+  assert.deepEqual(plugin.transform(source, id.replaceAll('/', '\\')), result);
+});
 
 test('ZIP entries use a valid fixed DOS epoch date', () => {
   const files = [{ name: 'x.svg', bytes: Uint8Array.of(1, 2) }];
@@ -34,10 +52,14 @@ test('result cache owns its bytes, metadata and byte budget', () => {
 
 test('cache key includes all output options and normalizes vars order', () => {
   const key = (extra = {}, source = '<svg/>') => buildKey(source, normaliseOptions(extra));
-  for (const extra of [{ mode: 'fast' }, { base: '/app/' }, { manifest: { name: 'test' } },
-    { vars: { x: 'red' } }, { bg: 'none' }, { padding: 20 }, { colors: 8 },
+  for (const extra of [{ zopfli: true }, { mode: 'fast', zopfli: true }, { base: '/app/' }, { manifest: { name: 'test' } },
+    { vars: { x: 'red' } }, { bg: 'none' }, { padding: 20 }, { colors: 8 }, { quality: 100 },
     { sizes: [32, 180] }, { animation: false }]) assert.notEqual(key(extra), key());
   assert.notEqual(key({}, '<svg />'), key());
+  assert.equal(key({ quality: 80 }), key());
+  assert.equal(key({ colors: 32 }), key({ quality: 100, colors: 32 }));
+  assert.equal(key({ quality: '80' }), key({ quality: 80 }));
+  assert.equal(key({ mode: 'fast' }), key(), 'effort does not change output when compression is disabled');
   assert.equal(key({ vars: { a: 'red', b: 'blue' } }), key({ vars: { b: 'blue', a: 'red' } }));
 });
 
@@ -71,6 +93,20 @@ test('worker client forwards progress and ignores stale replies', async () => {
   assert.deepEqual(events, [{ phase: 'raster', completed: 1, total: 2 }]);
   client.dispose();
   assert.ok(w.terminated);
+});
+
+test('worker warnings reach the callback without settling the build or accepting stale replies', async () => {
+  const { client, workers } = setup(), warnings = [];
+  const pending = client.build('svg', {}, { onWarn: (w) => warnings.push(w) });
+  const w = workers[0], { id } = w.messages[0];
+  w.reply({ id: id + 99, type: 'warning', message: 'stale' });
+  w.reply({ id, type: 'warning', message: 'outline text' });
+  w.reply({ id, type: 'result', result: result() });
+  assert.deepEqual(await pending, result());
+  assert.deepEqual(warnings, ['outline text']);
+  client.dispose();
+  w.reply({ id, type: 'warning', message: 'late' });
+  assert.deepEqual(warnings, ['outline text']);
 });
 
 test('abort during warmup terminates worker and retry starts a fresh one', async () => {

@@ -22,6 +22,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
       const request = pending.get(data.id);
       if (!request) return;
       if (data.type === 'progress') { request.onProgress?.(data.progress); return; }
+      if (data.type === 'warning') { request.onWarn?.(data.message); return; }
       if (data.type === 'error' && data.fatal) { reset(new Error(data.message)); return; }
       pending.delete(data.id);
       request.cleanup();
@@ -38,7 +39,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
     };
     return current;
   };
-  const request = (type, payload = {}, { signal, onProgress } = {}) => new Promise((resolve, reject) => {
+  const request = (type, payload = {}, { signal, onProgress, onWarn } = {}) => new Promise((resolve, reject) => {
     if (signal?.aborted) { reject(aborted()); return; }
     if (type === 'build' && activeBuild !== undefined) reset();
     let current;
@@ -46,7 +47,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
     const id = ++sequence;
     const cancel = () => reset();
     const cleanup = () => signal?.removeEventListener('abort', cancel);
-    pending.set(id, { resolve, reject, cleanup, onProgress });
+    pending.set(id, { resolve, reject, cleanup, onProgress, onWarn });
     if (type === 'build') activeBuild = id;
     signal?.addEventListener('abort', cancel, { once: true });
     try { current.postMessage({ id, type, ...payload }); } catch (e) { reset(e); }

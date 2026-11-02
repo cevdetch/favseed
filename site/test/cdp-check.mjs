@@ -105,7 +105,13 @@ ws.onmessage = (e) => {
     noise.push(`uncaught: ${d.exception?.description ?? d.text}`);
   }
   if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') {
-    noise.push(`log: ${m.params.entry.text} ${m.params.entry.url ?? ''}`);
+    const { text, url } = m.params.entry;
+    // Vite's HMR socket closes when Chrome caches the dev page. Retain that
+    // expected diagnostic separately; production and other errors still fail.
+    const hmrCacheClose = base !== localBase &&
+      text.startsWith(`WebSocket connection to '${base.replace('http:', 'ws:')}/?token=`) &&
+      text.endsWith("' failed: Page entered Back-Forward Cache.");
+    noise.push(`${hmrCacheClose ? 'dev-hmr' : 'log'}: ${text} ${url ?? ''}`);
   }
   if (m.method === 'Target.attachedToTarget') {
     const session = m.params.sessionId;
@@ -199,7 +205,9 @@ try {
   await call('dispose'); await noWorkers();
   // Exercise the form itself: failed and cancelled builds must keep working downloads.
   await send('Page.navigate', { url: base + '/' });
-  await waitFor('!!document.querySelector("form")');
+  // A cold dev server can deliver the form before its module installs submit.
+  // Wait for module execution before firing change/submit through CDP.
+  await waitFor('document.readyState === "complete" && !!document.querySelector("form")');
   assert.equal(await evaluate('getComputedStyle(document.getElementById("cancel")).display'), 'none');
   await send('DOM.enable', {});
   const doc = await send('DOM.getDocument', {});
@@ -213,7 +221,7 @@ try {
   await waitFor('document.querySelector("output").className === "bad" && !document.querySelector("button[type=submit]").disabled');
   assert.equal(await evaluate('document.getElementById("zip").href'), download);
   assert.ok(await evaluate('(async () => (await (await fetch(document.getElementById("zip").href)).arrayBuffer()).byteLength > 100)()'));
-  await evaluate('document.querySelector("input[name=bg]").value="#000000"; document.querySelector("input[name=padding]").value="20"; document.querySelector("form").requestSubmit()');
+  await evaluate('document.querySelector("input[name=bg]").value="#000000"; document.querySelector("input[name=padding]").value="20"; document.querySelector("input[name=zopfli]").checked=true; document.querySelector("form").requestSubmit()');
   await waitFor('!document.getElementById("cancel").hidden');
   await evaluate('document.getElementById("cancel").click()');
   await waitFor('document.querySelector("output").textContent === "Cancelled."');
