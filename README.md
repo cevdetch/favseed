@@ -22,7 +22,8 @@ compression at the cost of generation time.
 
 No install at all: **[favseed.cevdet.ch](https://favseed.cevdet.ch)** runs the same engine and
 build pipeline in your browser, with nothing uploaded. Matching input, options, and build mode
-produce identical files. The page includes a manifest; use `--manifest` for the matching CLI
+produce identical files for self-contained SVGs. Outline text and embed external images for
+consistent raster output. The page includes a manifest; use `--manifest` for the matching CLI
 set. Builds run in a worker with progress and cancellation; see [browser requirements and
 measurements](site/README.md).
 
@@ -83,8 +84,9 @@ zopfli.
 
 Favseed generates a small set with measured safe-zone placement and compares quantized and
 lossless PNG candidates. Extra Zopfli compression is opt-in. Its browser and CLI share the
-same engine, options and output bytes. Full builds select SVG precision against the source's
-static appearance before PNG encoding; PNG quality and tiny-ICO error are measured separately.
+same engine and options, with matching output bytes for self-contained SVGs. Full builds select
+SVG precision against the source's static appearance before PNG encoding; PNG quality and
+tiny-ICO error are measured separately.
 
 In our four-logo benchmark with matching raster inputs, the default quality-80 set used **0.5%
 more PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default**, with lower measured PNG pixel error.
@@ -243,6 +245,20 @@ the renderer does not sample an animation timeline. Put optional motion inside a
 
 `--no-animation` (or `animation: false`) explicitly removes motion while retaining other
 static declarations. CSS variable overrides such as `--var brand=#7C0E68` still apply.
+
+## SVG input requirements
+
+Give the root SVG a valid `viewBox`, or positive numeric width and height from which one can
+be derived. Percentage-only dimensions need an explicit `viewBox`. Missing, non-finite,
+zero or negative root sizes fail with guidance before source rasterization and output writes.
+
+Text and external images produce warnings in the CLI/API and browser. Fonts can differ or
+be missing between native and browser rendering, so convert text to paths for consistent
+PNG/ICO output. Embed images as `data:` URLs: relative files and remote image references can
+be omitted in rasters or SVG image contexts. The warnings preserve the source content and
+do not fetch resources or convert fonts. They do not prove that every dependency will render.
+API callers receive guidance through `onWarn`; the browser shows it separately from build
+progress, including on cached builds and before a later rendering error.
 
 ## PNG quality
 

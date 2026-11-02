@@ -70,6 +70,29 @@ const haveIcotool = (() => {
 
 // ---------------------------------------------------------------- 1, 2, 9 --
 
+describe('SVG input diagnostics in the CLI', () => {
+  it('warns about dependencies while still writing the favicon set', async () => {
+    const out = freshDir();
+    const r = await cli(['--bg', '#fff', '--padding', '20', '--sizes', '32', '-o', out, fixture('dependent.svg')]);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stderr, /warning: .*text.*font.*paths/i);
+    assert.match(r.stderr, /warning: .*external image.*embed/i);
+    assert.ok(existsSync(join(out, 'favicon.ico')));
+    assert.match(readFileSync(join(out, 'icon.svg'), 'utf8'), /FavseedOutlineOnlyMissingFont/);
+  });
+
+  it('reports how to fix percentage-only dimensions and writes nothing', async () => {
+    const root = freshDir(), out = join(root, 'out');
+    mkdirSync(root, { recursive: true });
+    const input = join(root, 'unsized.svg');
+    writeFileSync(input, '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>');
+    const r = await cli(['--bg', '#fff', '-o', out, input]);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /unsized\.svg.*viewBox.*width.*height/i);
+    assert.ok(!existsSync(out), 'invalid geometry must not publish output');
+  });
+});
+
 describe('the output set', () => {
   it('produces exactly the promised files and nothing else', async () => {
     const { out } = await DEFAULT_BUILD();

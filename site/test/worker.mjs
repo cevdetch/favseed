@@ -95,6 +95,20 @@ test('worker client forwards progress and ignores stale replies', async () => {
   assert.ok(w.terminated);
 });
 
+test('worker warnings reach the callback without settling the build or accepting stale replies', async () => {
+  const { client, workers } = setup(), warnings = [];
+  const pending = client.build('svg', {}, { onWarn: (w) => warnings.push(w) });
+  const w = workers[0], { id } = w.messages[0];
+  w.reply({ id: id + 99, type: 'warning', message: 'stale' });
+  w.reply({ id, type: 'warning', message: 'outline text' });
+  w.reply({ id, type: 'result', result: result() });
+  assert.deepEqual(await pending, result());
+  assert.deepEqual(warnings, ['outline text']);
+  client.dispose();
+  w.reply({ id, type: 'warning', message: 'late' });
+  assert.deepEqual(warnings, ['outline text']);
+});
+
 test('abort during warmup terminates worker and retry starts a fresh one', async () => {
   const { client, workers } = setup(), controller = new AbortController();
   const warming = client.warm();

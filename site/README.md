@@ -26,8 +26,15 @@ oxipng -q -o max -s --zopfli -a --out public/og.png /tmp/og-q.png
 The browser imports the same `lib/core.mjs`, `lib/config.mjs`, `lib/engine.mjs`, and
 `lib/pipeline.mjs` as the CLI. The host adapters inject native or WASI
 `@napi-rs/image` 1.15.0, the shared rebuilt Google Zopfli WASM, SVGO, and a deflate decoder.
-Matching source, normalized options, and mode produce identical files, links, and placement.
+Matching self-contained source, normalized options, and mode produce identical files, links, and placement.
 The browser includes a manifest by default; the CLI needs `--manifest` to match.
+
+Use self-contained SVGs for raster parity: outline text and embed images. The shared reference
+pass warns about text/font and external-image dependencies without stripping them; native font
+substitution and browser font availability can produce different raster pixels. Root dimensions
+must provide a valid finite viewBox or positive absolute width/height. Browser `onWarn` callbacks
+receive the same guidance as native `onWarn`, including cache replay; the form keeps warnings
+separate from progress/errors and clears them on the next build. No resource fetching is added.
 
 PNG quality defaults to 80. Choose 100 for the higher-fidelity fixed-palette encoding path; lower values trade raster fidelity
 for size using the same native target in both hosts. Set `--quality 80` or `quality: 80` to match

@@ -52,12 +52,14 @@
     async build(source, options) {
       let ticks = 0, maxGap = 0, last = performance.now();
       const timer = setInterval(() => { const now = performance.now(); maxGap = Math.max(maxGap, now - last); last = now; ticks++; }, 20);
-      const start = performance.now(), progress = [];
+      const start = performance.now(), progress = [], warnings = [];
       try {
-        const built = await buildInBrowser(source, options, { onProgress: (e) => progress.push(e) });
+        const built = await buildInBrowser(source, options, {
+          onProgress: (e) => progress.push(e), onWarn: (message) => warnings.push(message),
+        });
         const ms = performance.now() - start;
         checkArchive(built);
-        return { ...(await summary(built)), ms, ticks, maxGap, progress, archiveHash: await hash(built.archive()) };
+        return { ...(await summary(built)), ms, ticks, maxGap, progress, warnings, archiveHash: await hash(built.archive()) };
       } finally { clearInterval(timer); }
     },
     async cache(source, options) {
