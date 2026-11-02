@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Validate Astro options before generation, including typos, unsupported `out`/`base` options
+  and production values masked by fast development. Keep configuration paths lazy and use
+  configuration property names in validation and renderer diagnostics.
 - Serve Astro development icons from memory/cache without editing `public/` or its ownership
   record. Keep production publishing and owned legacy-file cleanup, and retain eight recently
   used verified cache sets while preserving older unverified slots, modified entries and symlinks.

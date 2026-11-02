@@ -72,4 +72,22 @@ describe('lazy build dependencies', () => {
       await pending;
     `);
   });
+
+  it('validates Astro configuration before sync, preview or skipped dev without loading build engines', async () => {
+    await probe(guard(true) + `
+      const {default:favseed} = await import(${JSON.stringify(ASTRO)});
+      for (const options of [{imput:'logo.svg'}, {dev:'fast',sizes:[33]}, {dev:'skip',quality:0}, {mode:'slow'}]) {
+        assert.throws(() => favseed(options), /favseed:/);
+      }
+      const root = new URL('../', ${JSON.stringify(ASTRO)});
+      for (const command of ['sync','preview']) {
+        const integration = favseed({vars:{brand:'#123456'}, manifest:{name:'Example'}});
+        integration.hooks['astro:config:setup']({command,
+          config:{root,publicDir:new URL('public/',root),base:'/blog'},
+          addWatchFile(){throw Error('unexpected watch')},addMiddleware(){throw Error('unexpected middleware')},
+          updateConfig(){throw Error('unexpected config')},logger:{info(){}}
+        });
+      }
+    `);
+  });
 });
