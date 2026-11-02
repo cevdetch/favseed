@@ -58,13 +58,13 @@ export const readSlot = async (cacheDir, key) => {
   return Promise.all(index.files.map(async (name) => ({ name, bytes: new Uint8Array(await readFile(join(slot, name))) })));
 };
 
-/** Writes the files to the slot, whole or not at all. */
-export const writeSlot = async (cacheDir, key, files) => {
+/** Writes the files whole or not at all; Astro supplies hashes for safe cache pruning. */
+export const writeSlot = async (cacheDir, key, files, hashes) => {
   await mkdir(cacheDir, { recursive: true });
   const staging = await mkdtemp(join(cacheDir, '.tmp-'));
   try {
     for (const f of files) await writeFile(join(staging, f.name), f.bytes);
-    await writeFile(join(staging, 'index.json'), JSON.stringify({ files: files.map((f) => f.name) }));
+    await writeFile(join(staging, 'index.json'), JSON.stringify({ files: files.map((f) => f.name), ...(hashes ? { hashes } : {}) }));
     const slot = join(cacheDir, key);
     await rm(slot, { recursive: true, force: true });
     await rename(staging, slot);

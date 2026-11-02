@@ -905,7 +905,7 @@ describe('the published tarball', () => {
     // ERR_MODULE_NOT_FOUND on first run. This assertion is the only thing standing between
     // the split and a broken publish.
     assert.ok(files.includes('lib/core.mjs'), 'lib/core.mjs is missing - the package cannot run');
-    for (const need of ['lib/zopfli.mjs', 'lib/zopfli-build.mjs', 'lib/zopfli.wasm', 'lib/ZOPFLI-LICENSE', 'lib/WASI-LICENSE', 'astro/index.mjs', 'astro/Head.astro', 'vite/index.mjs', 'vite/cache.mjs', 'vite/index.d.mts', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']) {
+    for (const need of ['lib/zopfli.mjs', 'lib/zopfli-build.mjs', 'lib/zopfli.wasm', 'lib/ZOPFLI-LICENSE', 'lib/WASI-LICENSE', 'astro/index.mjs', 'astro/cache.mjs', 'astro/Head.astro', 'vite/index.mjs', 'vite/cache.mjs', 'vite/index.d.mts', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']) {
       assert.ok(files.includes(need), `${need} is missing from the tarball`);
     }
     for (const f of files) {
@@ -1107,11 +1107,12 @@ describe('the astro integration', () => {
       dev: () => integration.hooks['astro:server:setup']({ logger: s.args.logger }) };
   };
 
-  it('removes owned development assets before publishing the production set', async () => {
-    const p = await project();
-    await p.dev();
-    assert.ok(existsSync(join(p.pub, 'icon-256.png')));
+  it('removes legacy owned development assets before publishing the production set', async () => {
+    // Previous releases published the 256px dev set; retain upgrade cleanup coverage.
+    const p = await project({ sizes: [256] });
     await p.build();
+    assert.ok(existsSync(join(p.pub, 'icon-256.png')));
+    await (await project({}, p.root)).build();
     assert.deepEqual(readdirSync(p.pub).sort(),
       ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg']);
     assert.ok(!('icon-256.png' in JSON.parse(readFileSync(p.stamp, 'utf8'))));

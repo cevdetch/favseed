@@ -356,8 +356,9 @@ export default defineConfig({
 })
 ```
 
-That is all of it. The files land in `public/`, the `<link>` tags go into every page that
-does not already have a `<link rel="icon">`, and `config.base` is prefixed for you.
+During `astro build`, the files land in `public/`. During `astro dev`, they are served from
+memory without changing public files or their ownership record. The `<link>` tags go into
+every page that does not already have a `<link rel="icon">`, and `config.base` is prefixed for you.
 
 Options mirror the CLI, except that `sizes` is a real array and `vars` is an object: that is
 what the flags *mean*; the string forms exist only because argv is strings. `manifest` also
@@ -380,16 +381,22 @@ favseed({
 heuristic: keyed on favseed's version, the input bytes, the canonicalised options **and the
 versions of `@napi-rs/image` and Zopfli (including the WASM build hash)**. That last part is what makes it correct:
 both change their output across releases, so a cache keyed only on the SVG would hand back
-stale files after an upgrade, with no sign of it. A hit copies cached files into `public/`.
+stale files after an upgrade, with no sign of it. A production hit copies cached files into `public/`;
+a development hit loads them into memory.
 Published files are independent copies, so editing them cannot change cached output.
+After a successful activation or publication, Astro retains eight recently used complete
+cache sets with verified integrity metadata, including the current verified set. Ownership
+records, staging directories, symlinks, modified or unrecognized entries, and older slots
+without integrity metadata are preserved. Older slots remain readable. An evicted set is rebuilt when needed.
 
 Build dependencies load on demand: Astro configuration, `sync`, `preview`, and `dev: 'skip'`
 avoid the Node build module. CLI help/version and early option validation skip SVGO; the synchronous
 SVG helper initializes it on first use. Generated icons and cache identity are unchanged.
 
 For a cold first run, `dev: 'fast'` (the default) builds one 256 px size. With Zopfli opted in,
-it uses 15 iterations; otherwise it skips extra compression. `dev: 'full'` generates the
-production set.
+it uses 15 iterations; otherwise it skips extra compression. `dev: 'full'` serves the
+production set from memory. Both leave `public/` unchanged; `dev: 'skip'` serves no generated assets.
+An edited or foreign public asset is left to Astro to serve, including when added after startup.
 
 **Head tags.** Astro has no official head-injection hook. All four `injectScript` stages are
 JavaScript, and a `<link rel="icon">` written by a script is found after the browser has
@@ -413,12 +420,13 @@ After a clean checkout or removal of `node_modules/.cache/favseed`, identical ge
 are accepted without the record. Differing files cannot be distinguished from user edits:
 back up and move only the generated files you intend to replace, then rebuild. A cache reset
 alone cannot establish ownership. Keep generated assets out of version control and generate
-them during builds, or use `dev: 'full'` when committing outputs to avoid the default
-development/production set differences. Changed source, options or engine versions can still
+them during production builds; use `astro build` to refresh outputs you commit. Changed source,
+options or engine versions can still
 require this deliberate recovery when the ownership record is missing.
 
-Changing sizes, disabling the manifest or switching from development to production removes
-discontinued generated files before Astro copies `public/` into its output. This also works
+Changing production sizes or disabling the manifest removes discontinued generated files
+before Astro copies `public/` into its output, including owned leftovers from older releases'
+development builds. This also works
 on cache hits. Favseed removes only regular files whose bytes match its previous ownership
 record; it preserves edited files, symlinks and unrelated assets. Files with no ownership
 record, including older leftovers whose record is already lost, need manual cleanup.
