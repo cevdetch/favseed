@@ -390,8 +390,11 @@ production set.
 **Head tags.** Astro has no official head-injection hook. All four `injectScript` stages are
 JavaScript, and a `<link rel="icon">` written by a script is found after the browser has
 already asked for `/favicon.ico`. So `head: 'inject'` (the default) is an `order: 'post'`
-middleware that splices before `</head>` and skips any page that already has a
-`<link rel="icon">`. `head: 'component'` gives you `favseed/astro/Head.astro` to place yourself, and
+middleware that splices before `</head>` and skips any page whose head already has a
+`<link rel="icon">`. It buffers at most 64 KiB until the closing head, then streams the rest
+of the response. If the closing head is missing or exceeds that limit, it passes the HTML
+through unchanged; use the component or manual tags for those pages.
+`head: 'component'` gives you `favseed/astro/Head.astro` to place yourself, and
 `head: false` logs the block for pasting. `head: true` is an alias for `'inject'`.
 
 **Migrating an Astro starter.** Back up and move its existing `public/favicon.ico` and
