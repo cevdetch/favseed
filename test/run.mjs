@@ -91,6 +91,19 @@ describe('SVG input diagnostics in the CLI', () => {
     assert.match(r.stderr, /unsized\.svg.*viewBox.*width.*height/i);
     assert.ok(!existsSync(out), 'invalid geometry must not publish output');
   });
+
+  it('rejects malformed viewBoxes without publishing even when SVGO could normalize them', async () => {
+    const root = freshDir();
+    mkdirSync(root, { recursive: true });
+    for (const [i, box] of [',0 64 64', '0 0 0x40 64', '0 0 64,,64'].entries()) {
+      const input = join(root, `malformed-${i}.svg`), out = join(root, `out-${i}`);
+      writeFileSync(input, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`);
+      const r = await cli(['--bg', '#fff', '-o', out, input]);
+      assert.equal(r.code, 1, box);
+      assert.match(r.stderr, /viewBox.*width.*height/i);
+      assert.ok(!existsSync(out), 'malformed source must not publish output');
+    }
+  });
 });
 
 describe('the output set', () => {

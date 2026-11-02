@@ -251,6 +251,8 @@ static declarations. CSS variable overrides such as `--var brand=#7C0E68` still 
 Give the root SVG a valid `viewBox`, or positive numeric width and height from which one can
 be derived. Percentage-only dimensions need an explicit `viewBox`. Missing, non-finite,
 zero or negative root sizes fail with guidance before source rasterization and output writes.
+The root `viewBox` must contain four decimal or exponent numbers separated by whitespace
+or single commas; missing values, hexadecimal tokens and repeated commas are rejected.
 
 Text and external images produce warnings in the CLI/API and browser. Fonts can differ or
 be missing between native and browser rendering, so convert text to paths for consistent

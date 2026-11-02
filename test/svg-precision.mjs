@@ -49,6 +49,32 @@ describe('SVG input diagnostics', () => {
     }
   });
 
+  it('rejects malformed viewBox tokens and separators before source rendering', async () => {
+    for (const box of [',0 64 64', '0 0 64 64,', '0 0 64,,64', '0 0, ,64 64',
+      '0 0 0x40 64', '0 0 0b1000000 64', '0 0 0o100 64', '0 0 64px 64',
+      '0 0 6e 64', '0 0 + 64', '0 0 64.0.0 64', '0 0 64 64 64',
+      '0\u00a00 64 64', '\u00a00 0 64 64', '0 0 64 64\u00a0']) {
+      const source = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`;
+      await assert.rejects(select(source, { renderRgba: () => { throw new Error('source renderer reached'); } }),
+        /precision\.svg.*viewBox.*width.*height/i, box);
+    }
+  });
+
+  it('keeps signed decimals, exponents and mixed SVG separators pixel-identical', async () => {
+    for (const [box, canonical] of [
+      ['+0,-0,+6.4e1,64.0', '0 0 64 64'],
+      [' \t0 , 0\r\n64, 64 ', '0 0 64 64'],
+      ['-.5,+.25,6.4E+1,640e-1', '-0.5 0.25 64 64'],
+      ['0 0 64. 64.', '0 0 64 64'],
+    ]) {
+      const source = (value) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${value}"><circle cx="32" cy="32" r="20"/></svg>`;
+      const reference = optimiseSvg(source(box), { reference: true }).data;
+      const actual = await engine.renderRgba(reference, 512), expected = await engine.renderRgba(source(canonical), 512);
+      assert.equal(Buffer.compare(Buffer.from(actual.rgba), Buffer.from(expected.rgba)), 0, box);
+      assert.ok((await select(source(box))).pixels.rgba.some((value, index) => index % 4 === 3 && value > 0));
+    }
+  });
+
   it('emits dependency guidance once even when accuracy needs multiple SVG candidates', async () => {
     const warnings = [], precisions = [];
     const source = gridSvg(1).replace('</svg>', '<defs><text>unused font</text><image href="missing.png"/></defs></svg>');

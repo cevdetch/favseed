@@ -114,6 +114,13 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   await expect(page.locator('output')).toContainText('add a viewBox');
   await expect(page.locator('#warnings')).toBeHidden();
   expect(await downloads(page)).toEqual(previous);
+  for (const box of [',0 64 64', '0 0 0x40 64', '0 0 64,,64']) {
+    await page.locator('input[name=file]').setInputFiles({ name: 'malformed.svg', mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`) });
+    await generate.click();
+    await expect(page.locator('output')).toContainText('add a viewBox');
+    expect(await downloads(page)).toEqual(previous);
+  }
   await page.locator('input[name=file]').setInputFiles(fixture('flat'));
   await generate.click();
   await expect(page.locator('output')).toHaveText(/^Done in/);

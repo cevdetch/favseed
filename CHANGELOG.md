@@ -11,6 +11,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Reject malformed root viewBox number lists before source rendering or output writes,
+  including missing values, hexadecimal numbers and repeated commas. Retain supported signed
+  decimal/exponent notation and whitespace/comma separators. Bump to 0.8.0 for shared-pipeline
+  cache invalidation; valid output bytes remain unchanged.
 - Diagnose SVG text/font and external-image dependencies in the shared reference pass, and
   show the same guidance in CLI/API and browser, including cached browser builds. Preserve
   source content; outline text and embed images for consistent raster results across hosts.
