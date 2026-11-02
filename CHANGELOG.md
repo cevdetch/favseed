@@ -11,6 +11,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Make Astro `head: true` an alias for automatic injection and include it in the public types.
+  Report actual paths and ownership-recovery steps for asset conflicts, including starter
+  favicon links and clean checkouts with missing ownership metadata. Existing files remain
+  protected; generated image bytes are unchanged.
 - Remove discontinued Astro-generated sizes, manifests and owned legacy SVGs from `public/`,
   including on cache hits and development-to-production transitions. Delete only unchanged
   regular files recorded as owned; preserve edited files, symlinks and unrelated assets.

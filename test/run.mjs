@@ -1131,7 +1131,7 @@ describe('the astro integration', () => {
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
-    await assert.rejects(first.build(), /public\/icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'user-edited icon');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1154,7 +1154,7 @@ describe('the astro integration', () => {
     writeFileSync(edited, 'legacy user edit');
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
-    await assert.rejects(first.build(), /public\/icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'legacy user edit');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1167,7 +1167,7 @@ describe('the astro integration', () => {
     const before = readdirSync(first.pub).sort().map((name) => [name, readFileSync(join(first.pub, name))]);
     const stamp = readFileSync(first.stamp);
     const second = await project({ sizes: [64] }, first.root);
-    await assert.rejects(second.build(), /public\/icon-64\.png already exists/);
+    await assert.rejects(second.build(), /public[\\\/]icon-64\.png already exists/);
     assert.deepEqual(readdirSync(second.pub).sort().map((name) => [name, readFileSync(join(second.pub, name))]), before);
     assert.deepEqual(readFileSync(second.stamp), stamp);
   });
@@ -1255,6 +1255,22 @@ describe('the astro integration', () => {
     assert.match(links, /\/blog\/apple-touch-icon\.png/);
     assert.match(links, /sizes=\\"48x48\\"/);
     assert.ok(!links.includes('logo.svg'), 'logo.svg must not be linked');
+  });
+
+  it('head: true registers the same injection as the default and inject', async () => {
+    for (const options of [{}, { head: 'inject' }, { head: true }]) {
+      const s = stub(freshDir());
+      await favseedAstro(options).hooks['astro:config:setup']({ command: 'build', ...s.args });
+      assert.deepEqual(s.calls.middleware, [{ entrypoint: 'favseed/astro/middleware', order: 'post' }]);
+    }
+  });
+
+  it('head: component exposes the links without registering injection or logging a paste block', async () => {
+    const s = stub(freshDir());
+    await favseedAstro({ head: 'component' }).hooks['astro:config:setup']({ command: 'build', ...s.args });
+    assert.deepEqual(s.calls.middleware, []);
+    assert.match(linksFrom(s.calls), /favicon\.ico/);
+    assert.deepEqual(s.calls.logs, []);
   });
 
   it('head: false logs the block instead of registering middleware', async () => {
@@ -1345,6 +1361,48 @@ describe('the astro integration', () => {
 
       await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
       await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }),
-        /public\/favicon\.ico already exists and favseed did not write it/);
+        /public[\\\/]favicon\.ico already exists and differs from the generated file/);
     });
+
+  it('names custom public paths and starter recovery without changing conflicting files', async () => {
+    const root = freshDir(), pub = join(root, 'static');
+    mkdirSync(pub, { recursive: true });
+    copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
+    const ico = Buffer.from('starter ICO'), svg = readFileSync(fixture('flat.svg'));
+    writeFileSync(join(pub, 'favicon.ico'), ico);
+    writeFileSync(join(pub, 'favicon.svg'), svg);
+    const s = stub(root);
+    s.args.config.publicDir = pathToFileURL(pub + '/');
+    const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
+    await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
+    await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }), (error) => {
+      assert.ok(error instanceof FavseedError);
+      assert.ok(error.message.includes(join(pub, 'favicon.ico')));
+      assert.ok(error.message.includes(join(pub, 'favicon.svg')));
+      assert.match(error.message, /back up|backup/i);
+      assert.match(error.message, /<link rel="icon">/);
+      return true;
+    });
+    assert.deepEqual(readFileSync(join(pub, 'favicon.ico')), ico);
+    assert.deepEqual(readFileSync(join(pub, 'favicon.svg')), svg);
+    assert.deepEqual(readdirSync(pub).sort(), ['favicon.ico', 'favicon.svg']);
+  });
+
+  it('explains lost ownership when changed generated files survive a clean checkout', async () => {
+    const first = await project({ sizes: [32], bg: '#fff' });
+    await first.build();
+    const before = Object.fromEntries(readdirSync(first.pub).map((name) => [name, readFileSync(join(first.pub, name))]));
+    rmSync(join(first.root, 'node_modules'), { recursive: true, force: true });
+    const second = await project({ sizes: [32], bg: '#123456' }, first.root);
+    await assert.rejects(second.build(), (error) => {
+      assert.ok(error instanceof FavseedError);
+      assert.match(error.message, /ownership/i);
+      assert.match(error.message, /record.*missing|missing.*record/i);
+      assert.match(error.message, /back up|backup/i);
+      assert.ok(!error.message.includes('did not write it'), 'metadata loss is not proof of a foreign file');
+      return true;
+    });
+    assert.deepEqual(Object.fromEntries(readdirSync(second.pub).map((name) => [name, readFileSync(join(second.pub, name))])), before);
+    assert.ok(!existsSync(second.stamp), 'failed preflight must not adopt files');
+  });
 });

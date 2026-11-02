@@ -354,7 +354,7 @@ favseed({
   bg: '#0E1C28',     // the padded icons' ground; also a good background_color below
   manifest: { name: 'Example', short_name: 'Ex', theme_color: '#0E7C68', background_color: '#0E1C28' },
   dev: 'fast',       // 'fast' | 'full' | 'skip'
-  head: 'inject',    // 'inject' | 'component' | false
+  head: 'inject',    // true | 'inject' | 'component' | false
 })
 ```
 
@@ -374,11 +374,23 @@ JavaScript, and a `<link rel="icon">` written by a script is found after the bro
 already asked for `/favicon.ico`. So `head: 'inject'` (the default) is an `order: 'post'`
 middleware that splices before `</head>` and skips any page that already has a
 `<link rel="icon">`. `head: 'component'` gives you `favseed/astro/Head.astro` to place yourself, and
-`head: false` logs the block for pasting.
+`head: false` logs the block for pasting. `head: true` is an alias for `'inject'`.
 
-favseed **will not overwrite a `public/favicon.ico` it did not write itself.** Clobbering a
-hand-tuned ICO without a word is the worst possible first impression, so the check is on
-content: delete or move the file, and favseed writes its own.
+**Migrating an Astro starter.** Back up and move its existing `public/favicon.ico` and
+`public/favicon.svg` if you want favseed to replace them, and remove their old
+`<link rel="icon">` tags from your layout or pages. Existing icon declarations make automatic
+injection skip the page. If you keep manual tags, update them to favseed's generated URLs
+and choose `head: 'component'` or `head: false` as appropriate.
+
+favseed will not overwrite a differing file unless its hash matches the previous ownership
+record. The error names the actual asset path, including a custom Astro `publicDir`.
+After a clean checkout or removal of `node_modules/.cache/favseed`, identical generated files
+are accepted without the record. Differing files cannot be distinguished from user edits:
+back up and move only the generated files you intend to replace, then rebuild. A cache reset
+alone cannot establish ownership. Keep generated assets out of version control and generate
+them during builds, or use `dev: 'full'` when committing outputs to avoid the default
+development/production set differences. Changed source, options or engine versions can still
+require this deliberate recovery when the ownership record is missing.
 
 Changing sizes, disabling the manifest or switching from development to production removes
 discontinued generated files before Astro copies `public/` into its output. This also works
