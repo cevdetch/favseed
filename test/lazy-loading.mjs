@@ -45,10 +45,11 @@ describe('lazy build dependencies', () => {
   it('loads Astro configuration, sync, preview and dev:skip without the Node build module', async () => {
     await probe(guard(true) + `
       const { default: favseed } = await import(${JSON.stringify(ASTRO)});
+      const root = new URL(${JSON.stringify(new URL('../unused/', import.meta.url).href)});
       for (const command of ['sync', 'preview', 'dev', 'build']) {
         const integration = favseed({dev:'skip'});
         integration.hooks['astro:config:setup']({command,
-          config:{root:new URL('file:///unused/'),publicDir:new URL('file:///unused/public/'),base:'/blog'},
+          config:{root,publicDir:new URL('public/',root),base:'/blog'},
           addWatchFile(){},addMiddleware(){},updateConfig(){},logger:{info(){}}
         });
         await integration.hooks['astro:server:setup']({logger:{warn(){}}});
