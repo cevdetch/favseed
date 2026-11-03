@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Add `pnpm --filter favseed-site icons` to rebuild the site's icons from a committed source
+  SVG and config. Regenerate opaque, safe-zone-padded PNGs on the existing Apple ground,
+  declare them `any maskable`, and retain site metadata, animation and the transparent 48px ICO.
 - Add a browser copy button for generated head markup, with keyboard/touch access, polite
   success/failure feedback and manual guidance when clipboard access is unavailable. Keep
   previous downloads usable and ignore copy feedback from older generated results.
