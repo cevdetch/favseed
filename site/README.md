@@ -182,6 +182,18 @@ manifest/animation options. It also checks cache ownership, ZIP downloads, page 
 cancellation/retry, a 1024px raster after shared-memory growth, failure preservation, missing
 document/worker isolation and touch controls at a 320 px viewport. The document and worker
 both validate their own WASM requirements.
+`test/page.spec.mjs` checks homepage title/description, canonical/Open Graph/JSON-LD
+consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.
+It also guards cold startup before SVG selection, including form edits and a rejected PNG:
+no workers or engine/WASM requests, at most 5 KiB gzipped HTML, 4 KiB gzipped JavaScript,
+8 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. Actual responses include
+imports and preloads; each body is compressed separately with gzip level 9. Inline CSS is
+already included in HTML for the combined budget. Images, headers and protocol overhead are
+excluded; these are reproducible size comparisons, not Cloudflare transfer measurements or
+load-time guarantees. The test attaches resource sizes and totals, then selects an SVG and
+verifies that the engine loads and generation succeeds. The pre-selection observation ends
+after settled network activity; it does not detect arbitrarily delayed background work.
+
 Copy-control checks cover keyboard/touch activation, exact text, rejection/retry, missing API
 and stale requests. Chromium projects also verify a real clipboard round trip with test-only
 permissions; other projects control API responses to verify the UI independently of OS permissions.
