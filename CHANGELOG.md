@@ -28,6 +28,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Refresh Astro 7 incremental HTML when generated favicon links or automatic head injection
+  change, while retaining eligible cached pages for unchanged head behavior and icon-only
+  updates. Verify actual first installation through `astro add` from an independent project
+  where Favseed is initially absent. Generated image bytes are unchanged.
 - Reject missing CLI option values before a following recognized flag or `--`, while
   preserving inline literal values and dash-prefixed CSS assignments. Add a prefixed
   missing-input diagnostic and explain explicit padding with transparent output, including

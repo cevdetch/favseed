@@ -1427,6 +1427,27 @@ describe('the astro integration', () => {
     assert.equal(plugin.configEnvironment('client', { consumer: 'client', resolve: {} }), undefined);
   });
 
+  it('invalidates incremental head HTML only for effective head changes during builds', async () => {
+    const definitions = async (options, command = 'build', incremental = true) => {
+      const s = stub(freshDir());
+      s.args.config.experimental = { incrementalBuild: incremental };
+      s.args.config.vite = { define: { __AUTHOR_VALUE__: '"kept"' } };
+      await favseedAstro(options).hooks['astro:config:setup']({ command, ...s.args });
+      assert.deepEqual(s.args.config.vite.define, { __AUTHOR_VALUE__: '"kept"' });
+      return Object.assign({}, ...s.calls.configs.map((config) => config.vite?.define));
+    };
+    const initial = await definitions({ manifest: true });
+    assert.notDeepEqual(initial, {}, 'incremental head behavior must participate in the config hash');
+    assert.deepEqual(await definitions({ manifest: true, head: true }), initial);
+    assert.deepEqual(await definitions({ manifest: { name: 'Changed metadata' }, sizes: [64] }), initial);
+    assert.notDeepEqual(await definitions({ manifest: false }), initial);
+    const manual = await definitions({ manifest: true, head: false });
+    assert.notDeepEqual(manual, initial);
+    assert.deepEqual(await definitions({ manifest: true, head: 'component' }), manual);
+    for (const command of ['dev', 'sync', 'preview']) assert.deepEqual(await definitions({}, command), {});
+    assert.deepEqual(await definitions({}, 'build', false), {});
+  });
+
   it('head: true registers the same injection as the default and inject', async () => {
     for (const options of [{}, { head: 'inject' }, { head: true }]) {
       const s = stub(freshDir());

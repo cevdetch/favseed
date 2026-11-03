@@ -83,6 +83,7 @@ const project = async (settings = {}) => {
   const root = await mkdtemp(join(workspace, 'project '));
   await cp(join(fixture, 'astro.config.mjs'), join(root, 'astro.config.mjs'));
   await cp(join(fixture, 'src'), join(root, 'src'), { recursive: true });
+  if (settings.incremental) await cp(join(fixture, 'incremental'), join(root, 'src/pages/incremental'), { recursive: true });
   if (settings.ssr) await cp(join(fixture, 'ssr'), join(root, 'src'), { recursive: true });
   await cp(join(repo, 'test/fixtures/flat.svg'), join(root, 'src/logo.svg'));
   await writeFile(join(root, 'package.json'), '{"private":true,"type":"module"}');
@@ -163,7 +164,22 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       '--moduleResolution', 'NodeNext', '--pretty', 'false', 'consumer.mts'], root);
   });
 
-  it('builds the config written by astro add using the packed package and default input', async (t) => {
+  it('installs Favseed into a clean Astro project and builds the generated config with default input', async (t) => {
+    // A sibling of the shared consumer cannot inherit its installed Favseed.
+    const root = await mkdtemp(join(tmpdir(), 'favseed Astro first install '));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const host = await json(join(fixture, 'package.json'));
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      name: 'favseed-first-install', private: true, type: 'module',
+      dependencies: { astro: host.dependencies.astro,
+        vite: (await json(join(workspace, 'node_modules/vite/package.json'))).version },
+    }));
+    await command('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-package-lock'], root);
+    assert.equal((await json(join(root, 'package.json'))).dependencies.favseed, undefined);
+    const require = createRequire(pathToFileURL(join(root, 'package.json')));
+    assert.throws(() => require.resolve('favseed'), { code: 'MODULE_NOT_FOUND' });
+    const freshInstalled = join(root, 'node_modules/favseed');
+    await assert.rejects(lstat(freshInstalled), { code: 'ENOENT' });
     const pkg = await json(join(installed, 'package.json')), bytes = await readFile(tarball);
     let origin;
     // Only this unpublished package is served locally. Existing dependencies still
@@ -190,33 +206,82 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     });
     t.after(() => new Promise((resolve, reject) => registry.close((error) => error ? reject(error) : resolve())));
     origin = `http://127.0.0.1:${registry.address().port}`;
-    const configPath = join(workspace, 'astro.config.mjs');
+    const configPath = join(root, 'astro.config.mjs');
     await writeFile(configPath, `import { defineConfig } from 'astro/config';\nexport default defineConfig({ base: '/blog/' });\n`);
-    await mkdir(join(workspace, 'src/pages'), { recursive: true });
-    await cp(join(repo, 'test/fixtures/flat.svg'), join(workspace, 'src/logo.svg'));
-    await writeFile(join(workspace, 'src/pages/index.astro'), '<html><head><title>Automatic installation</title></head><body>Example</body></html>');
-    const astroPackage = await json(join(workspace, 'node_modules/astro/package.json'));
-    const cli = join(workspace, 'node_modules/astro', astroPackage.bin.astro);
+    await mkdir(join(root, 'src/pages'), { recursive: true });
+    await cp(join(repo, 'test/fixtures/flat.svg'), join(root, 'src/logo.svg'));
+    await writeFile(join(root, 'src/pages/index.astro'), '<html><head><title>Automatic installation</title></head><body>Example</body></html>');
+    const astroPackage = await json(join(root, 'node_modules/astro/package.json'));
+    const cli = join(root, 'node_modules/astro', astroPackage.bin.astro);
     const env = { npm_config_registry: origin, npm_config_ignore_scripts: 'true',
       npm_config_audit: 'false', npm_config_fund: 'false', npm_config_package_lock: 'false' };
-    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], workspace, env);
+    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], root, env);
+    assert.equal((await json(join(root, 'package.json'))).dependencies.favseed, `^${pkg.version}`);
+    assert.equal((await lstat(freshInstalled)).isSymbolicLink(), false);
+    assert.equal(await realpath(freshInstalled), freshInstalled);
+    for (const name of ['bin/index.mjs', 'astro/index.mjs']) {
+      assert.deepEqual(await readFile(join(freshInstalled, name)), await readFile(join(installed, name)),
+        `installer must acquire the packed ${name}`);
+    }
     const config = await readFile(configPath, 'utf8');
     assert.match(config, /import favseed from ["']favseed["']/);
     assert.match(config, /integrations:\s*\[favseed\(\)\]/);
-    await command(process.execPath, [cli, 'build'], workspace);
+    await command(process.execPath, [cli, 'build'], root);
     const names = ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg'];
-    assert.deepEqual((await readdir(join(workspace, 'public'))).sort(), names);
-    await command(process.execPath, [join(installed, 'bin/favseed.mjs'), 'src/logo.svg', '--out', 'cli-output', '--quiet'], workspace);
+    assert.deepEqual((await readdir(join(root, 'public'))).sort(), names);
+    await command(process.execPath, [join(freshInstalled, 'bin/favseed.mjs'), 'src/logo.svg', '--out', 'cli-output', '--quiet'], root);
     for (const name of names) {
-      const expected = await readFile(join(workspace, 'cli-output', name));
-      assert.deepEqual(await readFile(join(workspace, 'dist', name)), expected, name);
+      const expected = await readFile(join(root, 'cli-output', name));
+      assert.deepEqual(await readFile(join(root, 'dist', name)), expected, name);
     }
-    const html = await readFile(join(workspace, 'dist/index.html'), 'utf8');
+    const html = await readFile(join(root, 'dist/index.html'), 'utf8');
     for (const name of ['favicon.ico', 'icon.svg', 'apple-touch-icon.png']) {
       assert.equal(html.split(`href="/blog/${name}"`).length - 1, 1, html);
     }
-    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], workspace, env);
+    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], root, env);
     assert.equal(await readFile(configPath, 'utf8'), config, 'repeat installation changed the config');
+  });
+
+  it('reuses incremental HTML until effective favicon head behavior changes', async () => {
+    const p = await project({ incremental: true });
+    const output = join(p.root, 'dist/incremental/cached/index.html');
+    const build = async (inject = true, manifest = true) => {
+      await p.build();
+      const html = await readFile(output, 'utf8');
+      assert.match(html, /data-user="kept"/, 'user Vite defines must survive');
+      for (const name of ['favicon.ico', 'icon.svg', 'apple-touch-icon.png', 'site.webmanifest']) {
+        const expected = inject && (name !== 'site.webmanifest' || manifest) ? 1 : 0;
+        assert.equal(html.split(`href="/blog/${name}"`).length - 1, expected, `${name} in ${html}`);
+      }
+      const marker = html.match(/data-render="([^"]+)"/)?.[1];
+      assert.ok(marker, html);
+      return marker;
+    };
+    const configure = (options) => writeFile(join(p.root, 'settings.json'), JSON.stringify({ incremental: true, ...options }));
+    const first = await build();
+    assert.equal(await build(), first, 'unchanged page must actually reuse cached HTML');
+    await configure({ manifest: false });
+    const withoutManifest = await build(true, false);
+    assert.notEqual(withoutManifest, first, 'manifest link changes must render fresh HTML');
+    await assert.rejects(readFile(join(p.pub, 'site.webmanifest')), { code: 'ENOENT' });
+    assert.equal(await build(true, false), withoutManifest, 'new head must be reusable');
+    await configure({ manifest: true });
+    const withManifest = await build();
+    assert.notEqual(withManifest, withoutManifest);
+    await configure({ manifest: true, head: true });
+    assert.equal(await build(), withManifest, 'true and inject are equivalent');
+    await configure({ manifest: true, head: false });
+    const manual = await build(false);
+    assert.notEqual(manual, withManifest, 'disabling automatic tags must discard old HTML');
+    await configure({ manifest: true, head: 'component' });
+    assert.equal(await build(false), manual, 'non-injecting modes have the same automatic head behavior');
+    await configure({ manifest: true, head: 'inject' });
+    const automatic = await build();
+    assert.notEqual(automatic, manual);
+    const oldSvg = await readFile(join(p.pub, 'icon.svg'));
+    await cp(join(repo, 'test/fixtures/second.svg'), join(p.root, 'src/logo.svg'));
+    assert.equal(await build(), automatic, 'changed icon bytes with identical head URLs must retain cached HTML');
+    assert.notDeepEqual(await readFile(join(p.pub, 'icon.svg')), oldSvg);
   });
 
   it('builds the packed CLI bytes, resolves both head paths and reuses/prunes cache through Astro', async () => {

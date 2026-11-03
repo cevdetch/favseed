@@ -35,8 +35,12 @@ and streaming SSR responses. The stream body waits for an explicit release reque
 test proves head delivery before the body completes. It also type-checks the public `favseed`,
 `favseed/vite` and `favseed/astro` imports under NodeNext and bundler resolution, accepting
 valid options and verifying every intentional invalid call's compiler diagnostic.
-It also runs `astro add favseed` against locally served packed-package metadata, builds
-the config it writes with the default `src/logo.svg`, and checks repeat installation.
+It also runs `astro add favseed` in an independent Astro project that initially cannot
+resolve Favseed, against locally served packed-package metadata. It checks actual
+installation, builds the config it writes with the default `src/logo.svg`, and checks repeat
+installation. A dynamic incremental route with a stable `cacheKey` proves unchanged HTML
+is reused and refreshed when manifest links or automatic injection change, while icon-only
+updates and equivalent head modes retain reuse. An existing user Vite define remains intact.
 The installer and npm run normally; lifecycle scripts stay disabled and no package is published.
 Servers and temporary files are cleaned
 up after success or failure. This does not expand the published Astro peer range.
