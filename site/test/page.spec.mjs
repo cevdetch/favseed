@@ -1,0 +1,145 @@
+import { test, expect } from '@playwright/test';
+import { gzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
+import { header } from '../../test/lib/png.mjs';
+
+const canonical = 'https://favseed.cevdet.ch/';
+const fixture = fileURLToPath(new URL('../../test/fixtures/tiles.svg', import.meta.url));
+
+test('homepage metadata agrees with the canonical URL and served share image', async ({ page, request }) => {
+  await page.goto('/');
+  const head = page.locator('head');
+  const attribute = async (selector, name = 'content') => {
+    const element = head.locator(selector);
+    await expect(element).toHaveCount(1);
+    const value = await element.getAttribute(name);
+    expect(value?.trim()).toBeTruthy();
+    return value;
+  };
+  await expect(head.locator('title')).toHaveCount(1);
+  const title = await page.title();
+  expect(title.trim()).toBeTruthy();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect((await attribute('meta[charset]', 'charset')).toLowerCase()).toBe('utf-8');
+  expect(await attribute('meta[name=viewport]')).toBe('width=device-width, initial-scale=1');
+  const description = await attribute('meta[name=description]');
+  expect(await attribute('link[rel=canonical]', 'href')).toBe(canonical);
+  expect(await attribute('meta[property="og:url"]')).toBe(canonical);
+  expect(await attribute('meta[property="og:title"]')).toBe(title);
+  expect(await attribute('meta[property="og:description"]')).toBe(description);
+  expect(await attribute('meta[property="og:type"]')).toBe('website');
+  const name = await attribute('meta[property="og:site_name"]');
+  await expect(head.locator('meta[name=robots]')).toHaveCount(0);
+  const schema = head.locator('script[type="application/ld+json"]');
+  await expect(schema).toHaveCount(1);
+  expect(JSON.parse(await schema.textContent())).toMatchObject({
+    '@context': 'https://schema.org', '@type': 'WebSite',
+    name, url: canonical, description, inLanguage: 'en',
+  });
+
+  const image = new URL(await attribute('meta[property="og:image"]'));
+  expect(image.origin).toBe(new URL(canonical).origin);
+  expect(image.pathname).toMatch(/\.png$/);
+  // Exercise this build's asset, without making a request to production.
+  const response = await request.get(image.pathname + image.search);
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^image\/png\b/);
+  expect(header(await response.body())).toMatchObject({ width: 1200, height: 630 });
+});
+
+for (const path of ['/check', '/404']) {
+  test(`${path} stays noindex without a canonical URL`, async ({ page }) => {
+    await page.goto(path);
+    const robots = page.locator('head meta[name=robots]');
+    await expect(robots).toHaveCount(1);
+    expect((await robots.getAttribute('content')).split(/[\s,]+/)).toContain('noindex');
+    await expect(page.locator('head link[rel=canonical]')).toHaveCount(0);
+  });
+}
+
+test('cold startup stays small and defers engine loading until SVG selection', async ({ page }, testInfo) => {
+  const responses = [], requests = [], workers = [];
+  const pending = new Set();
+  let lastActivity = 0;
+  const onResponse = (response) => responses.push(response);
+  const onRequest = (request) => {
+    requests.push(request.url());
+    pending.add(request);
+    lastActivity = Date.now();
+  };
+  const onFinished = (request) => {
+    pending.delete(request);
+    lastActivity = Date.now();
+  };
+  const settled = async () => {
+    // Start a fresh quiet interval: navigation's networkidle can already be satisfied.
+    lastActivity = Date.now();
+    await expect.poll(() => pending.size === 0 && Date.now() - lastActivity >= 500,
+      { message: 'Startup network settles', timeout: 10_000 }).toBe(true);
+  };
+  page.on('response', onResponse);
+  page.on('request', onRequest);
+  page.on('requestfinished', onFinished);
+  page.on('requestfailed', onFinished);
+  page.on('worker', (worker) => workers.push(worker.url()));
+  await page.goto('/');
+  // A bounded settled-load observation, not a timing/performance benchmark.
+  await settled();
+  await page.locator('input[name=quality]').fill('100');
+  await expect(page.locator('input[name=colors]')).toBeEnabled();
+  await page.locator('input[name=quality]').fill('80');
+  await expect(page.locator('input[name=colors]')).toBeDisabled();
+  await page.locator('input[name=sizes]').fill('32');
+  await page.locator('input[name=file]').setInputFiles({
+    name: 'not-an-svg.png', mimeType: 'image/png', buffer: Buffer.from('not an SVG'),
+  });
+  await expect(page.locator('output')).toHaveText('That is not an SVG.');
+  await settled();
+  page.off('response', onResponse);
+  page.off('request', onRequest);
+  page.off('requestfinished', onFinished);
+  page.off('requestfailed', onFinished);
+  expect(workers, 'No workers before SVG selection').toEqual([]);
+  expect(requests.filter((url) => /(?:pipeline|engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
+    'No engine or WASM requests before SVG selection').toEqual([]);
+
+  // Include imported/preloaded resources, not just scripts linked in HTML.
+  const resources = [];
+  for (const response of responses) {
+    const type = response.request().resourceType();
+    const mime = response.headers()['content-type'] ?? '';
+    const kind = type === 'document' || mime.includes('text/html') ? 'html'
+      : type === 'script' || /(?:java|ecma)script/.test(mime) ? 'js'
+        : type === 'stylesheet' || mime.includes('text/css') ? 'css' : undefined;
+    if (!kind) continue;
+    expect(response.status(), response.url()).toBe(200);
+    const bytes = await response.body();
+    resources.push({ url: response.url(), kind, raw: bytes.length, gzip: gzipSync(bytes, { level: 9 }).length });
+  }
+  const inlineCSS = await page.locator('style').allTextContents();
+  const sum = (kind, field) => resources.filter((resource) => resource.kind === kind)
+    .reduce((total, resource) => total + resource[field], 0);
+  const totals = {
+    htmlGzip: sum('html', 'gzip'), jsGzip: sum('js', 'gzip'),
+    totalGzip: resources.reduce((total, resource) => total + resource.gzip, 0),
+    cssRaw: sum('css', 'raw') + inlineCSS.reduce((total, css) => total + Buffer.byteLength(css), 0),
+  };
+  await testInfo.attach('startup-budget', {
+    body: JSON.stringify({ totals, resources }, null, 2), contentType: 'application/json',
+  });
+  expect(totals.htmlGzip).toBeGreaterThan(0);
+  expect(totals.jsGzip).toBeGreaterThan(0);
+  expect(totals.htmlGzip, 'HTML gzip budget').toBeLessThanOrEqual(5 * 1024);
+  expect(totals.jsGzip, 'JS gzip budget').toBeLessThanOrEqual(4 * 1024);
+  expect(totals.totalGzip, 'HTML + JS + CSS gzip budget').toBeLessThanOrEqual(8 * 1024);
+  expect(totals.cssRaw, 'Inline + external CSS raw budget').toBeLessThanOrEqual(5 * 1024);
+
+  // Prove the same page can observe and run the engine after a valid selection.
+  const worker = page.waitForEvent('worker');
+  const wasm = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith('.wasm'));
+  await page.locator('input[name=file]').setInputFiles(fixture);
+  await Promise.all([worker, wasm]);
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('output')).toHaveText(/^Done in/, { timeout: 120_000 });
+  await expect(page.locator('#zip')).toBeVisible();
+});

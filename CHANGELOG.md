@@ -11,6 +11,8 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Guard site metadata, startup HTML/JS/CSS budgets and deferred engine loading in the
+  existing browser CI suite, including ordinary form edits and rejected non-SVG files.
 - Enforce a site Content Security Policy with `nosniff` and a referrer policy, including
   worker responses. Preserve WASM, local previews/downloads and isolation headers; keep
   Astro development's inline-script/WebSocket allowances out of production and preview.
