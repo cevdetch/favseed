@@ -47,7 +47,8 @@
 //
 
 import {
-  existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
+  copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
+  renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
@@ -168,16 +169,21 @@ export async function buildFiles(options = {}) {
 export async function build(options = {}) {
   const o = normalise(options);
   const set = await buildFiles(options);
+  return publishSet(set, o.out);
+}
 
+// A handled I/O failure must not leave a mixture of the old and new sets. This
+// is per-file publishing with rollback, not a crash-safe directory transaction.
+const publishSet = (set, out) => {
   registerSweep();
-  let stage = null;
+  let stage = null, retain = false, failure, result;
   try {
     // The set exists in memory, so it is now safe to touch the output directory: a run that
     // fails on an unresolvable var() or a bad --bg leaves nothing behind.
-    try { mkdirSync(o.out, { recursive: true }); } catch (e) {
-      throw new FavseedError(`cannot create output directory ${o.out}: ${e.message}`);
+    try { mkdirSync(out, { recursive: true }); } catch (e) {
+      throw new FavseedError(`cannot create output directory ${out}: ${e.message}`);
     }
-    const outDir = realpathSync(o.out);
+    const outDir = realpathSync(out);
     // Stage inside $out so the final move is a same-filesystem rename, which is atomic.
     try { stage = mkdtempSync(join(outDir, `.${PROG}.`)); } catch (e) {
       throw new FavseedError(`cannot create a staging directory in ${outDir}: ${e.message}`);
@@ -185,26 +191,73 @@ export async function build(options = {}) {
     LIVE.add(stage);
     for (const f of set.files) writeFileSync(join(stage, f.name), f.bytes);
     const files = set.files.map((f) => f.name);
-    // Every promised file must exist and be non-empty before the first rename, so a failure
-    // leaves the previous output set untouched.
+    // Validate the complete staged set before backing up or changing destinations.
     for (const f of files) {
       const from = join(stage, f);
       if (!existsSync(from) || statSync(from).size === 0) throw new FavseedError(`internal error: ${f} was not produced`);
     }
-    // Each rename is atomic; the window between the first and the last is as small as it gets.
-    for (const f of files) renameSync(join(stage, f), join(outDir, f));
+    const previous = join(stage, 'previous');
+    mkdirSync(previous);
+    const entries = files.map((name) => {
+      const target = join(outDir, name), backup = join(previous, name);
+      let stat;
+      try { stat = lstatSync(target); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      if (stat && !stat.isFile() && !stat.isSymbolicLink()) {
+        throw new FavseedError(`cannot replace ${target}: destination is not a file or symlink`);
+      }
+      return { name, target, backup, existed: !!stat, link: stat?.isSymbolicLink() };
+    });
+    // Copy regular files first: a backup failure leaves every destination intact,
+    // and publishing retains the ordinary atomic file replacement.
+    for (const entry of entries) {
+      if (entry.existed && !entry.link) copyFileSync(entry.target, entry.backup);
+    }
+    const touched = [];
+    try {
+      for (const entry of entries) {
+        // Move the link itself, never its target. Restoring it then needs no new
+        // symlink privilege on Windows; broken and relative links work too.
+        if (entry.link) {
+          renameSync(entry.target, entry.backup);
+          touched.push(entry);
+        }
+        renameSync(join(stage, entry.name), entry.target);
+        if (!entry.link) touched.push(entry);
+      }
+    } catch (error) {
+      const restorationErrors = [];
+      for (const entry of touched.reverse()) {
+        try {
+          if (entry.existed) renameSync(entry.backup, entry.target);
+          else rmSync(entry.target, { force: true });
+        } catch (restore) { restorationErrors.push(`${entry.name}: ${restore.message}`); }
+      }
+      if (restorationErrors.length) {
+        retain = true;
+        throw new FavseedError(`${error.message}\nCould not restore previous output:\n${restorationErrors.join('\n')}\nRecovery files kept at ${previous}`);
+      }
+      throw error;
+    }
     const bytes = Object.fromEntries(set.files.map((f) => [f.name, f.bytes.length]));
-    return { files, bytes, animated: set.animated, fit: set.fit, dir: outDir, links: set.links };
+    result = { files, bytes, animated: set.animated, fit: set.fit, dir: outDir, links: set.links };
   } catch (e) {
-    if (e instanceof FavseedError) throw e;
-    throw new FavseedError(e.message);
+    failure = e;
   } finally {
     if (stage) {
-      rmSync(stage, { recursive: true, force: true });
+      // Failed restoration leaves the only recoverable old bytes here. Neither
+      // finally nor the exit sweeper may erase them.
       LIVE.delete(stage);
+      if (!retain) {
+        try { rmSync(stage, { recursive: true, force: true }); }
+        catch (error) {
+          failure = new FavseedError(`${failure ? failure.message : 'Output files were written'}\nCannot remove staging directory ${stage}: ${error.message}`);
+        }
+      }
     }
   }
-}
+  if (failure) throw failure instanceof FavseedError ? failure : new FavseedError(failure.message);
+  return result;
+};
 
 // ================================================================== config ==
 
