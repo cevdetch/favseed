@@ -20,7 +20,7 @@ import { createReadStream, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isolationHeaders } from '../headers.mjs';
+import { siteHeaders, developmentHeaders } from '../headers.mjs';
 
 const ROOT = fileURLToPath(new URL('../dist', import.meta.url));
 const PATH = process.argv[2] ?? '/check';
@@ -45,7 +45,7 @@ const server = createServer((req, res) => {
     res.writeHead(404).end('not found');
     return;
   }
-  res.writeHead(200, { ...isolationHeaders, 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+  res.writeHead(200, { ...siteHeaders, 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
   createReadStream(file).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -162,7 +162,11 @@ try {
   assert.ok(ready, 'check page loaded');
   assert.equal(await evaluate('window.favseedCheck.isolated'), true, 'cross-origin isolated');
   const response = await fetch(base + PATH);
-  for (const [header, value] of Object.entries(isolationHeaders)) assert.equal(response.headers.get(header), value);
+  // An explicitly supplied origin may be Astro dev; our own static server must be strict.
+  const expectedHeaders = process.env.FAVSEED_ORIGIN &&
+    response.headers.get('content-security-policy') === developmentHeaders['Content-Security-Policy']
+    ? developmentHeaders : siteHeaders;
+  for (const [header, value] of Object.entries(expectedHeaders)) assert.equal(response.headers.get(header), value);
   const benchmark = process.env.FAVSEED_BENCH === '1';
   if (benchmark) {
     const initializationMs = await evaluate('(async () => { const t = performance.now(); await window.favseedCheck.warm(); return performance.now() - t; })()');

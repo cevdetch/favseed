@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { isolationHeaders, productionHeaders } from './headers.mjs';
+import { siteHeaders, developmentHeaders, productionHeaders } from './headers.mjs';
 import { wasiRuntime } from './build/wasi-runtime.mjs';
 
 // A static site on Cloudflare Pages, built from main by the Pages dashboard: no adapter, no
@@ -12,7 +12,7 @@ export default defineConfig({
   site: 'https://favseed.cevdet.ch',
   output: 'static',
   // Astro owns document/preview responses and forwards these headers to Vite's assets.
-  server: { headers: isolationHeaders },
+  server: { headers: siteHeaders },
   // Cloudflare Pages canonicalises a directory index as /foo/ and 308s /foo to it. Emitting
   // /foo.html instead serves the slash-free URL with no redirect, which is Cloudflare's own
   // advice for this case, and the same pair deadhead.cevdet.ch uses.
@@ -32,6 +32,12 @@ export default defineConfig({
     {
       name: 'favseed-host',
       hooks: {
+        'astro:config:setup': ({ command, updateConfig }) => {
+          if (command === 'dev') updateConfig({
+            server: { headers: developmentHeaders },
+            vite: { server: { headers: developmentHeaders } },
+          });
+        },
         // Hashed build assets never change under the same name; everything else is revalidated.
         'astro:build:done': async ({ dir }) => {
           await writeFile(new URL('_headers', dir), productionHeaders);
@@ -44,9 +50,14 @@ export default defineConfig({
     // lib/core.mjs lives above this directory: the site shares favseed's isomorphic half by
     // importing the file, not by copying it. Vite refuses to serve outside the project root in
     // dev unless told, and this is the one exception.
-    server: { headers: isolationHeaders, fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] } },
-    preview: { headers: isolationHeaders },
-    build: { target: 'esnext' },
+    server: { headers: siteHeaders, fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] } },
+    preview: { headers: siteHeaders },
+    build: {
+      target: 'esnext',
+      // Keep executable scripts external even if a future bundle falls below Vite's limit.
+      // Other assets retain Vite's default, and Astro still inlines the stylesheet above.
+      assetsInlineLimit: (file) => /\.m?js$/.test(file) ? false : undefined,
+    },
     worker: { format: 'es', plugins: () => [wasiRuntime()] },
     optimizeDeps: { exclude: ['@napi-rs/image-wasm32-wasi'] },
   },
