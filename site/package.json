@@ -5,6 +5,7 @@
   "description": "favseed in the browser: the same engine and bytes as the CLI, nothing uploaded.",
   "scripts": {
     "dev": "astro dev",
+    "icons": "node ../bin/favseed.mjs",
     "test": "node --test test/worker.mjs",
     "test:browser": "playwright test",
     "build": "astro build",
