@@ -162,6 +162,16 @@ export default function favseed(options = {}) {
         // in dev and in build, for both consumers, with no file on disk to keep in sync.
         updateConfig({
           vite: {
+            // Astro hashes Vite defines for incremental builds, but not integration
+            // options or middleware. Include both the links and whether we inject
+            // them so cached HTML cannot retain a previous head configuration.
+            ...(command === 'build' && config.experimental?.incrementalBuild ? {
+              define: {
+                __FAVSEED_HEAD_SIGNATURE__: JSON.stringify(sha256(JSON.stringify([
+                  state.links, head === true || head === 'inject',
+                ]))),
+              },
+            } : {}),
             plugins: [{
               name: 'favseed:virtual',
               // Astro has separate dev/prerender/SSR environments. All server imports

@@ -420,6 +420,11 @@ cache sets with verified integrity metadata, including the current verified set.
 records, staging directories, symlinks, modified or unrecognized entries, and older slots
 without integrity metadata are preserved. Older slots remain readable. An evicted set is rebuilt when needed.
 
+With Astro 7's `experimental.incrementalBuild` enabled, changing the generated head links
+or automatic injection invalidates cached HTML. Eligible pages remain reusable when those
+head settings are unchanged, including when only the icon bytes change. Equivalent
+`head: true` and `head: 'inject'` settings share the same behavior.
+
 Build dependencies load on demand: the explicit `favseed/astro` entry avoids the Node build
 module during configuration, `sync`, `preview`, and `dev: 'skip'`. The package-root entry also
 loads the named library API, but neither entry initializes SVGO or the native engine during

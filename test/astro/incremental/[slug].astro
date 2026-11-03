@@ -1,0 +1,11 @@
+---
+import { randomUUID } from 'node:crypto';
+
+export function getStaticPaths() {
+  return [{ params: { slug: 'cached' }, cacheKey: 'stable-page-data' }];
+}
+
+// A fresh render changes the marker; restoring cached HTML preserves it.
+const marker = randomUUID();
+---
+<html><head><title>Incremental head</title></head><body data-render={marker} data-user={__CONSUMER_VALUE__}>Cached page</body></html>
