@@ -121,8 +121,22 @@ they describe historical opt-in work, rather than the new standard default.
 Use HTTPS (or localhost), SharedArrayBuffer, DecompressionStream, and cross-origin isolation.
 The build writes Cloudflare Pages `_headers` with COOP `same-origin`, COEP `require-corp`,
 and CORP `same-origin` for documents and assets. Other hosts must supply equivalent response
-headers, including worker responses. Astro dev and preview use the same headers.
+headers, including worker responses. Astro dev and preview retain these isolation headers.
 Unsupported environments get a clear CLI alternative instead of a different encoder.
+
+`headers.mjs` also supplies `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and an enforced Content Security Policy
+on documents and assets, including worker scripts. Production and preview permit same-origin
+scripts/workers and WebAssembly compilation; inline JavaScript and JavaScript eval are blocked.
+Inline CSS remains allowed for the inlined stylesheet and SVG styling. Local blob/data images
+and blob download reads are allowed; external connections, object embeds, framing and native
+form submissions are blocked. SVG previews remain image elements.
+
+Only Astro dev allows inline scripts and WebSocket connections for its tooling and hot reload.
+These allowances are excluded from the generated Cloudflare `_headers` and preview responses.
+Vite keeps JavaScript chunks external even when they fall below its inlining threshold.
+Other hosts must apply the security headers too; the local browser harnesses test the production
+policy. After deployment, verify the actual document and worker response headers on Cloudflare.
 
 `build/wasi-runtime.mjs` tunes only the pinned image1.15.0 loader's initial memory and spare
 worker preload. It rejects changed package versions or loader defaults, retaining the memory

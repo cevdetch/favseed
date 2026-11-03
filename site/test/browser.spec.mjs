@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { buildFiles } from '../../bin/favseed.mjs';
-import { isolationHeaders } from '../headers.mjs';
+import { siteHeaders } from '../headers.mjs';
 import { cases } from './cases.mjs';
 
 const fixture = (mark) => fileURLToPath(new URL(`../../test/fixtures/${mark}.svg`, import.meta.url));
@@ -19,7 +19,7 @@ const downloads = (page) => page.locator('#files a').evaluateAll(async (links) =
 })));
 const checkPage = async (page) => {
   const response = await page.goto('/check');
-  for (const [name, value] of Object.entries(isolationHeaders)) expect(await response.headerValue(name)).toBe(value);
+  for (const [name, value] of Object.entries(siteHeaders)) expect(await response.headerValue(name)).toBe(value);
   await page.waitForFunction(() => !!window.favseedCheck);
   expect(await page.evaluate(() => window.favseedCheck.isolated)).toBe(true);
 };
@@ -40,6 +40,52 @@ const generateHead = async (page) => {
   await expect(page.locator('output')).toHaveText(/^Done in/);
   return page.locator('#links').textContent();
 };
+
+test('production policy protects documents and workers while generation and previews work', async ({ page, request }) => {
+  await page.addInitScript(() => {
+    window.policyViolations = [];
+    document.addEventListener('securitypolicyviolation', (event) => {
+      window.policyViolations.push(event.effectiveDirective);
+    });
+  });
+  const response = await page.goto('/');
+  const policy = await response.headerValue('content-security-policy');
+  expect(policy).toContain("script-src 'self' 'wasm-unsafe-eval'");
+  expect(policy).toContain("worker-src 'self'");
+  expect(policy).toContain("frame-ancestors 'none'");
+  expect(policy).not.toContain("'unsafe-eval'");
+  expect(await response.headerValue('x-content-type-options')).toBe('nosniff');
+  expect(await response.headerValue('referrer-policy')).toBe('strict-origin-when-cross-origin');
+  const workerEvent = page.waitForEvent('worker', (worker) => worker.url().includes('engine-worker-'));
+  await generateHead(page);
+  const worker = await workerEvent;
+  const workerResponse = await request.get(worker.url());
+  expect(workerResponse.headers()['content-security-policy']).toBe(policy);
+  expect(workerResponse.headers()['content-type']).toContain('javascript');
+  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files);
+  const previews = page.locator('#result img');
+  expect(await previews.count()).toBeGreaterThan(0);
+  await expect.poll(() => previews.evaluateAll((images) => images.every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
+  expect(await page.evaluate(() => window.policyViolations)).toEqual([]);
+
+  // Inject actual DOM script elements: DevTools evaluation itself bypasses CSP.
+  await page.evaluate(async () => {
+    const script = document.createElement('script');
+    script.textContent = 'window.injectedScriptRan = true';
+    document.body.append(script);
+    const external = document.createElement('script');
+    external.src = URL.createObjectURL(new Blob(['window.blobScriptRan = true'], { type: 'text/javascript' }));
+    await new Promise((resolve) => { external.onload = external.onerror = resolve; document.body.append(external); });
+    URL.revokeObjectURL(external.src);
+    try { await fetch('https://favseed-policy-check.invalid/'); } catch { /* CSP rejects before networking. */ }
+  });
+  await expect.poll(() => page.evaluate(() => window.policyViolations)).toEqual(expect.arrayContaining(['script-src-elem', 'connect-src']));
+  expect(await page.evaluate(() => [window.injectedScriptRan, window.blobScriptRan])).toEqual([undefined, undefined]);
+  const artifact = await (await request.get('/_headers')).text();
+  expect(artifact).toContain(`  Content-Security-Policy: ${policy}\n`);
+  expect(artifact).toContain('/_astro/*\n  Cache-Control: public, max-age=31536000, immutable\n');
+  expect(artifact.split('\n').every((line) => line.length <= 2000)).toBe(true);
+});
 
 test('head markup copies exact text with keyboard/touch feedback and rejection recovery', async ({ page, isMobile }) => {
   await clipboardStub(page);

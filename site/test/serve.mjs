@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isolationHeaders } from '../headers.mjs';
+import { isolationHeaders, securityHeaders } from '../headers.mjs';
 
 const root = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -21,6 +21,7 @@ const server = createServer(async (req, res) => {
       if (!(await stat(file).catch(() => null))?.isFile()) continue;
       const bytes = await readFile(file);
       res.writeHead(200, {
+        ...securityHeaders,
         ...(url.searchParams.has('no-isolation') ? {} : isolationHeaders),
         'content-type': types[extname(file)] ?? 'application/octet-stream',
       }).end(bytes);
