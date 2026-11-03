@@ -117,8 +117,12 @@ resvg, pngquant and oxipng for its native reference arm.
     Every opaque pixel of every padded icon lies inside the safe circle; a pixel-grid mark is
     snapped to whole pixels, a curved one keeps its exact fit.
 11. Re-running with identical inputs and identical engine versions produces byte-identical outputs.
-12. Temp files are removed on success **and** on failure; a failed run leaves any previous output
-    set intact, and leaves no staging directory behind.
+12. Handled staging/publishing failures restore previous file contents and symlinks, remove
+    newly published files and clean staging without touching unrelated assets. If restoration
+    or cleanup is also refused, report the original failure and leftover/recovery path; keep
+    failed-restoration backups past process exit. Use one writer per output directory. This
+    is rollback for handled exceptions, not whole-set atomic visibility or crash durability.
+    Backup copies preserve contents, not timestamps, extended attributes or hardlink identity.
 13. `--colors` outside 2–256, a missing input, a non-SVG input and an unknown flag all fail with a
     clear `favseed: …` message and **no stack trace**.
 14. The single `icon.svg` retains motion and resolves its custom properties. Rasters use the

@@ -31,6 +31,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Restore previous output after handled CLI/API publishing failures, including failures
+  after earlier files were replaced. Preserve unrelated assets and symlink targets; retain
+  recovery files if restoration fails and report cleanup errors alongside the original
+  failure. Add subprocess late-write coverage. Generated image bytes are unchanged.
 - Refresh Astro 7 incremental HTML when generated favicon links or automatic head injection
   change, while retaining eligible cached pages for unchanged head behavior and icon-only
   updates. Verify actual first installation through `astro add` from an independent project

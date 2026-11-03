@@ -62,6 +62,15 @@ Use the same `/icon.svg` URL in `<link rel="icon">` and `<img>` so cacheable res
 reused. PNG and ICO exports use the source's static base appearance. `--no-animation` is an
 explicit option for a static SVG.
 
+The CLI and `build()` stage the complete set before publishing. Handled write failures
+restore previous file contents and symlinks and remove newly installed files. If the
+filesystem also refuses restoration, the error names the retained recovery directory;
+keep it until you have recovered the affected files. Cleanup failures identify leftover
+staging directories. Unrelated assets are preserved. Use one writer per output directory;
+individual replacements do not make the whole set atomic or protect against crashes.
+Rollback copies preserve contents; timestamps, extended attributes and hardlink relationships
+may change.
+
 ## Why not one of the others
 
 There are several favicon generators on npm. Most write whatever sharp's encoder produced; the
