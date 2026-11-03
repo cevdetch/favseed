@@ -1,24 +1,70 @@
-// Prints a SHA-256 for every file of a fast build of every positive fixture. CI runs it on
-// Linux, macOS and Windows and fails if any two disagree: the engine's claim is the same
-// bytes on every platform, and this is where that claim is checked.
+// CI compares this deterministic manifest on Linux, macOS and Windows, as well as
+// against the reviewed baseline. Updating that baseline is always explicit.
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build } from '../bin/favseed.mjs';
+import { build, engineVersions } from '../bin/favseed.mjs';
+import { checkReleasePolicy, compareManifests, formatDifferences, previousRelease,
+  validateManifest } from './lib/bytes.mjs';
 
 const MARKS = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'];
-const dir = mkdtempSync(join(tmpdir(), 'favseed-hashes.'));
+const baseline = new URL('./bytes.json', import.meta.url);
+const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(import.meta.url);
+let dir;
 try {
-  for (const m of MARKS) {
-    const out = join(dir, m);
-    const input = fileURLToPath(new URL(`./fixtures/${m}.svg`, import.meta.url));
-    const r = await build({ input, out, bg: '#000000', mode: 'fast' });
-    for (const f of r.files) {
-      process.stdout.write(`${createHash('sha256').update(readFileSync(join(out, f))).digest('hex')}  ${m}/${f}\n`);
+  const [mode, ...extra] = process.argv.slice(2);
+  if (extra.length || (mode !== undefined && !['--check', '--write', '--release'].includes(mode))) {
+    throw new Error('Usage: node test/hashes.mjs [--check|--write|--release]');
+  }
+  const options = { bg: '#000000', mode: 'release', manifest: true };
+  const current = {
+    schema: 1,
+    engines: { ...engineVersions(), svgo: JSON.parse(readFileSync(
+      join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version },
+    profiles: {
+      default: { marks: MARKS, options },
+      zopfli: { marks: ['general', 'gradient'], options: { ...options, zopfli: true } },
+    },
+    files: {},
+  };
+  dir = mkdtempSync(join(tmpdir(), 'favseed-hashes.'));
+  for (const [profile, { marks, options }] of Object.entries(current.profiles)) {
+    for (const mark of marks) {
+      const out = join(dir, profile, mark);
+      const input = fileURLToPath(new URL(`./fixtures/${mark}.svg`, import.meta.url));
+      const result = await build({ ...options, input, out });
+      for (const file of [...result.files].sort()) {
+        const bytes = readFileSync(join(out, file));
+        current.files[`${profile}/${mark}/${file}`] = {
+          bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
+        };
+      }
     }
   }
+  validateManifest(current);
+  const json = JSON.stringify(current, null, 2) + '\n';
+  if (mode === '--write') {
+    writeFileSync(baseline, json);
+    process.stderr.write(`Updated test/bytes.json (${Object.keys(current.files).length} files); review size, accuracy and release version before committing.\n`);
+  } else {
+    process.stdout.write(json);
+    if (mode) {
+      const report = formatDifferences(compareManifests(JSON.parse(readFileSync(baseline, 'utf8')), current));
+      if (report) throw new Error(`Generated files differ from test/bytes.json:\n${report}\nReview size/accuracy before explicitly accepting with node test/hashes.mjs --write.`);
+      if (mode === '--release') {
+        const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+        const message = checkReleasePolicy({ current, version, previous: previousRelease(root, version) });
+        process.stderr.write(message + '\n');
+      }
+    }
+  }
+} catch (error) {
+  process.stderr.write(`favseed bytes: ${error.message}\n`);
+  process.exitCode = 1;
 } finally {
-  rmSync(dir, { recursive: true, force: true });
+  if (dir) rmSync(dir, { recursive: true, force: true });
 }

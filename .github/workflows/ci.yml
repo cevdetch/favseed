@@ -48,7 +48,7 @@ jobs:
           sudo chmod +x /usr/local/bin/resvg
 
       - run: pnpm test
-      - run: node test/hashes.mjs > hashes-linux.txt
+      - run: node test/hashes.mjs --check > hashes-linux.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hashes-linux
@@ -67,7 +67,7 @@ jobs:
           runtime: node@24
           require-lockfile: true
       - run: pnpm test
-      - run: node test/hashes.mjs > hashes-macos.txt
+      - run: node test/hashes.mjs --check > hashes-macos.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hashes-macos
@@ -88,7 +88,7 @@ jobs:
       - run: pnpm test
       # bash, not PowerShell: the file must hold the bytes the script printed, LF endings
       # included, or the comparison below fails on line endings alone.
-      - run: node test/hashes.mjs > hashes-windows.txt
+      - run: node test/hashes.mjs --check > hashes-windows.txt
         shell: bash
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

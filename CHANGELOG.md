@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Check reviewed fixture hashes, sizes and encoder/profile identity in platform CI, and
+  reject patch releases that change them relative to the last stable release. Add an
+  explicit baseline update command; generated image bytes are unchanged.
 - Require the pinned development TypeScript compiler for config/Vite type checks, and test
   packed public imports with valid and invalid options under NodeNext and bundler resolution.
 - Keep installed Astro middleware in Vite's transform pipeline so its virtual head-tag

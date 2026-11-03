@@ -13,6 +13,25 @@ favseed is one package, `favseed`. Registry commands use pnpm, which keeps its o
 Byte-output changes (a bumped `@napi-rs/image` or `@gfx/zopfli`, or any pipeline change) are **minor at
 minimum**, never patch: downstream users diff these files into git.
 
+Before tagging, run `node test/hashes.mjs --release` in a checkout with full history and
+tags (`git fetch --tags --unshallow` if shallow; otherwise `git fetch --tags`). This first
+checks generated output against the reviewed `test/bytes.json`, then compares with the
+highest stable version tag reachable from HEAD, excluding the candidate tag at HEAD.
+The Release workflow fetches full history and runs this guard before packing or staging.
+
+Patch releases must preserve sampled file hashes/sizes and encoder/profile identity,
+including SVGO and the bundled Zopfli build. Intentional changes require a minor or major
+version, measured size/accuracy review and an explicit `node test/hashes.mjs --write`;
+see [Contributing](CONTRIBUTING.md). Updating today's baseline cannot bypass the comparison
+with the previous release. The guard covers fixtures and profiles, not every possible input.
+
+With no previous stable tag, the first protected release establishes the baseline.
+If an older stable tag exists without a baseline, only a minor/major release may establish
+one. Invalid historical baselines and shallow history fail closed. Previous prerelease
+tags are ignored; prerelease candidates follow the same rules against the last stable core
+version and must advance it. Historical manifests are read as JSON; old package code is
+never executed.
+
 ## Before 0.1.0: one-time setup
 
 1. **GitHub.** Verify the repository is `cevdetch/favseed`. `package.json`'s `repository` must
