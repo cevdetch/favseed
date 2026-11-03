@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Add a browser copy button for generated head markup, with keyboard/touch access, polite
+  success/failure feedback and manual guidance when clipboard access is unavailable. Keep
+  previous downloads usable and ignore copy feedback from older generated results.
 - Check reviewed fixture hashes, sizes and encoder/profile identity in platform CI, and
   reject patch releases that change them relative to the last stable release. Add an
   explicit baseline update command; generated image bytes are unchanged.

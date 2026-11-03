@@ -24,6 +24,103 @@ const checkPage = async (page) => {
   expect(await page.evaluate(() => window.favseedCheck.isolated)).toBe(true);
 };
 
+const clipboardStub = (page) => page.addInitScript(() => {
+  window.favseedClipboard = { writes: [], pending: [] };
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText(text) {
+      window.favseedClipboard.writes.push(text);
+      return new Promise((resolve, reject) => window.favseedClipboard.pending.push({ resolve, reject }));
+    },
+  } });
+});
+const generateHead = async (page) => {
+  await page.locator('input[name=file]').setInputFiles(fixture('tiles'));
+  await page.locator('input[name=sizes]').fill('32');
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('output')).toHaveText(/^Done in/);
+  return page.locator('#links').textContent();
+};
+
+test('head markup copies exact text with keyboard/touch feedback and rejection recovery', async ({ page, isMobile }) => {
+  await clipboardStub(page);
+  if (isMobile) await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/');
+  const copy = page.getByRole('button', { name: 'Copy markup', exact: true });
+  await expect(copy).toBeHidden();
+  const markup = await generateHead(page);
+  const expected = await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] });
+  expect(markup).toBe(expected.links.trim());
+  const zip = await page.locator('#zip').getAttribute('href');
+  await expect(copy).toBeVisible();
+  await expect(copy).toHaveAttribute('type', 'button');
+  await expect(page.locator('#copy-status')).toHaveAttribute('role', 'status');
+  await expect(page.locator('#copy-status')).toHaveAttribute('aria-atomic', 'true');
+  if (isMobile) await copy.tap();
+  else { await copy.focus(); await page.keyboard.press('Enter'); }
+  await expect(copy).toBeDisabled();
+  if (!isMobile) {
+    await expect(copy).toBeFocused();
+    await page.keyboard.press('Enter'); // A second activation must not queue another write.
+  } else await copy.evaluate((button) => button.click());
+  expect(await page.evaluate(() => window.favseedClipboard.writes)).toEqual([markup]);
+  await page.evaluate(() => window.favseedClipboard.pending.shift().resolve());
+  await expect(page.locator('#copy-status')).toHaveText('Copied head markup.');
+  await expect(copy).toBeEnabled();
+  if (!isMobile) await expect(copy).toBeFocused();
+  await copy.click();
+  await expect(page.locator('#copy-status')).toHaveText('');
+  await page.evaluate(() => window.favseedClipboard.pending.shift().reject(new DOMException('Denied', 'NotAllowedError')));
+  await expect(page.locator('#copy-status')).toHaveText('Could not copy. Select and copy the markup below.');
+  await expect(copy).toBeEnabled();
+  await expect(page.locator('#links')).toHaveText(markup);
+  await expect(page.locator('#links link')).toHaveCount(0);
+  await expect(page.locator('#zip')).toHaveAttribute('href', zip);
+  await copy.click();
+  await page.evaluate(() => window.favseedClipboard.pending.shift().resolve());
+  await expect(page.locator('#copy-status')).toHaveText('Copied head markup.');
+  await generateHead(page);
+  await expect(page.locator('#copy-status')).toHaveText('');
+  if (isMobile) {
+    expect((await copy.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
+});
+
+for (const outcome of ['resolve', 'reject']) {
+  test(`head markup ignores stale clipboard ${outcome} after new results`, async ({ page }) => {
+    await clipboardStub(page);
+    await page.goto('/');
+    const markup = await generateHead(page), copy = page.getByRole('button', { name: 'Copy markup', exact: true });
+    await copy.click();
+    await generateHead(page); // These settings produce the same links: result identity still matters.
+    await expect(page.locator('#copy-status')).toHaveText('');
+    await page.evaluate((outcome) => window.favseedClipboard.pending.shift()[outcome](), outcome);
+    await expect(copy).toBeEnabled();
+    await expect(page.locator('#copy-status')).toHaveText('');
+    await expect(page.locator('#links')).toHaveText(markup);
+    await copy.click();
+    await page.evaluate(() => window.favseedClipboard.pending.shift().resolve());
+    await expect(page.locator('#copy-status')).toHaveText('Copied head markup.');
+  });
+}
+
+test('head markup stays selectable with manual guidance when clipboard support is unavailable', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { value: undefined }));
+  await page.goto('/');
+  const markup = await generateHead(page);
+  await expect(page.getByRole('button', { name: 'Copy markup', exact: true })).toBeHidden();
+  await expect(page.locator('#copy-status')).toHaveText('Select and copy the markup below.');
+  await page.locator('#links').evaluate((element) => {
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    selection.addRange(range);
+  });
+  expect(await page.evaluate(() => window.getSelection().toString())).toBe(markup);
+  await expect(page.locator('#zip')).toBeVisible();
+});
+
 test('files and metadata match the CLI; archives, cache and page timers work', async ({ page, isMobile }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -163,7 +260,7 @@ test('a 1024px raster matches native after shared memory grows', async ({ page }
   expect(await worker.evaluate(() => globalThis.favseedMemoryGrew())).toBe(true);
 });
 
-test('form downloads match native and survive failed and cancelled builds', async ({ page, isMobile }) => {
+test('form downloads match native and survive failed and cancelled builds', async ({ page, isMobile, browserName, context }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   if (isMobile) await page.setViewportSize({ width: 320, height: 640 });
@@ -182,6 +279,13 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', manifest: true }));
   const actual = await downloads(page);
   expect(actual).toEqual(expected.files);
+  if (browserName === 'chromium') {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const copy = page.getByRole('button', { name: 'Copy markup', exact: true });
+    if (isMobile) await copy.tap(); else await copy.click();
+    await expect(page.locator('#copy-status')).toHaveText('Copied head markup.');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expected.links.trim());
+  }
   const downloadEvent = page.waitForEvent('download');
   if (isMobile) await page.locator('#zip').tap(); else await page.locator('#zip').click();
   const download = await downloadEvent;

@@ -71,6 +71,10 @@ Builds run in a dedicated worker; Cancel terminates it and its children. Previou
 successful downloads remain usable after a failed or cancelled build. One completed set is
 cached in memory with owned copies and a 16 MiB budget; no source/result is persisted or uploaded.
 
+After generation, **Copy markup** copies the displayed head links and announces success or
+manual-copy guidance if clipboard access is denied. The code block stays selectable; browsers
+without clipboard support show manual guidance. New results clear earlier copy feedback.
+
 Opt-in compression includes the guarded lossless palette pass described in the
 [competitor measurements](../bench/zopfli/COMPETITOR.md). Those historical measurements predate
 the default-off compression and single-SVG output change. Current measurements are in
@@ -140,6 +144,9 @@ manifest/animation options. It also checks cache ownership, ZIP downloads, page 
 cancellation/retry, a 1024px raster after shared-memory growth, failure preservation, missing
 document/worker isolation and touch controls at a 320 px viewport. The document and worker
 both validate their own WASM requirements.
+Copy-control checks cover keyboard/touch activation, exact text, rejection/retry, missing API
+and stale requests. Chromium projects also verify a real clipboard round trip with test-only
+permissions; other projects control API responses to verify the UI independently of OS permissions.
 
 After building, install the test browsers and run the suite:
 

@@ -115,7 +115,11 @@ const outputs = [
     </table>
     <p><small id="fit"></small></p>
     <a id="zip" class="button" download="favseed.zip">Download .zip</a>
-    <h3>Add to your <code>&lt;head&gt;</code></h3>
+    <div class="head-tools">
+      <h3>Add to your <code>&lt;head&gt;</code></h3>
+      <button type="button" id="copy-links" hidden>Copy markup</button>
+    </div>
+    <p id="copy-status" role="status" aria-live="polite" aria-atomic="true"></p>
     <pre id="links"></pre>
   </section>
 
@@ -158,8 +162,29 @@ const outputs = [
   updatePalette();
   const drop = file.labels[0], go = form.querySelector('button[type=submit]'), status = form.querySelector('output');
   const cancel = $('cancel'), warnings = $('warnings');
+  const copy = $('copy-links'), copyStatus = $('copy-status'), links = $('links');
+  const canCopy = typeof navigator.clipboard?.writeText === 'function';
   const TYPES = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon', webmanifest: 'application/manifest+json' };
-  let urls = [], active;
+  let urls = [], active, resultRevision = 0;
+
+  copy.hidden = !canCopy;
+  const resetCopyStatus = () => { copyStatus.textContent = canCopy ? '' : 'Select and copy the markup below.'; };
+  resetCopyStatus();
+  copy.addEventListener('click', async () => {
+    if (!links.textContent || copy.getAttribute('aria-disabled') === 'true') return;
+    const text = links.textContent, revision = resultRevision;
+    // Keep keyboard focus while preventing duplicate requests during the write.
+    copy.setAttribute('aria-disabled', 'true');
+    copyStatus.textContent = '';
+    try {
+      await navigator.clipboard.writeText(text);
+      if (revision === resultRevision) copyStatus.textContent = 'Copied head markup.';
+    } catch {
+      if (revision === resultRevision) copyStatus.textContent = 'Could not copy. Select and copy the markup below.';
+    } finally {
+      copy.removeAttribute('aria-disabled');
+    }
+  });
 
   const say = (msg, kind = '') => { status.textContent = msg; status.className = kind; };
 
@@ -250,7 +275,9 @@ const outputs = [
           `${show.snapped ? ', snapped to whole pixels' : ''}` +
           `${show.fullBleed ? ' (full-bleed source, used as drawn)' : ''}.`
         : 'No padded icon: the ground is transparent.';
-      $('links').textContent = built.links.trim();
+      links.textContent = built.links.trim();
+      resultRevision++;
+      resetCopyStatus();
       $('zip').href = url(built.archive(), 'application/zip');
       $('result').hidden = false;
       for (const u of urls) URL.revokeObjectURL(u);
