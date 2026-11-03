@@ -11,6 +11,8 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Outline the site's Open Graph lettering so its SVG renders without installed fonts,
+  and document font-free regeneration of the committed PNG.
 - Add `pnpm --filter favseed-site icons` to rebuild the site's icons from a committed source
   SVG and config. Regenerate opaque, safe-zone-padded PNGs on the existing Apple ground,
   declare them `any maskable`, and retain site metadata, animation and the transparent 48px ICO.

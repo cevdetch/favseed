@@ -30,13 +30,20 @@ Unchanged source, settings and engine versions reproduce the same files. A newer
 may produce smaller or otherwise changed output; review those updates rather than preserving
 old bytes across upgrades.
 
-The Open Graph card is `src/og/og.svg`, rendered with the same three tools:
+The Open Graph card is `src/og/og.svg`. Its lettering is outlined from Liberation Sans
+Bold/Regular, so rendering needs no installed fonts. The comments label each text line;
+when changing the wording, convert the replacement text to paths before saving the SVG.
+From `site/`, regenerate the committed `public/og.png` with resvg, pngquant and oxipng:
 
 ```sh
-resvg src/og/og.svg /tmp/og.png
+resvg --skip-system-fonts src/og/og.svg /tmp/og.png
 pngquant --force --speed 1 --nofs --colors 16 --output /tmp/og-q.png /tmp/og.png
 oxipng -q -o max -s --zopfli -a --out public/og.png /tmp/og-q.png
 ```
+
+Verified with resvg 0.49.0, pngquant 3.0.3 and oxipng 10.2.1. Identical source and tool
+versions reproduce the same PNG locally; tool upgrades may change its bytes. Review the
+regenerated card before committing it. The site build copies the committed PNG.
 
 ## One engine and identical output
 
