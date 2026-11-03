@@ -29,6 +29,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # Compare the candidate with previous stable release manifests.
+          fetch-depth: 0
       - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           runtime: node@24
@@ -53,6 +55,8 @@ jobs:
           sudo chmod +x /usr/local/bin/resvg
 
       - run: pnpm test
+      - name: Protect release output bytes
+        run: node test/hashes.mjs --release > hashes-release.json
 
       # Pack once; the tarball that was listed is the one that is staged.
       - name: Pack

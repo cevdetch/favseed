@@ -48,6 +48,23 @@ up after success or failure. This does not expand the published Astro peer range
 A change that costs bytes to save build time needs explicit approval and measured tradeoffs.
 The current default skips Zopfli; `--zopfli` opts into its additional lossless compression.
 
+CI compares generated files with `test/bytes.json` and compares the same manifest across
+Linux, macOS and Windows. It records filenames, sizes, SHA-256 hashes and installed
+image/SVGO versions plus the bundled Zopfli build identity. The default release profile
+covers the eleven positive SVG fixtures with a manifest; two fixtures also cover opt-in
+release Zopfli. This is sampled coverage, not a guarantee for every input or option.
+
+```sh
+node test/hashes.mjs --check    # fail on changed files, sizes, encoders or profiles
+# After reviewing measured size/accuracy changes and choosing a minor/major release:
+node test/hashes.mjs --write    # explicitly regenerate the reviewed baseline
+git diff -- test/bytes.json
+node test/hashes.mjs --check
+```
+
+Accepting a baseline does not bypass the patch-release guard. `pnpm test` exercises the
+comparison and release policy; the platform CI jobs run the actual generation check.
+
 ## Measure before you believe it
 
 `docs/DECISIONS.md` decision 13 exists because an obvious-looking parallelism win measured
