@@ -153,6 +153,107 @@ const FAST = "input: 'logo.svg', out: 'public', sizes: [32], mode: 'fast', bg: '
 const read = (dir, f) => readFileSync(join(dir, 'public', f), 'utf8');
 const noStack = (r) => assert.ok(!/at .*\.m?[jt]s:\d+/.test(r.stderr), `a stack trace leaked:\n${r.stderr}`);
 
+describe('CLI argument boundaries', () => {
+  it('rejects a missing option value before loading config or writing output', async () => {
+    for (const flag of ['-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var']) {
+      const dir = project({ 'favseed.config.mjs': "throw new Error('config must not load');" });
+      const r = await run(dir, [flag, '--manifest', 'logo.svg']);
+      assert.equal(r.code, 1, flag);
+      assert.match(r.stderr, new RegExp(`^favseed: ${flag} needs an argument$`, 'm'));
+      assert.ok(!existsSync(join(dir, '--manifest')), 'a flag became an output directory');
+      assert.ok(!existsSync(join(dir, 'public')));
+      noStack(r);
+    }
+  });
+
+  it('recognizes every existing flag, inline long flags and the option delimiter as a missing value', async () => {
+    const dir = project({ 'favseed.config.mjs': "throw new Error('config must not load');" });
+    for (const next of ['-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var',
+      '--no-animation', '--zopfli', '--no-zopfli', '--manifest', '--html', '-q', '--quiet',
+      '-V', '--version', '-h', '--help', '--quality=80', '--bg=none', '--']) {
+      const r = await run(dir, ['--out', next, 'logo.svg']);
+      assert.equal(r.code, 1, next);
+      assert.match(r.stderr, /^favseed: --out needs an argument$/m, next);
+      noStack(r);
+    }
+  });
+
+  it('accepts literal flag-like output names through inline syntax and unknown dash-prefixed values', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
+    for (const args of [['--out=--manifest'], ['--out', '--custom-output']]) {
+      const r = await run(dir, args);
+      assert.equal(r.code, 0, r.stderr);
+    }
+    for (const name of ['--manifest', '--custom-output']) {
+      assert.ok(existsSync(join(dir, name, 'favicon.ico')), name);
+    }
+    assert.ok(!existsSync(join(dir, 'public')));
+  });
+
+  it('accepts CSS assignments whose names match known options', async () => {
+    const dir = project({
+      'favseed.config.mjs': `export default { ${FAST} };`,
+      'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect x="24" y="24" width="var(--quality)" height="80" fill="var(--bg)"/></svg>',
+    });
+    const r = await run(dir, ['--var', '--bg=#654321', '--var', '--quality=80']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(read(dir, 'icon.svg'), /#654321/);
+    assert.doesNotMatch(read(dir, 'icon.svg'), /var\(/);
+  });
+
+  it('leaves negative values to normal option validation', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
+    for (const flag of ['--padding', '--quality']) {
+      const r = await run(dir, [flag, '-1']);
+      assert.equal(r.code, 1);
+      assert.match(r.stderr, new RegExp(`^favseed: ${flag} must be`, 'm'));
+      assert.doesNotMatch(r.stderr, /needs an argument/);
+      noStack(r);
+    }
+    assert.ok(!existsSync(join(dir, 'public')));
+  });
+
+  it('treats a flag after the option delimiter as an input filename', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
+    copyFileSync(join(dir, 'logo.svg'), join(dir, '--help'));
+    const r = await run(dir, ['--', '--help']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.ok(existsSync(join(dir, 'public', 'favicon.ico')));
+  });
+
+  it('warns under quiet when explicit transparent padding affects only the apple icon', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST.replace("bg: '#000000'", 'bg: null')} };` });
+    const baseline = await run(dir, ['--quiet']);
+    assert.equal(baseline.code, 0, baseline.stderr);
+    assert.doesNotMatch(baseline.stderr, /--padding/);
+    const before = Object.fromEntries(['apple-touch-icon.png', 'favicon.ico', 'icon-32.png'].map((name) =>
+      [name, readFileSync(join(dir, 'public', name))]));
+    const r = await run(dir, ['--bg', 'none', '--padding', '20', '--quiet']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stdout, '');
+    assert.match(r.stderr, /^favseed: warning: --padding only affects apple-touch-icon\.png with --bg none; size icons and favicon\.ico stay unpadded$/m);
+    assert.notDeepEqual(readFileSync(join(dir, 'public/apple-touch-icon.png')), before['apple-touch-icon.png']);
+    for (const name of ['favicon.ico', 'icon-32.png']) {
+      assert.deepEqual(readFileSync(join(dir, 'public', name)), before[name], name);
+    }
+  });
+
+  it('uses effective config and CLI values for the transparent padding warning', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST.replace("bg: '#000000'", 'bg: null')}, padding: 20 };` });
+    const configured = await run(dir, ['--quiet']);
+    assert.equal(configured.code, 0, configured.stderr);
+    assert.match(configured.stderr, /warning: --padding only affects apple-touch-icon\.png/);
+    const opaque = await run(dir, ['--bg', '#fff', '--quiet']);
+    assert.equal(opaque.code, 0, opaque.stderr);
+    assert.doesNotMatch(opaque.stderr, /warning: --padding/);
+    const invalid = await run(dir, ['--padding', '99']);
+    assert.equal(invalid.code, 1);
+    assert.match(invalid.stderr, /--padding must be/);
+    assert.doesNotMatch(invalid.stderr, /warning: --padding/);
+    noStack(invalid);
+  });
+});
+
 describe('the CLI with a config file', () => {
   it('accepts PNG quality from config and lets the CLI override it', async () => {
     const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, quality: 60 };` });
@@ -271,10 +372,15 @@ describe('the CLI with a config file', () => {
   });
 
   it('still prints the usage and fails with no input from flags or config', async () => {
-    const dir = project({});
-    const r = await run(dir);
-    assert.equal(r.code, 1);
-    assert.match(r.stderr, /^Usage:/m);
+    for (const files of [{}, { 'favseed.config.mjs': "export default { out: 'public' };" }]) {
+      const dir = project(files);
+      const r = await run(dir);
+      assert.equal(r.code, 1);
+      assert.match(r.stderr, /^Usage:/m);
+      assert.match(r.stderr, /^favseed: no input file given$/m);
+      assert.ok(!existsSync(join(dir, 'public')));
+      noStack(r);
+    }
   });
 
   it('skips Zopfli in the summary by default', async () => {

@@ -28,6 +28,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Reject missing CLI option values before a following recognized flag or `--`, while
+  preserving inline literal values and dash-prefixed CSS assignments. Add a prefixed
+  missing-input diagnostic and explain explicit padding with transparent output, including
+  config-file options and quiet runs. Generated image bytes are unchanged.
 - Export the Astro integration as the package-root default so `astro add favseed` writes
   a working config. Preserve existing named library exports and the CLI executable, and
   verify automatic installation with a packed-package build and repeat-install checks.
