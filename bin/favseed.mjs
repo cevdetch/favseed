@@ -237,6 +237,11 @@ export const loadConfigFile = async (dir = process.cwd()) => {
 
 const die = (msg) => { process.stderr.write(`${PROG}: ${msg}\n`); process.exit(1); };
 const warn = (msg) => process.stderr.write(`${PROG}: warning: ${msg}\n`);
+const CLI_FLAGS = new Set([
+  '-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var',
+  '--no-animation', '--zopfli', '--no-zopfli', '--manifest', '--html',
+  '-q', '--quiet', '-V', '--version', '-h', '--help',
+]);
 
 const USAGE = `Usage:
   ${PROG} [options] input.svg
@@ -271,7 +276,8 @@ Options:
   -V, --version     Print version.
   -h, --help        This message.
 
-Long options also take --opt=value. Use -- to end options.
+Long options also take --opt=value. Use it for a value that matches a flag,
+e.g. --out=--manifest. Use -- to end options.
 
 Options may also come from favseed.config.js, .mjs or .ts in the working directory,
 which can set input, base and mode too; flags win over it.
@@ -306,7 +312,13 @@ export async function cli(argv) {
     const need = () => {
       consumed = true;
       if (inline !== null) return inline;
-      if (i + 1 >= argv.length) die(`${flag} needs an argument`);
+      const next = argv[i + 1];
+      const nextFlag = next?.startsWith('--') ? next.split('=', 1)[0] : next;
+      // --var --bg=#fff is a CSS assignment, even though --bg is also a flag.
+      const assignment = flag === '--var' && next?.includes('=');
+      if (next === undefined || next === '--' || (CLI_FLAGS.has(nextFlag) && !assignment)) {
+        die(`${flag} needs an argument`);
+      }
       return argv[++i];
     };
 
@@ -365,7 +377,7 @@ export async function cli(argv) {
     animation: opts.animation, manifest: opts.manifest, zopfli: opts.zopfli,
   });
 
-  if (options.input === undefined) { process.stderr.write(USAGE + '\n'); process.exit(1); }
+  if (options.input === undefined) { process.stderr.write(USAGE + '\n'); die('no input file given'); }
 
   if (options.bg === undefined) {
     warn(`--bg not given, using ${DEFAULT_BG} for the padded icons ` +
@@ -382,6 +394,10 @@ export async function cli(argv) {
     result = await build({ ...options, onWarn: warn });
   } catch (e) {
     die(e.message);
+  }
+
+  if ((options.bg === null || options.bg === 'none') && options.padding != null) {
+    warn('--padding only affects apple-touch-icon.png with --bg none; size icons and favicon.ico stay unpadded');
   }
 
   if (!opts.quiet) {

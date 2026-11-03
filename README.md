@@ -115,6 +115,9 @@ See [the measurements and method](https://github.com/cevdetch/favseed/blob/main/
 
 Long options also accept `--opt=value`; `--` ends option parsing. A flag that takes no
 argument rejects one.
+If a value matches a known flag, use the inline form, such as `--out=--manifest`.
+A separate recognized flag means the preceding option is missing its value.
+CSS assignments such as `--var --brand=#0E7C68` remain valid.
 
 ### A config file
 
@@ -166,7 +169,11 @@ minus the tRNS chunk. favseed warns when you did not choose, because the right g
 property of your mark and not of the format. `--bg '#fff'` for a mark drawn on light,
 `--bg none` to keep the alpha (and with it an unpadded set, declared `"any"` only).
 
-The value is validated by asking resvg to render a 1×1 pixel with it, so anything resvg takes
+With `--bg none`, explicit `--padding` affects only `apple-touch-icon.png`; numbered PNGs
+and `favicon.ico` stay unpadded. The CLI warns about this after a successful build, including
+when the options come from a config file or `--quiet` is set.
+
+The background value is validated by asking resvg to render a 1×1 pixel with it, so anything resvg takes
 works (`#fff`, `teal`, `rgb(14 124 104)`, `hsl(170 80% 27%)`), and the validator can
 never disagree with the renderer. The same pixel must come out opaque: `transparent`,
 `rgba(…, 0.5)` or `#ffffff80` would put alpha into icons declared maskable, so favseed refuses
