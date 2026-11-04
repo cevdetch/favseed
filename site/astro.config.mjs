@@ -1,6 +1,6 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { siteHeaders, developmentHeaders, productionHeaders } from './headers.mjs';
 import { wasiRuntime } from './build/wasi-runtime.mjs';
@@ -41,6 +41,10 @@ export default defineConfig({
         // Hashed build assets never change under the same name; everything else is revalidated.
         'astro:build:done': async ({ dir }) => {
           await writeFile(new URL('_headers', dir), productionHeaders);
+          const vendor = new URL('./vendor/image-wasm32-wasip1/', import.meta.url);
+          const notices = await Promise.all(['LICENSE', 'THIRD-PARTY-NOTICES.txt']
+            .map((name) => readFile(new URL(name, vendor), 'utf8')));
+          await writeFile(new URL('engine-licenses.txt', dir), notices.join('\n\n'));
         },
       },
     },

@@ -118,11 +118,15 @@ and retains upstream fallback spawning. Loading starts after selecting an SVG.
 Earlier release-mode compressor and palette measurements are retained in `bench/zopfli/`;
 they describe historical opt-in work, rather than the new standard default.
 
-Use HTTPS (or localhost), SharedArrayBuffer, DecompressionStream, and cross-origin isolation.
+Use HTTPS (or localhost), WebAssembly and DecompressionStream. When shared memory is
+available and transferable in both the page and worker, the browser uses the threaded engine.
+Otherwise it automatically loads a single-thread compatibility build of the same image
+engine. Privacy settings that disable shared memory no longer prevent generation. Only the
+selected image engine is downloaded; a network or initialization error remains an error.
 The build writes Cloudflare Pages `_headers` with COOP `same-origin`, COEP `require-corp`,
 and CORP `same-origin` for documents and assets. Other hosts must supply equivalent response
-headers, including worker responses. Astro dev and preview retain these isolation headers.
-Unsupported environments get a clear CLI alternative instead of a different encoder.
+headers, including worker responses, to retain the faster threaded path. Astro dev and preview
+retain these isolation headers. Missing common APIs still get a clear CLI alternative.
 
 `headers.mjs` also supplies `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: strict-origin-when-cross-origin`, and an enforced Content Security Policy
@@ -138,10 +142,16 @@ Vite keeps JavaScript chunks external even when they fall below its inlining thr
 Other hosts must apply the security headers too; the local browser harnesses test the production
 policy. After deployment, verify the actual document and worker response headers on Cloudflare.
 
-`build/wasi-runtime.mjs` tunes only the pinned image1.15.0 loader's initial memory and spare
-worker preload. It rejects changed package versions or loader defaults, retaining the memory
+`build/wasi-runtime.mjs` tunes the pinned threaded image1.15.0 loader's initial memory and spare
+worker preload, and verifies the compatibility artifact hashes and image/runtime versions. It rejects changed package versions or loader defaults, retaining the memory
 maximum, growth synchronization and cleanup. Both hosts load `lib/zopfli.wasm` through the same
 adapter; the rebuild recipe and licenses live in `bench/zopfli/` and `lib/`.
+
+The compatibility loader also starts at 64 MiB, with unshared growable memory and no child
+workers. Its pinned rebuild recipe, provenance and benchmark are in
+[bench/browser-compat](../bench/browser-compat/README.md); license notices ship at
+`/engine-licenses.txt`. It reduced sampled renderer memory but generated more slowly in the
+local investigation, so it is a fallback rather than the default.
 
 On the local 16-core Chromium benchmark, this preload change reduces worker targets 21→9 and
 renderer PSS after three fixtures 317–319→273–274 MiB, with equivalent build times. Warm
@@ -179,9 +189,12 @@ The pinned Playwright suite runs desktop Chromium, Firefox and WebKit, plus Pixe
 iPhone 13 emulation. It reuses native references, including small-coordinate and source-fallback
 cases on desktop and mobile alongside gradient, release compression, transparent aliases and custom
 manifest/animation options. It also checks cache ownership, ZIP downloads, page timers,
-cancellation/retry, a 1024px raster after shared-memory growth, failure preservation, missing
-document/worker isolation and touch controls at a 320 px viewport. The document and worker
-both validate their own WASM requirements.
+cancellation/retry, 1024px raster parity after shared or unshared memory growth, failure
+preservation and touch controls at a 320 px viewport. Parity and lifecycle cases run in both
+threaded and compatibility modes. Missing isolation or blocked sharing in a running realm selects compatibility. A host that
+blocks worker startup (for example, missing worker COEP under an isolated document) still
+reports a startup error; load failures never silently switch engines. Both realms probe their own
+capabilities, and the document can require compatibility even if its worker permits sharing.
 `test/page.spec.mjs` checks homepage title/description, canonical/Open Graph/JSON-LD
 consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.
 It also guards cold startup before SVG selection, including form edits and a rejected PNG:

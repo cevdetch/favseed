@@ -1,0 +1,19 @@
+{
+  "sourceDateEpoch": 0,
+  "imageVersion": "1.15.0",
+  "revision": "7bad478bfe647bca75d4c05db8726ca3d5335e80",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "sourceArchiveSha256": "9be63180155c7f4fc77caf856dba5d4f75acf4980d8c18fe6b1efedda02ee8aa",
+  "sdkArchiveSha256": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
+  "cargoLockSha256": "39fd2bea68478baf863fb7001837d4d03e79a38daa2b0f704f90cc73a633fc34",
+  "toolingLockSha256": "dcc251b54c02186b3f7d8d2bf338d83de9c339897f64df607dfeb4837f26b266",
+  "runtime": {
+    "@emnapi/core": "2.0.0-alpha.5",
+    "@emnapi/runtime": "2.0.0-alpha.5",
+    "@napi-rs/wasm-runtime": "1.2.5"
+  },
+  "artifacts": {
+    "image.wasip1-browser.js": "1ba612b83082ad7785b7099db67d203971081d9fc4c13f77b8fd54bb0e4f7c4e",
+    "image.wasm32-wasip1.wasm": "8beb7ddfed639217b9c513d1c6b9950cbdbd1f2740bf68b7bb364aa2d0961d31"
+  }
+}

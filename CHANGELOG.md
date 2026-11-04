@@ -11,6 +11,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Automatically use a pinned single-thread browser image engine when isolation or shared
+  memory is unavailable, including privacy-hardened Firefox. Keep the faster threaded path
+  where supported, lazy-load only the selected engine, and verify both modes against CLI bytes.
+
 - Guard site metadata, startup HTML/JS/CSS budgets and deferred engine loading in the
   existing browser CI suite, including ordinary form edits and rejected non-SVG files.
 - Enforce a site Content Security Policy with `nosniff` and a referrer policy, including
