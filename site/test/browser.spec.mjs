@@ -425,7 +425,7 @@ test('missing document isolation generates matching downloads and restores form 
   await expect(page.locator('#result')).toBeVisible();
 });
 
-test('missing worker isolation headers report a startup error and allow retry', async ({ page }) => {
+test('missing worker isolation headers follow browser policy and allow retry', async ({ page, browserName }) => {
   test.setTimeout(30_000);
   let intercepted = false;
   const images = [];
@@ -437,11 +437,24 @@ test('missing worker isolation headers report a startup error and allow retry', 
     await route.fulfill({ response, headers });
   });
   await checkPage(page);
-  await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/Could not start the image engine/);
+  if (browserName === 'webkit') {
+    // WebKit starts a nonisolated worker; Chromium and Firefox reject its startup.
+    await page.evaluate(() => window.favseedCheck.warm());
+    const input = fixture('tiles'), source = await readFile(input, 'utf8');
+    const options = { manifest: true, mode: 'fast', sizes: [32] };
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+    expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated })
+      .toEqual(summary(await buildFiles({ input, ...options })));
+    expect(images).toHaveLength(1);
+    expect(images[0]).toContain('image.wasm32-wasip1-');
+  } else {
+    await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/Could not start the image engine/);
+    expect(images).toHaveLength(0);
+  }
   expect(intercepted).toBe(true);
-  expect(images).toHaveLength(0);
   await page.evaluate(() => window.favseedCheck.dispose());
   await page.unroute('**/engine-worker-*.js');
+  images.length = 0;
   await page.evaluate(() => window.favseedCheck.warm());
   expect(images).toHaveLength(1);
   expect(images[0]).toContain('image.wasm32-wasi-');

@@ -192,8 +192,9 @@ manifest/animation options. It also checks cache ownership, ZIP downloads, page 
 cancellation/retry, 1024px raster parity after shared or unshared memory growth, failure
 preservation and touch controls at a 320 px viewport. Parity and lifecycle cases run in both
 threaded and compatibility modes. Missing isolation or blocked sharing in a running realm selects compatibility. A host that
-blocks worker startup (for example, missing worker COEP under an isolated document) still
-reports a startup error; load failures never silently switch engines. Both realms probe their own
+blocks worker startup still reports a startup error. With worker COEP missing under an
+isolated document, Chromium and Firefox reject startup; WebKit starts a nonisolated worker
+and selects compatibility. Load failures never silently switch engines. Both realms probe their own
 capabilities, and the document can require compatibility even if its worker permits sharing.
 `test/page.spec.mjs` checks homepage title/description, canonical/Open Graph/JSON-LD
 consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.

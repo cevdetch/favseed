@@ -48,6 +48,10 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Correct the browser isolation check for WebKit: missing worker COEP selects the
+  compatibility engine there, while Chromium and Firefox reject worker startup. Check
+  native output parity on the successful path and threaded retry after restoring headers.
+
 - Restore previous output after handled CLI/API publishing failures, including failures
   after earlier files were replaced. Preserve unrelated assets and symlink targets; retain
   recovery files if restoration fails and report cleanup errors alongside the original
