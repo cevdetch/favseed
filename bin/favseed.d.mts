@@ -68,6 +68,17 @@ export interface BuildResult {
 /** Builds the set into `out`. Throws FavseedError with a finished message; never exits. */
 export function build(options: BuildOptions): Promise<BuildResult>;
 
+export interface BuildFilesResult {
+  /** Generated files in output order, with their encoded contents. */
+  files: { name: string; bytes: Uint8Array }[];
+  animated: BuildResult['animated'];
+  fit: BuildResult['fit'];
+  links: BuildResult['links'];
+}
+
+/** Reads input from disk and returns the generated set without writing output files. */
+export function buildFiles(options: BuildOptions): Promise<BuildFilesResult>;
+
 /** The CLI on an argv array. Resolves to the exit code; exits the process on an error. */
 export function cli(argv: string[]): Promise<number>;
 
