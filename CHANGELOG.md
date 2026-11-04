@@ -11,6 +11,8 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Keep `/check` available for deployed-site diagnostics and guard that visiting it starts
+  no workers or WASM downloads until its API is explicitly initialized.
 - Automatically use a pinned single-thread browser image engine when isolation or shared
   memory is unavailable, including privacy-hardened Firefox. Keep the faster threaded path
   where supported, lazy-load only the selected engine, and verify both modes against CLI bytes.
