@@ -7,6 +7,47 @@ import { zip } from '../src/lib/zip.mjs';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { wasiRuntime } from '../build/wasi-runtime.mjs';
+import { checkCapabilities } from '../src/lib/capabilities.mjs';
+
+const browserCapabilities = () => ({
+  WebAssembly, SharedArrayBuffer, MessageChannel, DecompressionStream, crossOriginIsolated: true,
+});
+
+test('capability checks select compatibility when shared memory cannot be used', () => {
+  const scope = browserCapabilities();
+  assert.equal(checkCapabilities(scope), true);
+  for (const override of [
+    { crossOriginIsolated: false },
+    { SharedArrayBuffer: undefined },
+    { MessageChannel: undefined },
+    { WebAssembly: { compile: WebAssembly.compile, Memory: class { constructor() { throw new Error('blocked'); } } } },
+  ]) assert.equal(checkCapabilities({ ...scope, ...override }), false);
+  let closed = 0;
+  assert.equal(checkCapabilities({ ...scope, MessageChannel: class {
+    port1 = { postMessage() { throw new DOMException('blocked', 'DataCloneError'); }, close() { closed++; } };
+    port2 = { close() { closed++; } };
+  } }), false);
+  assert.equal(closed, 2, 'probe ports close even when sharing fails');
+});
+
+test('missing common browser APIs keep actionable errors in either mode', () => {
+  for (const crossOriginIsolated of [true, false]) {
+    const scope = { ...browserCapabilities(), crossOriginIsolated };
+    assert.throws(() => checkCapabilities({ ...scope, WebAssembly: undefined }), /WebAssembly.*favseed CLI/);
+    assert.throws(() => checkCapabilities({ ...scope, DecompressionStream: undefined }), /DecompressionStream.*favseed CLI/);
+  }
+});
+
+test('worker requests retain the document decision to disable threads', async () => {
+  let message;
+  const worker = { terminate() {}, postMessage(value) { message = value; } };
+  const client = createWorkerClient({ checkCapabilities: () => false, createWorker: () => worker });
+  const warming = client.warm();
+  assert.equal(message.threaded, false);
+  worker.onmessage({ data: { id: message.id, type: 'ready' } });
+  await warming;
+  client.dispose();
+});
 
 test('WASI tuning accepts only the pinned loader and refuses unexpected defaults', () => {
   const require = createRequire(import.meta.url);

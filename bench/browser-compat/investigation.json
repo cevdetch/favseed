@@ -1,0 +1,742 @@
+{
+  "date": "2026-11-04T18:24:57.294Z",
+  "cpu": "AMD Ryzen 7 7840U with Radeon 780M Graphics",
+  "logicalCpus": 16,
+  "node": "v26.13.0",
+  "platform": "linux",
+  "trials": [
+    {
+      "run": 0,
+      "variant": "baseline",
+      "initMs": 250.22999999998137,
+      "capabilities": {
+        "isolated": true,
+        "shared": "function"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": true
+          }
+        ],
+        "pssMiB": 147.802734375,
+        "rssMiB": 189.0390625,
+        "workers": 9
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 938.5699999998324,
+          "ticks": 46,
+          "maxGap": 20.41000000014901,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 181.125,
+              "shared": true
+            }
+          ],
+          "pssMiB": 250.134765625,
+          "rssMiB": 291.83203125,
+          "workers": 9
+        },
+        {
+          "mark": "tiles",
+          "ms": 249.10999999986961,
+          "ticks": 12,
+          "maxGap": 20.06000000005588,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 209.8125,
+              "shared": true
+            }
+          ],
+          "pssMiB": 283.626953125,
+          "rssMiB": 325.32421875,
+          "workers": 9
+        },
+        {
+          "mark": "heavy",
+          "ms": 760.8450000002049,
+          "ticks": 38,
+          "maxGap": 20.675000000279397,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 209.8125,
+              "shared": true
+            }
+          ],
+          "pssMiB": 277.662109375,
+          "rssMiB": 319.39453125,
+          "workers": 9
+        },
+        {
+          "mark": "gradient",
+          "ms": 1742.8999999999069,
+          "ticks": 87,
+          "maxGap": 20.805000000167638,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 226.25,
+              "shared": true
+            }
+          ],
+          "pssMiB": 326.048828125,
+          "rssMiB": 367.8203125,
+          "workers": 9
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "variant": "prototype",
+      "initMs": 218.5,
+      "capabilities": {
+        "isolated": false,
+        "shared": "undefined"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": false
+          }
+        ],
+        "pssMiB": 116.841796875,
+        "rssMiB": 158.10546875,
+        "workers": 1
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 1272.3999999999069,
+          "ticks": 63,
+          "maxGap": 20.59999999962747,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 173.9033203125,
+          "rssMiB": 215.6015625,
+          "workers": 1
+        },
+        {
+          "mark": "tiles",
+          "ms": 316.29999999981374,
+          "ticks": 15,
+          "maxGap": 20.399999999906868,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 187.8388671875,
+          "rssMiB": 229.5703125,
+          "workers": 1
+        },
+        {
+          "mark": "heavy",
+          "ms": 989.7999999998137,
+          "ticks": 49,
+          "maxGap": 21,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.75,
+              "shared": false
+            }
+          ],
+          "pssMiB": 194.3505859375,
+          "rssMiB": 236.08203125,
+          "workers": 1
+        },
+        {
+          "mark": "gradient",
+          "ms": 1671.1000000000931,
+          "ticks": 83,
+          "maxGap": 20.5,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 143.9375,
+              "shared": false
+            }
+          ],
+          "pssMiB": 224.814453125,
+          "rssMiB": 266.58984375,
+          "workers": 1
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "variant": "prototype",
+      "initMs": 134.29999999981374,
+      "capabilities": {
+        "isolated": false,
+        "shared": "undefined"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": false
+          }
+        ],
+        "pssMiB": 114.5419921875,
+        "rssMiB": 155.7578125,
+        "workers": 1
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 620,
+          "ticks": 30,
+          "maxGap": 20.90000000037253,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 175.060546875,
+          "rssMiB": 216.65234375,
+          "workers": 1
+        },
+        {
+          "mark": "tiles",
+          "ms": 170.59999999962747,
+          "ticks": 8,
+          "maxGap": 20.09999999962747,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 188.974609375,
+          "rssMiB": 230.56640625,
+          "workers": 1
+        },
+        {
+          "mark": "heavy",
+          "ms": 497.8000000002794,
+          "ticks": 24,
+          "maxGap": 20.09999999962747,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 123.375,
+              "shared": false
+            }
+          ],
+          "pssMiB": 197.974609375,
+          "rssMiB": 239.5703125,
+          "workers": 1
+        },
+        {
+          "mark": "gradient",
+          "ms": 1366.8000000002794,
+          "ticks": 68,
+          "maxGap": 20.5,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 143.25,
+              "shared": false
+            }
+          ],
+          "pssMiB": 225.5546875,
+          "rssMiB": 267.19140625,
+          "workers": 1
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "variant": "baseline",
+      "initMs": 155.94499999983236,
+      "capabilities": {
+        "isolated": true,
+        "shared": "function"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": true
+          }
+        ],
+        "pssMiB": 150.689453125,
+        "rssMiB": 192.00390625,
+        "workers": 9
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 481.15999999968335,
+          "ticks": 24,
+          "maxGap": 20.12000000011176,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 180.4375,
+              "shared": true
+            }
+          ],
+          "pssMiB": 250.513671875,
+          "rssMiB": 292.27734375,
+          "workers": 9
+        },
+        {
+          "mark": "tiles",
+          "ms": 137.375,
+          "ticks": 6,
+          "maxGap": 20.070000000298023,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 180.4375,
+              "shared": true
+            }
+          ],
+          "pssMiB": 250.013671875,
+          "rssMiB": 291.77734375,
+          "workers": 9
+        },
+        {
+          "mark": "heavy",
+          "ms": 364.50499999988824,
+          "ticks": 18,
+          "maxGap": 20.734999999869615,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 198.0625,
+              "shared": true
+            }
+          ],
+          "pssMiB": 281.271484375,
+          "rssMiB": 323.0703125,
+          "workers": 9
+        },
+        {
+          "mark": "gradient",
+          "ms": 782.5200000000186,
+          "ticks": 39,
+          "maxGap": 20.305000000167638,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 214.25,
+              "shared": true
+            }
+          ],
+          "pssMiB": 305.529296875,
+          "rssMiB": 347.37109375,
+          "workers": 9
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "variant": "baseline",
+      "initMs": 155.91500000003725,
+      "capabilities": {
+        "isolated": true,
+        "shared": "function"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": true
+          }
+        ],
+        "pssMiB": 149.5517578125,
+        "rssMiB": 191.75,
+        "workers": 9
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 477.3599999998696,
+          "ticks": 23,
+          "maxGap": 20.15999999968335,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 181.1875,
+              "shared": true
+            }
+          ],
+          "pssMiB": 251.7705078125,
+          "rssMiB": 294.35546875,
+          "workers": 9
+        },
+        {
+          "mark": "tiles",
+          "ms": 137.08499999996275,
+          "ticks": 6,
+          "maxGap": 20.075000000186265,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 210.375,
+              "shared": true
+            }
+          ],
+          "pssMiB": 291.0751953125,
+          "rssMiB": 333.671875,
+          "workers": 9
+        },
+        {
+          "mark": "heavy",
+          "ms": 365.29000000003725,
+          "ticks": 18,
+          "maxGap": 20.665000000037253,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 210.375,
+              "shared": true
+            }
+          ],
+          "pssMiB": 284.8818359375,
+          "rssMiB": 327.48046875,
+          "workers": 9
+        },
+        {
+          "mark": "gradient",
+          "ms": 775.7150000003166,
+          "ticks": 38,
+          "maxGap": 20.484999999869615,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 229.6875,
+              "shared": true
+            }
+          ],
+          "pssMiB": 322.6455078125,
+          "rssMiB": 365.2890625,
+          "workers": 9
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "variant": "prototype",
+      "initMs": 139.89999999990687,
+      "capabilities": {
+        "isolated": false,
+        "shared": "undefined"
+      },
+      "afterInit": {
+        "linear": [
+          {
+            "initialMiB": 64,
+            "currentMiB": 64,
+            "shared": false
+          }
+        ],
+        "pssMiB": 116.6259765625,
+        "rssMiB": 157.63671875,
+        "workers": 1
+      },
+      "builds": [
+        {
+          "mark": "general",
+          "ms": 616.6999999997206,
+          "ticks": 30,
+          "maxGap": 20.5,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 173.3291015625,
+          "rssMiB": 214.65234375,
+          "workers": 1
+        },
+        {
+          "mark": "tiles",
+          "ms": 169.89999999990687,
+          "ticks": 8,
+          "maxGap": 20.100000000093132,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 120.625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 187.1484375,
+          "rssMiB": 228.52734375,
+          "workers": 1
+        },
+        {
+          "mark": "heavy",
+          "ms": 499.09999999962747,
+          "ticks": 24,
+          "maxGap": 20.40000000037253,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 131.0625,
+              "shared": false
+            }
+          ],
+          "pssMiB": 198.765625,
+          "rssMiB": 240.14453125,
+          "workers": 1
+        },
+        {
+          "mark": "gradient",
+          "ms": 1361.6000000000931,
+          "ticks": 68,
+          "maxGap": 20.700000000186265,
+          "linear": [
+            {
+              "initialMiB": 64,
+              "currentMiB": 149.4375,
+              "shared": false
+            }
+          ],
+          "pssMiB": 227.8046875,
+          "rssMiB": 269.2265625,
+          "workers": 1
+        }
+      ]
+    }
+  ],
+  "parity": [
+    {
+      "name": "small-mark/placement",
+      "files": 6,
+      "bytes": 4412,
+      "ms": 2637.5
+    },
+    {
+      "name": "aspect-wide/proportions",
+      "files": 6,
+      "bytes": 2682,
+      "ms": 482.89999999990687
+    },
+    {
+      "name": "aspect-tall/proportions",
+      "files": 6,
+      "bytes": 2595,
+      "ms": 516.6000000000931
+    },
+    {
+      "name": "aspect-offset/proportions",
+      "files": 6,
+      "bytes": 2684,
+      "ms": 488.70000000018626
+    },
+    {
+      "name": "aspect-percent/proportions",
+      "files": 6,
+      "bytes": 877,
+      "ms": 179
+    },
+    {
+      "name": "aspect-percent/transparent",
+      "files": 6,
+      "bytes": 795,
+      "ms": 39.89999999990687
+    },
+    {
+      "name": "grid-1/precision",
+      "files": 6,
+      "bytes": 8840,
+      "ms": 653.5
+    },
+    {
+      "name": "grid-16/precision",
+      "files": 6,
+      "bytes": 8741,
+      "ms": 638.7000000001863
+    },
+    {
+      "name": "grid-24/precision",
+      "files": 6,
+      "bytes": 8792,
+      "ms": 634.6000000000931
+    },
+    {
+      "name": "grid-tiny/precision",
+      "files": 6,
+      "bytes": 8917,
+      "ms": 633
+    },
+    {
+      "name": "grid-fallback/precision",
+      "files": 6,
+      "bytes": 7206,
+      "ms": 641.5
+    },
+    {
+      "name": "gradient/quality100",
+      "files": 6,
+      "bytes": 29142,
+      "ms": 1602.8999999999069
+    },
+    {
+      "name": "gradient/quality80",
+      "files": 6,
+      "bytes": 24773,
+      "ms": 1344.1999999997206
+    },
+    {
+      "name": "gradient/quality60-zopfli",
+      "files": 5,
+      "bytes": 5187,
+      "ms": 846.2000000001863
+    },
+    {
+      "name": "general/fast",
+      "files": 6,
+      "bytes": 6463,
+      "ms": 542.7999999998137
+    },
+    {
+      "name": "flat/fast",
+      "files": 6,
+      "bytes": 6480,
+      "ms": 850.5999999996275
+    },
+    {
+      "name": "second/fast",
+      "files": 6,
+      "bytes": 3790,
+      "ms": 506.3000000002794
+    },
+    {
+      "name": "mask/fast",
+      "files": 6,
+      "bytes": 5695,
+      "ms": 612.3999999999069
+    },
+    {
+      "name": "heavy/fast",
+      "files": 6,
+      "bytes": 7998,
+      "ms": 491.8000000002794
+    },
+    {
+      "name": "animated/fast",
+      "files": 6,
+      "bytes": 9256,
+      "ms": 787.1000000000931
+    },
+    {
+      "name": "tiles/fast",
+      "files": 6,
+      "bytes": 1496,
+      "ms": 161.5
+    },
+    {
+      "name": "wide/fast",
+      "files": 6,
+      "bytes": 2145,
+      "ms": 379.39999999990687
+    },
+    {
+      "name": "gradient/fast",
+      "files": 6,
+      "bytes": 24773,
+      "ms": 1339.7999999998137
+    },
+    {
+      "name": "smil/fast",
+      "files": 6,
+      "bytes": 4633,
+      "ms": 616.5
+    },
+    {
+      "name": "dark/fast",
+      "files": 6,
+      "bytes": 5143,
+      "ms": 553.3999999999069
+    },
+    {
+      "name": "tiles/release",
+      "files": 6,
+      "bytes": 1485,
+      "ms": 15471
+    },
+    {
+      "name": "gradient/release",
+      "files": 6,
+      "bytes": 24398,
+      "ms": 12390.700000000186
+    },
+    {
+      "name": "general/zopfli-fast",
+      "files": 6,
+      "bytes": 6147,
+      "ms": 3864.2999999998137
+    },
+    {
+      "name": "transparent-aliases",
+      "files": 6,
+      "bytes": 4460,
+      "ms": 119
+    },
+    {
+      "name": "custom-manifest",
+      "files": 6,
+      "bytes": 3692,
+      "ms": 63.200000000186265
+    },
+    {
+      "name": "memory-growth1024",
+      "files": 5,
+      "bytes": 1830,
+      "ms": 311.70000000018626
+    }
+  ],
+  "lifecycle": {
+    "cache": true,
+    "invalid": true,
+    "cancel-initialization": true,
+    "cancel-raster": true
+  },
+  "assets": {
+    "baseline": {
+      "name": "image.wasm32-wasi-BcP6cHMx.wasm",
+      "sha256": "b6f6f8d45be719d361815e8fc584b82d7e4c46837708babb557f29abbb84d205",
+      "raw": 10322976,
+      "gzip9": 3488533,
+      "brotli11": 2481262
+    },
+    "prototype": {
+      "name": "image.wasm32-wasip1-_JnZhs8r.wasm",
+      "sha256": "d203e0a5d9a3ec2258a2047f4a2b402eb40559ac0738007dd02c4f62f5577f58",
+      "raw": 10288008,
+      "gzip9": 3463522,
+      "brotli11": 2466328
+    }
+  },
+  "browser": "156.0.8078.4"
+}

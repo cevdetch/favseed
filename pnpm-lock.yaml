@@ -137,9 +137,18 @@ importers:
       '@astrojs/sitemap':
         specifier: ^3.7.4
         version: 3.7.4
+      '@emnapi/core':
+        specifier: 2.0.0-alpha.5
+        version: 2.0.0-alpha.5
+      '@emnapi/runtime':
+        specifier: 2.0.0-alpha.5
+        version: 2.0.0-alpha.5
       '@napi-rs/image-wasm32-wasi':
         specifier: 1.15.0
         version: 1.15.0
+      '@napi-rs/wasm-runtime':
+        specifier: 1.2.5
+        version: 1.2.5(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
       astro:
         specifier: ^7.3.8
         version: 7.3.8(@types/node@24.19.1)(yaml@2.9.1)

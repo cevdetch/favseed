@@ -17,19 +17,22 @@ const zopfli = createZopfli({ loadWasm: async () => {
   return response.arrayBuffer();
 } });
 let loading;
-const load = () => {
-  checkCapabilities();
-  return (loading ??= import('@napi-rs/image-wasm32-wasi').then((image) => createEngine({
+const load = (parentThreaded) => {
+  if (loading) return loading;
+  const threaded = checkCapabilities() && parentThreaded !== false;
+  const image = threaded ? import('@napi-rs/image-wasm32-wasi')
+    : import('../../vendor/image-wasm32-wasip1/image.wasip1-browser.js');
+  return (loading = image.then((image) => createEngine({
     image, zopfli,
     inflate: async (bytes) => new Uint8Array(await new Response(
       new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer()),
   })).catch((error) => { loading = undefined; throw error; }));
 };
 
-self.onmessage = async ({ data: { id, type, source, options } }) => {
+self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
   let initialized = false;
   try {
-    const engine = await load();
+    const engine = await load(threaded);
     initialized = true;
     if (type === 'warm') { self.postMessage({ id, type: 'ready' }); return; }
     if (type !== 'build') return;

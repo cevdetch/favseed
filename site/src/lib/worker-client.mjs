@@ -2,7 +2,7 @@
 const aborted = () => new DOMException('Build cancelled', 'AbortError');
 
 export function createWorkerClient({ createWorker, checkCapabilities }) {
-  let worker, sequence = 0, activeBuild;
+  let worker, threaded, sequence = 0, activeBuild;
   const pending = new Map();
   const reset = (error = aborted()) => {
     const previous = worker;
@@ -14,7 +14,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
   };
   const start = () => {
     if (worker) return worker;
-    checkCapabilities();
+    threaded = checkCapabilities();
     const current = createWorker();
     worker = current;
     current.onmessage = ({ data }) => {
@@ -50,7 +50,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
     pending.set(id, { resolve, reject, cleanup, onProgress, onWarn });
     if (type === 'build') activeBuild = id;
     signal?.addEventListener('abort', cancel, { once: true });
-    try { current.postMessage({ id, type, ...payload }); } catch (e) { reset(e); }
+    try { current.postMessage({ id, type, threaded, ...payload }); } catch (e) { reset(e); }
   });
   return {
     warm: () => request('warm'),

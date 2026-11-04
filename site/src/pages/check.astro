@@ -36,17 +36,17 @@
     warm, dispose,
     async unsupported() {
       dispose();
-      const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
-      Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: false });
+      const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'DecompressionStream');
+      Object.defineProperty(globalThis, 'DecompressionStream', { configurable: true, value: undefined });
       try {
         await warm();
         throw new Error('Unsupported environment accepted');
       } catch (e) {
-        if (!/cross-origin isolation.*favseed CLI/.test(e.message)) throw e;
+        if (!/DecompressionStream.*favseed CLI/.test(e.message)) throw e;
         return true;
       } finally {
-        if (descriptor) Object.defineProperty(globalThis, 'crossOriginIsolated', descriptor);
-        else delete globalThis.crossOriginIsolated;
+        if (descriptor) Object.defineProperty(globalThis, 'DecompressionStream', descriptor);
+        else delete globalThis.DecompressionStream;
       }
     },
     async build(source, options) {

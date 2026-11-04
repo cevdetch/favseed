@@ -17,11 +17,13 @@ const downloads = (page) => page.locator('#files a').evaluateAll(async (links) =
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return { name: link.download, size: bytes.byteLength, hash: Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('') };
 })));
-const checkPage = async (page) => {
-  const response = await page.goto('/check');
-  for (const [name, value] of Object.entries(siteHeaders)) expect(await response.headerValue(name)).toBe(value);
+const checkPage = async (page, compatibility = false) => {
+  const response = await page.goto(compatibility ? '/check?no-isolation' : '/check');
+  for (const [name, value] of Object.entries(siteHeaders)) {
+    expect(await response.headerValue(name)).toBe(compatibility && name.startsWith('Cross-Origin-') ? null : value);
+  }
   await page.waitForFunction(() => !!window.favseedCheck);
-  expect(await page.evaluate(() => window.favseedCheck.isolated)).toBe(true);
+  expect(await page.evaluate(() => window.favseedCheck.isolated)).toBe(!compatibility);
 };
 
 const clipboardStub = (page) => page.addInitScript(() => {
@@ -167,10 +169,12 @@ test('head markup stays selectable with manual guidance when clipboard support i
   await expect(page.locator('#zip')).toBeVisible();
 });
 
-test('files and metadata match the CLI; archives, cache and page timers work', async ({ page, isMobile }) => {
+for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} files and metadata match the CLI; archives, cache and page timers work`, async ({ page, isMobile }) => {
   const errors = [];
+  const images = new Set();
+  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.add(request.url()); });
   page.on('pageerror', (error) => errors.push(error.message));
-  await checkPage(page);
+  await checkPage(page, compatibility);
   const selected = isMobile ? cases.filter((item) =>
     ['small-mark/placement', 'aspect-wide/proportions', 'aspect-tall/proportions', 'aspect-percent/transparent',
       'grid-1/precision', 'grid-tiny/precision', 'grid-fallback/precision', 'gradient/fast', 'tiles/release', 'gradient/quality60-zopfli', 'transparent-aliases', 'custom-manifest'].includes(item.name)) : cases;
@@ -194,6 +198,8 @@ test('files and metadata match the CLI; archives, cache and page timers work', a
   const repeat = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
   expect(repeat.progress).toEqual([]);
   expect(errors).toEqual([]);
+  expect(images.size, 'Only the selected image WASM downloads').toBe(1);
+  expect([...images][0]).toContain(compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-');
   console.log(`${test.info().project.name}: ${fileCount} files match native across ${selected.length} cases`);
 });
 
@@ -270,8 +276,8 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   await expect(page.locator('#warnings')).toBeHidden();
 });
 
-test('invalid options, cancellation and worker retry leave the engine usable', async ({ page }) => {
-  await checkPage(page);
+for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} invalid options, cancellation and worker retry leave the engine usable`, async ({ page }) => {
+  await checkPage(page, compatibility);
   const source = await readFile(fixture('general'), 'utf8'), options = { mode: 'fast', sizes: [32] };
   expect(await page.evaluate((source) => window.favseedCheck.invalid(source), source)).toBe(true);
   await page.evaluate(() => window.favseedCheck.dispose());
@@ -283,7 +289,7 @@ test('invalid options, cancellation and worker retry leave the engine usable', a
   expect(actual.files).toEqual(summary(await buildFiles({ input: fixture('general'), manifest: true, ...options })).files);
 });
 
-test('a 1024px raster matches native after shared memory grows', async ({ page }) => {
+for (const compatibility of [false, true]) test(`a 1024px raster matches native after ${compatibility ? 'unshared' : 'shared'} memory grows`, async ({ page }) => {
   let worker;
   page.on('worker', (value) => { if (value.url().includes('engine-worker-')) worker = value; });
   await page.route('**/engine-worker-*.js', async (route) => {
@@ -291,13 +297,13 @@ test('a 1024px raster matches native after shared memory grows', async ({ page }
     const observe = `const memories = []; const OriginalMemory = WebAssembly.Memory;
       WebAssembly.Memory = new Proxy(OriginalMemory, { construct(Target, [descriptor]) {
         const memory = new Target(descriptor);
-        if (descriptor.shared) memories.push({memory, initial: descriptor.initial * 65536});
+        if (!!descriptor.shared === ${!compatibility} && descriptor.initial > 1) memories.push({memory, initial: descriptor.initial * 65536});
         return memory;
       } });
       globalThis.favseedMemoryGrew = () => memories.some(({memory, initial}) => memory.buffer.byteLength > initial);\n`;
     await route.fulfill({ response, body: observe + await response.text() });
   });
-  await checkPage(page);
+  await checkPage(page, compatibility);
   const input = fixture('general'), source = await readFile(input, 'utf8');
   const options = { mode: 'fast', sizes: [1024], padding: 0, bg: 'none' };
   const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
@@ -407,21 +413,23 @@ test('form defaults skip extra compression and opt-in matches native bytes', asy
   expect(expected.files.filter((f) => f.name.endsWith('.svg')).map((f) => f.name)).toEqual(['icon.svg']);
 });
 
-test('missing document isolation gives the CLI alternative and restores form controls', async ({ page }) => {
+test('missing document isolation generates matching downloads and restores form controls', async ({ page }) => {
   await page.goto('/?no-isolation');
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(false);
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.locator('output')).toHaveClass('bad');
-  await expect(page.locator('output')).toContainText('favseed CLI');
+  await expect(page.locator('output')).toHaveText(/^Done in/, { timeout: 30_000 });
+  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true })).files);
   await expect(page.getByRole('button', { name: 'Generate', exact: true })).toBeEnabled();
   await expect(page.locator('#cancel')).toBeHidden();
-  await expect(page.locator('#result')).toBeHidden();
+  await expect(page.locator('#result')).toBeVisible();
 });
 
-test('missing worker isolation rejects initialization and permits retry', async ({ page }) => {
+test('missing worker isolation headers report a startup error and allow retry', async ({ page }) => {
   test.setTimeout(30_000);
   let intercepted = false;
+  const images = [];
+  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
   await page.route('**/engine-worker-*.js', async (route) => {
     intercepted = true;
     const response = await route.fetch();
@@ -429,8 +437,60 @@ test('missing worker isolation rejects initialization and permits retry', async 
     await route.fulfill({ response, headers });
   });
   await checkPage(page);
-  await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow();
+  await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/Could not start the image engine/);
   expect(intercepted).toBe(true);
+  expect(images).toHaveLength(0);
+  await page.evaluate(() => window.favseedCheck.dispose());
   await page.unroute('**/engine-worker-*.js');
   await page.evaluate(() => window.favseedCheck.warm());
+  expect(images).toHaveLength(1);
+  expect(images[0]).toContain('image.wasm32-wasi-');
+});
+
+for (const restriction of ['document', 'worker', 'worker-isolation']) test(`${restriction} shared-memory restrictions select only compatibility`, async ({ page }) => {
+  const images = [], workers = [];
+  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
+  page.on('worker', (worker) => workers.push(worker));
+  if (restriction === 'document') {
+    // The worker still supports sharing; the document's refusal must win.
+    await page.addInitScript(() => Object.defineProperty(globalThis, 'SharedArrayBuffer', { value: undefined }));
+  } else {
+    await page.route('**/engine-worker-*.js', async (route) => {
+      const response = await route.fetch();
+      const block = restriction === 'worker-isolation'
+        ? `Object.defineProperty(globalThis, 'crossOriginIsolated', { value: false });\n`
+        : `const OriginalChannel = MessageChannel;
+        globalThis.MessageChannel = class extends OriginalChannel {
+          constructor() {
+            super(); const post = this.port1.postMessage.bind(this.port1);
+            this.port1.postMessage = (value, ...args) => {
+              if (value instanceof SharedArrayBuffer) throw new DOMException('Sharing blocked', 'DataCloneError');
+              return post(value, ...args);
+            };
+          }
+        };\n`;
+      await route.fulfill({ response, body: block + await response.text() });
+    });
+  }
+  await page.goto('/');
+  await generateHead(page);
+  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files);
+  expect(images).toHaveLength(1);
+  expect(images[0]).toContain('image.wasm32-wasip1-');
+  expect(workers).toHaveLength(1);
+});
+
+for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} load failure stays visible and retry uses the same engine`, async ({ page }) => {
+  const images = [];
+  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
+  await page.route('**/image.wasm32-*.wasm', (route) => route.fulfill({ status: 503, body: 'Unavailable' }));
+  await checkPage(page, compatibility);
+  await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/503/);
+  expect(images).toHaveLength(1);
+  const expected = compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-';
+  expect(images[0]).toContain(expected);
+  await page.unroute('**/image.wasm32-*.wasm');
+  await page.evaluate(() => window.favseedCheck.warm());
+  expect(images).toHaveLength(2);
+  expect(images[1]).toContain(expected);
 });
