@@ -57,6 +57,26 @@ for (const path of ['/check', '/404']) {
   });
 }
 
+test('/check stays idle until explicitly initialized', async ({ page }) => {
+  const workers = [], requests = [];
+  page.on('worker', (worker) => workers.push(worker.url()));
+  page.on('request', (request) => requests.push(request.url()));
+  const response = await page.goto('/check', { waitUntil: 'networkidle' });
+  expect(response.status()).toBe(200);
+  await expect(page.locator('#out')).toHaveText('ready');
+  // Observe settled startup, not arbitrarily delayed background work.
+  expect(workers, 'Visiting the diagnostic page starts no workers').toEqual([]);
+  expect(requests.filter((url) => /(?:engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
+    'Visiting the diagnostic page downloads no engine or WASM assets').toEqual([]);
+
+  // The diagnostic API must remain usable against the same deployed build.
+  const worker = page.waitForEvent('worker');
+  const wasm = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith('.wasm'));
+  await page.evaluate(() => window.favseedCheck.warm());
+  await Promise.all([worker, wasm]);
+  await page.evaluate(() => window.favseedCheck.dispose());
+});
+
 test('cold startup stays small and defers engine loading until SVG selection', async ({ page }, testInfo) => {
   const responses = [], requests = [], workers = [];
   const pending = new Set();

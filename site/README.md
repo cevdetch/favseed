@@ -175,6 +175,11 @@ builds over eleven fast-mode fixtures, two release-mode fixtures, and custom opt
 It also checks ZIP contents, cache mutation/transfer ownership, page responsiveness, missing
 isolation, cancellation, retry, nested-worker termination, and preservation of form downloads.
 `/check` supplies the test API; fixtures and native references are supplied by the Node harness.
+It deliberately stays in production so the deployed build can be diagnosed. Visiting it
+only exposes that API; it starts no workers and downloads no WASM. Initialization and icon
+generation require explicit API calls from a harness or developer. The existing browser suite guards settled startup
+and explicit initialization; it does not detect arbitrarily delayed background work.
+The page remains `noindex`, has no canonical URL and is excluded from the sitemap.
 
 The browser command defaults to `chromium`; set `CHROME=google-chrome` to use Google Chrome.
 Only these command names are accepted, and the browser must be on `PATH`.
