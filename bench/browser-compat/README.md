@@ -91,6 +91,9 @@ fresh output with the vendored artifacts; `--write` replaces them. Two clean bui
 different temporary directories reproduced both committed artifact hashes. The site build
 publishes `engine-licenses.txt` from the upstream image license and collected
 third-party notices. The vendored binary is excluded from the npm package's file allowlist.
+The standard `~/.cargo` home remains supported. A custom `CARGO_HOME` must be inside the
+checkout or system temporary directory, like the archive paths; symlink escapes are rejected
+before archives are read or build tools run.
 
 ## Production verification
 

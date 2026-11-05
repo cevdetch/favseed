@@ -85,7 +85,7 @@ export function cli(argv: string[]): Promise<number>;
 export class FavseedError extends Error {}
 
 /** The engine's package versions, which the output bytes depend on. */
-export function engineVersions(): { '@napi-rs/image': string; '@gfx/zopfli': string };
+export function engineVersions(): { '@napi-rs/image': string; '@gfx/zopfli': string; svgo: string };
 
 /** The `<link>` block for a set served under `base`. */
 export function linkTags(base?: string, manifest?: boolean): string;

@@ -4,12 +4,17 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { benchmarkPath } from '../path.mjs';
 
 const revision = '7bad478bfe647bca75d4c05db8726ca3d5335e80';
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const defaultCargoHome = join(homedir(), '.cargo');
+// Cargo's standard home is trusted; custom homes obey the same physical path
+// boundary as archive inputs. Validate before archive reads or tool execution.
+const cargoHome = !process.env.CARGO_HOME || resolve(process.env.CARGO_HOME) === defaultCargoHome
+  ? defaultCargoHome : benchmarkPath(process.env.CARGO_HOME);
 const archives = [
   { path: benchmarkPath(process.argv[2]), sha: '9be63180155c7f4fc77caf856dba5d4f75acf4980d8c18fe6b1efedda02ee8aa' },
   { path: benchmarkPath(process.argv[3]), sha: '0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce' },
@@ -22,7 +27,6 @@ if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('Reb
 const here = fileURLToPath(new URL('./', import.meta.url));
 const destination = fileURLToPath(new URL('../../site/vendor/image-wasm32-wasip1/', import.meta.url));
 const scratch = mkdtempSync(join(tmpdir(), 'favseed-image-build.'));
-const cargoHome = process.env.CARGO_HOME || join(homedir(), '.cargo');
 const run = (command, args, options = {}) => execFileSync(command, args, { stdio: 'inherit', ...options });
 try {
   for (const { path } of archives) run('tar', ['-xzf', path, '-C', scratch]);
@@ -39,12 +43,12 @@ try {
   pkg.napi.wasm.threadlessInitialMemory = 1024;
   writeFileSync(join(binding, 'package.json'), JSON.stringify(pkg, null, 2));
   const flags = `--target=wasm32-wasi --sysroot=${sdk}/share/wasi-sysroot -mllvm -wasm-enable-sjlj -lsetjmp -ffile-prefix-map=${scratch}=/favseed-build -ffile-prefix-map=${cargoHome}=/cargo`;
-  const env = { ...process.env, WASI_SDK_PATH: sdk, BINDGEN_EXTRA_CLANG_ARGS: `--sysroot=${sdk}/share/wasi-sysroot`,
+  const env = { ...process.env, CARGO_HOME: cargoHome, WASI_SDK_PATH: sdk, BINDGEN_EXTRA_CLANG_ARGS: `--sysroot=${sdk}/share/wasi-sysroot`,
     CMAKE_BUILD_PARALLEL_LEVEL: '2', CARGO_BUILD_JOBS: '8', CARGO_TARGET_DIR: join(scratch, 'target'),
     CARGO_NET_OFFLINE: 'true', SOURCE_DATE_EPOCH: '0', TARGET_CFLAGS: flags, TARGET_CXXFLAGS: flags,
     RUSTFLAGS: `-C target-feature=+simd128 -C link-arg=-zstack-size=16777216 --remap-path-prefix=${scratch}=/favseed-build --remap-path-prefix=${cargoHome}=/cargo` };
   // Fetch only the locked Rust inputs, then build with networking disabled.
-  run('cargo', ['fetch', '--locked', '--target', 'wasm32-wasip1'], { cwd: source });
+  run('cargo', ['fetch', '--locked', '--target', 'wasm32-wasip1'], { cwd: source, env: { ...process.env, CARGO_HOME: cargoHome } });
   run('node', [join(tooling, 'node_modules/@napi-rs/cli/dist/cli.js'), 'build', '--cwd', binding,
     '--target', 'wasm32-wasip1', '--platform', '--no-const-enum', '--release', '--no-default-features', '--features', 'binding'], { env });
   if (hash(readFileSync(join(source, 'Cargo.lock'))) !== hash(readFileSync(join(here, 'Cargo.lock')))) throw new Error('Build changed the reviewed Cargo.lock');

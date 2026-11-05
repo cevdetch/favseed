@@ -11,6 +11,13 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Share validated persistent-cache reads between Vite and Astro so partial or malformed
+  entries rebuild. Distinguish the default opaque background from explicit transparency
+  in cache keys and invalidate older ambiguous entries.
+- Include the installed SVGO version in engine/cache identity and preserve requested size
+  order in cache keys so dependency updates and reordered manifests rebuild correctly.
+- Validate custom Cargo homes in the browser compatibility rebuild script before I/O,
+  applying the benchmark path boundary while retaining the standard Cargo home.
 - Document the Node build APIs, upgrade workflow and troubleshooting in the README;
   declare the existing `buildFiles()` export and its in-memory result for TypeScript consumers.
 - Keep `/check` available for deployed-site diagnostics and guard that visiting it starts
@@ -52,6 +59,8 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Fixed
 
+- Report browser-check connection failures immediately with the active case and browser
+  diagnostics, instead of hiding the original failure behind another protocol timeout.
 - Correct the browser isolation check for WebKit: missing worker COEP selects the
   compatibility engine there, while Chromium and Firefox reject worker startup. Check
   native output parity on the successful path and threaded retry after restoring headers.

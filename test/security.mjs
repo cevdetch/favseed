@@ -1,7 +1,7 @@
 // Exercise the inputs reported by CodeQL through their real entry points.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, parse } from 'node:path';
 import { describe, it } from 'node:test';
@@ -22,7 +22,7 @@ describe('benchmark path boundaries', () => {
     ['default-performance.mjs', false], ['pipeline-concurrency.mjs', true],
     ['png-lossless-screen.mjs', false], ['png-quality.mjs', false],
     ['png-quantize-screen.mjs', true], ['vite-pwa-encode.mjs', false],
-    ['vite-pwa-pipeline.mjs', false], ['zopfli/build.mjs', false],
+    ['vite-pwa-pipeline.mjs', false], ['zopfli/build.mjs', false], ['browser-compat/build.mjs', false],
   ]) {
     it(`${script} rejects paths outside the checkout and temporary directory before doing I/O`, async () => {
       const scratch = mkdtempSync(join(tmpdir(), 'favseed-bench-path-test.'));
@@ -67,6 +67,27 @@ describe('benchmark path boundaries', () => {
       symlinkSync(outside, escape, 'junction');
       assert.throws(() => benchmarkPath(escape), /Benchmark path must be inside/);
       assert.throws(() => benchmarkPath(join(escape, 'new-favseed-results')), /Benchmark path must be inside/);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it('validates an overridden Cargo home before reading archives or starting build tools', async () => {
+    const scratch = mkdtempSync(join(tmpdir(), 'favseed-cargo-path-test.'));
+    try {
+      const archive = join(scratch, 'unreviewed.tar.gz');
+      writeFileSync(archive, 'must not reach archive verification');
+      const escape = join(scratch, 'escape');
+      symlinkSync(outside, escape, 'junction');
+      for (const cargoHome of [outside, escape]) {
+        await assert.rejects(execFileAsync(process.execPath,
+          [join(ROOT, 'bench/browser-compat/build.mjs'), archive, archive],
+          { cwd: ROOT, env: { ...process.env, CARGO_HOME: cargoHome }, timeout: 10000 }), (error) => {
+          assert.equal(error.code, 1);
+          assert.match(error.stderr, /Benchmark path must be inside/);
+          return true;
+        });
+      }
     } finally {
       rmSync(scratch, { recursive: true, force: true });
     }

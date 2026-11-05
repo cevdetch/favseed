@@ -31,6 +31,15 @@ it('persistent cache distinguishes explicit Zopfli from the default', () => {
   assert.equal(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { mode: 'fast' } }),
     'disabled compression should share a cache entry across effort modes');
 });
+
+it('persistent cache distinguishes the default opaque background from transparent output', () => {
+  const shared = { version: 'test', source: 'svg', engine: {} };
+  const key = (options) => cacheKey({ ...shared, options });
+  assert.notEqual(key({}), key({ bg: null }));
+  assert.equal(key({}), key({ bg: '#000000' }));
+  // The old key stored both default-black and transparent sets under this digest.
+  assert.notEqual(key({ bg: null }), '8fa27ca0e0ed0b6113bed4ef3492dc0c658f92614b33306ea730bf25f439fbcc');
+});
 import favseed, { favseedIcons } from '../vite/index.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -69,6 +78,19 @@ describe('the cache', () => {
     await writeSlot(cache, 'k1', files);
     const back = await readSlot(cache, 'k1');
     assert.deepEqual(back.map((f) => [f.name, [...f.bytes]]), files.map((f) => [f.name, [...f.bytes]]));
+  });
+
+  it('treats incomplete and malformed cache slots as misses', async () => {
+    const cache = dir(), slot = join(cache, 'k1');
+    await writeSlot(cache, 'k1', [{ name: 'icon.svg', bytes: new TextEncoder().encode('<svg/>') }]);
+    for (const index of [null, {}, { files: null }, { files: [] },
+      { files: ['../outside.svg'] }, { files: ['icon.svg', 'icon.svg'] }, { files: ['favicon.ico'] }]) {
+      writeFileSync(join(slot, 'index.json'), JSON.stringify(index));
+      assert.equal(await readSlot(cache, 'k1'), null, JSON.stringify(index));
+    }
+    writeFileSync(join(slot, 'index.json'), JSON.stringify({ files: ['icon.svg'] }));
+    rmSync(join(slot, 'icon.svg'));
+    assert.equal(await readSlot(cache, 'k1'), null, 'missing indexed asset');
   });
 
   it('knows its own version', () => {
@@ -132,6 +154,40 @@ const vbuild = (root, plugins, extra = {}) => viteBuild({
 });
 
 describe('favseed/vite in a build', () => {
+  it('rebuilds the manifest when requested sizes change order', async () => {
+    const root = app(), options = { bg: '#000000', manifest: true };
+    await vbuild(root, [favseed({ ...options, sizes: [32, 48] })]);
+    await vbuild(root, [favseed({ ...options, sizes: [48, 32] })]);
+    const expected = await buildFiles({ ...options, sizes: [48, 32], input: join(root, 'src/logo.svg') });
+    const manifest = expected.files.find((file) => file.name === 'site.webmanifest');
+    assert.deepEqual(readFileSync(join(root, 'dist', manifest.name)), Buffer.from(manifest.bytes));
+  });
+
+  it('does not reuse opaque icons after switching the default background to transparent', async () => {
+    const root = app(), options = { sizes: [32], manifest: true };
+    await vbuild(root, [favseed(options)]);
+    const before = readFileSync(join(root, 'dist', 'icon-32.png'));
+    await vbuild(root, [favseed({ ...options, bg: null })]);
+    const expected = await buildFiles({ ...options, bg: null, input: join(root, 'src/logo.svg') });
+    for (const file of expected.files) {
+      assert.deepEqual(readFileSync(join(root, 'dist', file.name)), Buffer.from(file.bytes), file.name);
+    }
+    assert.notDeepEqual(readFileSync(join(root, 'dist', 'icon-32.png')), before);
+  });
+
+  it('rebuilds a partial cache entry with the same output bytes', async () => {
+    const root = app();
+    await vbuild(root, [favseed(FAST)]);
+    const expected = readFileSync(join(root, 'dist', 'icon.svg'));
+    const cache = join(root, 'node_modules', '.cache', 'favseed');
+    const slot = readdirSync(cache).find((name) => /^[a-f0-9]{64}$/.test(name));
+    assert.ok(slot);
+    rmSync(join(cache, slot, 'icon.svg'));
+    await vbuild(root, [favseed(FAST)]);
+    assert.deepEqual(readFileSync(join(root, 'dist', 'icon.svg')), expected);
+    assert.deepEqual(readFileSync(join(cache, slot, 'icon.svg')), expected);
+  });
+
   it('emits the set at the output root and links it in index.html', async () => {
     const root = app();
     await vbuild(root, [favseed(FAST)]);

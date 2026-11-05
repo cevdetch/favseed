@@ -94,6 +94,17 @@ await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
 let id = 0;
 const pending = new Map();
 const noise = [];
+let connectionError;
+const failConnection = (error) => {
+  connectionError ??= error;
+  for (const request of pending.values()) {
+    clearTimeout(request.timer);
+    request.reject(connectionError);
+  }
+  pending.clear();
+};
+ws.addEventListener('close', (event) => failConnection(new Error(`CDP connection closed (${event.code}): ${event.reason}`)));
+ws.addEventListener('error', (event) => failConnection(new Error('CDP connection failed', { cause: event.error })));
 ws.onmessage = (e) => {
   const m = JSON.parse(e.data);
   if (m.id && pending.has(m.id)) { const request = pending.get(m.id); clearTimeout(request.timer); pending.delete(m.id); request.resolve(m); return; }
@@ -119,13 +130,15 @@ ws.onmessage = (e) => {
       await send('Runtime.enable', {}, session);
       await send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, session);
       await send('Runtime.runIfWaitingForDebugger', {}, session);
-    })();
+    })().catch(failConnection);
   }
 };
 const send = (method, params, sessionId) => new Promise((resolve, reject) => {
+  if (connectionError) { reject(connectionError); return; }
+  if (ws.readyState !== WebSocket.OPEN) { reject(new Error('CDP connection is not open')); return; }
   const n = ++id;
   const timer = setTimeout(() => { pending.delete(n); reject(new Error(`CDP timeout: ${method}`)); }, 120000);
-  pending.set(n, { resolve, timer });
+  pending.set(n, { resolve, reject, timer });
   ws.send(JSON.stringify({ id: n, method, params, sessionId }));
 });
 const evaluate = async (expression) => {
@@ -148,6 +161,7 @@ const waitFor = async (expression) => {
   throw new Error(`Page condition timed out: ${expression}`);
 };
 const watchdog = setTimeout(() => { finish(1, 'Browser check exceeded 8 minutes', noise.join('\n')); }, 8 * 60 * 1000);
+let phase = 'initialization';
 try {
   await send('Runtime.enable', {});
   await send('Log.enable', {});
@@ -178,6 +192,7 @@ try {
     ...['general', 'heavy'].map((mark) => ({ name: `${mark}/release`, mark, options: { mode: 'release' } })),
   ] : process.env.FAVSEED_SMOKE === '1' ? cases.slice(0, 1) : cases;
   for (const item of selectedCases) {
+    phase = item.name;
     const input = fileURLToPath(new URL(`../../test/fixtures/${item.mark}.svg`, import.meta.url));
     const source = readFileSync(input, 'utf8'), options = { manifest: true, ...item.options };
     const start = performance.now();
@@ -189,6 +204,7 @@ try {
     console.log(JSON.stringify({ name: item.name, nativeMs: Math.round(nativeMs), browserMs: Math.round(actual.ms),
       bytes: actual.files.reduce((n, f) => n + f.size, 0), maxGap: Math.round(actual.maxGap), files: actual.files }));
   }
+  phase = 'cache, cancellation and page lifecycle';
   const source = readFileSync(new URL('../../test/fixtures/general.svg', import.meta.url), 'utf8');
   const options = { sizes: [180, 32], mode: 'fast' };
   assert.equal(await call('cache', source, options), true);
@@ -247,7 +263,6 @@ try {
   await finish(0, 'OK: native/browser parity, archive, cache, responsiveness, cancellation and retry');
 } catch (error) {
   clearTimeout(watchdog);
-  const targets = (await send('Target.getTargets', {})).result;
-  const workers = targets?.targetInfos?.filter((t) => t.type === 'worker') ?? [];
-  await finish(1, error.stack, noise.join('\n'), JSON.stringify({ workers: workers.length, urls: [...new Set(workers.map((t) => t.url))] }));
+  // Diagnostics must not depend on the connection that may have just failed.
+  await finish(1, `${phase}: ${error.stack}`, error.cause?.stack, noise.join('\n'), chromeErrors.join(''));
 }

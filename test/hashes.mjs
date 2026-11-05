@@ -2,9 +2,8 @@
 // against the reviewed baseline. Updating that baseline is always explicit.
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, engineVersions } from '../bin/favseed.mjs';
 import { checkReleasePolicy, compareManifests, formatDifferences, previousRelease,
@@ -13,7 +12,6 @@ import { checkReleasePolicy, compareManifests, formatDifferences, previousReleas
 const MARKS = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'];
 const baseline = new URL('./bytes.json', import.meta.url);
 const root = fileURLToPath(new URL('../', import.meta.url));
-const require = createRequire(import.meta.url);
 let dir;
 try {
   const [mode, ...extra] = process.argv.slice(2);
@@ -23,8 +21,7 @@ try {
   const options = { bg: '#000000', mode: 'release', manifest: true };
   const current = {
     schema: 1,
-    engines: { ...engineVersions(), svgo: JSON.parse(readFileSync(
-      join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version },
+    engines: engineVersions(),
     profiles: {
       default: { marks: MARKS, options },
       zopfli: { marks: ['general', 'gradient'], options: { ...options, zopfli: true } },

@@ -51,7 +51,7 @@ import {
   renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
 
@@ -102,6 +102,8 @@ export const loadEngine = () => (enginePromise ??= (async () => {
 export const engineVersions = () => ({
   '@napi-rs/image': require('@napi-rs/image/package.json').version,
   '@gfx/zopfli': ZOPFLI_VERSION,
+  // SVGO does not export package.json. Resolve its entry without loading the optimizer.
+  svgo: JSON.parse(readFileSync(join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version,
 });
 
 const PROG = 'favseed';

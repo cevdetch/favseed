@@ -92,7 +92,7 @@ resvg, pngquant and oxipng for its native reference arm.
 
 ## Definition of done
 
-`test/run.mjs` automates every line.
+The root suite, packed-package Astro suite and site browser checks cover these contracts.
 
 1. Produces `icon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`,
    `icon-512.png`, and nothing else.
@@ -184,9 +184,11 @@ favseed regressed.
 
 ## House style
 
-- `bin/favseed.mjs` holds what only the CLI does: options, staging, the atomic write. What the
-  website also runs lives in `lib/`, which imports nothing. The Astro integration may import
-  either; neither may import the Astro integration.
+- `bin/favseed.mjs` holds the Node APIs and CLI: input/config loading, native engine setup
+  and staged publishing. Shared rendering and validation live in `lib/`; those modules may
+  import each other, but receive platform-specific engines from their host. The integrations
+  use these APIs, and share disk cache code in `vite/cache.mjs`. Keep the CLI implementation and
+  shared engine independent of the Astro integration.
 - No new CLI flags without a stated user need. The surface is kept small on purpose.
 - Comments explain **why**, and cite the measurement. The code is dense in places because the
   obvious version is wrong, and a reader must be able to find out why without a git
