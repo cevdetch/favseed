@@ -14,16 +14,31 @@ const probe = (source) => exec(process.execPath, ['--input-type=module', '--eval
 const guard = (blockBuild = false) => `
   import assert from 'node:assert/strict';
   import { registerHooks } from 'node:module';
+  const engines = new Set();
   registerHooks({ resolve(specifier, context, next) {
-    assert.notEqual(specifier, 'svgo', 'SVGO loaded on a non-building path');
-    assert.notEqual(specifier, '@napi-rs/image', 'native engine loaded on a non-building path');
     const resolved = next(specifier, context);
+    if (specifier === 'svgo' || specifier === '@napi-rs/image') engines.add(resolved.url);
     ${blockBuild ? `assert.notEqual(resolved.url, ${JSON.stringify(CLI)}, 'Astro configuration loaded the Node build module');` : ''}
     return resolved;
+  }, load(url, context, next) {
+    assert.ok(!engines.has(url), 'Build engine loaded on a non-building path');
+    return next(url, context);
   }});
 `;
 
 describe('lazy build dependencies', () => {
+  it('includes the installed SVG optimizer in cache identity without loading it', async () => {
+    await probe(guard() + `
+      import { createRequire } from 'node:module';
+      import { readFileSync } from 'node:fs';
+      import { dirname, join } from 'node:path';
+      const require = createRequire(import.meta.url);
+      const version = JSON.parse(readFileSync(join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version;
+      const api = await import(${JSON.stringify(CLI)});
+      assert.equal(api.engineVersions().svgo, version);
+    `);
+  });
+
   it('exposes the Astro factory and existing library API at the package root without loading engines', async () => {
     await probe(guard() + `
       const api = await import('favseed');
