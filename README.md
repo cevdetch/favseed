@@ -379,7 +379,74 @@ or exits the process; await the result and handle rejected promises in your call
 the staging and recovery behavior described under [What you get](#what-you-get).
 
 TypeScript exports include `FavseedConfig`, `BuildOptions`, `BuildResult`,
-`BuildFilesResult` and `Placement`.
+`BuildFilesResult` and `Placement`. Node, Vite and Astro share the `ImageOptions`
+declarations. `vars` accepts an object or a `Map<string, string | number>`.
+The declarations check shapes; builds enforce ranges and option combinations at runtime.
+`defineConfig()` returns its argument unchanged and does not validate it or fill defaults.
+Root and core types work without installing the optional Astro or Vite peers.
+
+### Advanced helpers
+
+Use `build()` or `buildFiles()` for a complete favicon set. The existing helpers below
+are also available as named imports from `favseed`:
+
+| Export | Contract |
+|---|---|
+| `optimiseSvg(source, options?)` | Synchronous SVG optimization; returns `{ data, stripped, animated }`. Options include `vars`, `name`, `precision` (default `1`), `icon` (default `false`), `reference` and `onWarn`. `icon: true` strips motion and accessibility. `reference: true` preserves geometry, validates the viewport and reports text/image dependencies. |
+| `loadEngine()` | Loads and caches the native engine on first use. Returns a promise for `render`, `renderRgba`, `probe`, `encode` and `finish`. Rendering needs a square SVG with a valid viewBox; encoding/finishing take PNG bytes. Each method is asynchronous. |
+| `engineVersions()` | Returns image, Zopfli build and SVGO identities without loading the rendering or SVG optimizer modules. |
+| `loadConfigFile(dir?)` | Imports the first config in `dir` (default working directory). Returns `{ config, file, ignored }`; filenames are basenames, and `file` is `null` when absent. Checks object shape and known keys only. Field values remain `unknown` in TypeScript until narrowed. |
+| `CONFIG_FILES` | Config discovery order: `.js`, `.mjs`, `.ts`. Treat this shared array as read-only. |
+| `icoWrap`, `maskableFit`, `nestForMask`, `placeInSafeZone`, `linkTags` | The same functions exposed by `favseed/core`, described below. |
+| `cli(argv)` | Runs CLI parsing and output. Resolves to an exit code on success; errors may terminate the process. Use the build APIs inside an application. |
+
+`optimiseSvg()` performs one configured optimization operation. It does **not** run
+the full build's measured SVG precision selection, raster encoding or output publishing.
+Use the build APIs for those guarantees. Engine `encode()` defaults to quality `100`
+when omitted; full builds supply their configured quality (default `80`). `finish()`
+uses the supplied iteration count; `0` skips Zopfli.
+
+```js
+import { optimiseSvg } from 'favseed'
+
+const { data, animated } = optimiseSvg(source, {
+  vars: { brand: '#123456' },
+  precision: 3,
+})
+```
+
+### Portable core
+
+`favseed/core` imports no Node modules or rendering libraries. It exposes the following
+helpers for custom hosts; its declaration file describes callbacks and return values.
+
+| Export | Contract |
+|---|---|
+| `createSvgStage({ optimize, builtinPlugins })` | Inject an SVGO-compatible implementation; returns `{ optimiseSvg }` with the same options/result as the root helper. |
+| `normaliseVars(vars?)` | Returns a `Map<string, string>` with `--`-prefixed names and stringified values. |
+| `icoWrap(png, px)` | Returns `Uint8Array` ICO bytes for one square PNG. Checks that its dimensions match `px` in `1–256`. |
+| `maskableFit({ width, height, rgba })` | Measures the mark and returns `{ radius, scale, fullBleed }`; rejects an empty mark. RGBA data has four bytes per pixel. |
+| `nestForMask(svg, box, canvas)` | Centers the SVG viewport on a square canvas and returns SVG text. |
+| `placeInSafeZone(svg, render, canvas, padding?)` | Returns a promise for `{ svg, box, scale, snapped, radius, fullBleed, padding }`. The renderer supplies transparent RGBA pixels, synchronously or asynchronously. Canvas size must be positive and even; padding defaults to `'auto'`. Unlike build placement metadata, this result has no `canvas` field. |
+| `squareIconSvg(svg)` | Frames a rectangular viewport; returns `{ data, warning }`, with `warning: null` when no warning applies. |
+| `mapImages(items, sizeOf, work, options?)` | Runs image work in bounded batches and returns results in input order. `sizeOf` supplies canvas pixels; `serial: true` runs one at a time. A failed batch drains before rejection. |
+| `linkTags(base?, manifest?)`, `declaresIcon(html)` | Generate the link block or detect an existing icon link. |
+| `manifestIcons({ sizes, base?, purpose? })`, `manifestJson({ sizes, base?, purpose?, extra? })` | Generate icon entries or manifest text. `extra.icons` is replaced with generated entries. |
+| `FavseedError` | The same error class as the root export. |
+
+The low-level link/manifest helpers concatenate `base` as supplied; include a trailing
+slash, such as `/blog/`. Full builds normalize `base` for you. Low-level helpers do not
+apply the complete build-option validation.
+
+Core also exports `ICO_SIZE`, `APPLE_SIZE`, `DEFAULT_QUALITY`, `DEFAULT_COLORS`,
+`DEFAULT_SIZES`, `DEFAULT_BG`, `ZOPFLI_ITERATIONS`, `FAST_ZOPFLI_ITERATIONS`,
+`MASK_SAFE_RADIUS` and `SNAP_WINDOW`. Treat `DEFAULT_SIZES` as read-only.
+Current values describe the engine; output policy can change in a release that allows
+byte changes. Import through `favseed/core`; other `lib/` paths are package internals.
+
+Full builds normalize variable names in objects and Maps. When calling `optimiseSvg()`
+directly, pass an object or normalize a Map with `normaliseVars()` first: that helper's
+Map path expects keys such as `--brand` and uses them as supplied.
 
 ## Vite
 

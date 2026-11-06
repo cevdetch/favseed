@@ -16,7 +16,10 @@
       "types": "./bin/index.d.mts",
       "default": "./bin/index.mjs"
     },
-    "./core": "./lib/core.mjs",
+    "./core": {
+      "types": "./lib/core.d.mts",
+      "default": "./lib/core.mjs"
+    },
     "./vite": {
       "types": "./vite/index.d.mts",
       "default": "./vite/index.mjs"

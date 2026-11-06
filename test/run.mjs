@@ -953,9 +953,9 @@ describe('the published tarball', () => {
       'astro/Head.astro', 'astro/cache.mjs', 'astro/index.d.ts', 'astro/index.mjs',
       'astro/middleware.mjs', 'astro/options.mjs', 'astro/types.d.mts',
       'bin/favseed.d.mts', 'bin/favseed.mjs', 'bin/index.d.mts', 'bin/index.mjs',
-      'lib/WASI-LICENSE', 'lib/ZOPFLI-LICENSE', 'lib/config.mjs', 'lib/core.mjs',
+      'lib/WASI-LICENSE', 'lib/ZOPFLI-LICENSE', 'lib/config.mjs', 'lib/core.mjs', 'lib/core.d.mts',
       'lib/engine.mjs', 'lib/pipeline.mjs', 'lib/svg-precision.mjs',
-      'lib/zopfli-build.mjs', 'lib/zopfli.mjs', 'lib/zopfli.wasm',
+      'lib/types.d.mts', 'lib/zopfli-build.mjs', 'lib/zopfli.mjs', 'lib/zopfli.wasm',
       'vite/cache.mjs', 'vite/index.d.mts', 'vite/index.mjs',
     ].sort());
     const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));

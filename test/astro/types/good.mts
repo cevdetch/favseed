@@ -3,6 +3,11 @@ import favseedVite, { favseedIcons, type ManifestIcon } from 'favseed/vite';
 import favseedAstro, { type FavseedOptions } from 'favseed/astro';
 import type { Plugin } from 'vite';
 import type { AstroIntegration } from 'astro';
+import { optimize, builtinPlugins } from 'svgo';
+import { createSvgStage } from 'favseed/core';
+
+const stage = createSvgStage({ optimize, builtinPlugins });
+const svg: string = stage.optimiseSvg('<svg viewBox="0 0 48 48"/>').data;
 
 const config: FavseedConfig = defineConfig({
   input: 'logo.svg', out: 'public', base: '/blog/', sizes: [192, 512],
@@ -30,9 +35,11 @@ const options: FavseedOptions = {
   input: 'src/logo.svg', head: true, dev: 'full', quality: 80, bg: 'none',
   sizes: [48], vars: { brand: '#123456' }, manifest: { name: 'Example' }, animation: false,
 };
+favseedAstro({ vars: new Map([['brand', '#123456']]) });
+favseedVite({ vars: new Map([['brand', '#123456']]) });
 const integration: AstroIntegration = favseedAstro(options);
 const rootIntegration: AstroIntegration = favseed(options);
 const defaultIntegration: AstroIntegration = favseed();
 const sameFactory: typeof favseedAstro = favseed;
-export { config, result, optimizerVersion, memoryResult, firstName, firstBytes, links, animated, placement,
+export { svg, config, result, optimizerVersion, memoryResult, firstName, firstBytes, links, animated, placement,
   plugin, icons, integration, rootIntegration, defaultIntegration, sameFactory };
