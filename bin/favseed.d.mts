@@ -1,48 +1,21 @@
-// Hand-written, like astro/index.d.ts: the options are a smaller surface than argv.
+import type { ImageOptions, Placement, RgbaImage } from '../lib/types.mjs';
+import type { SvgStage } from '../lib/core.mjs';
+export type { ImageOptions, Placement, RgbaImage, SvgVariables } from '../lib/types.mjs';
+export type { SvgOptions, SvgResult, SafeZonePlacement } from '../lib/core.mjs';
+export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone } from '../lib/core.mjs';
 
 /** Every key favseed.config.js, .mjs or .ts may set. Flags win over it. */
-export interface FavseedConfig {
+export interface FavseedConfig extends ImageOptions {
   /** The mark. Relative to the working directory. */
   input?: string;
   /** Output directory. Default: the working directory. */
   out?: string;
-  /** Explicit palette ceiling, 2-256. Selects quality 100 when quality is omitted. */
-  colors?: number;
-  /** PNG quality target, integer 1-100. Default 80, or 100 when colors is supplied alone. Below 100 cannot combine with colors; not an error percentage or a file-size guarantee. */
-  quality?: number;
-  /** Padded "any maskable" PNG sizes, even pixel counts. Default: `[192, 512]`. */
-  sizes?: number[];
-  /** Ground of the padded icons. `null` (or `'none'`) keeps the set transparent and unpadded, declared `"any"` only. Default: `'#000000'`. */
-  bg?: string | null;
-  /** Margin of each padded icon, as a percentage per side. Default: `'auto'`, measured per mark. */
-  padding?: number | 'auto';
-  /** CSS custom properties, with or without the leading `--`. */
-  vars?: Record<string, string | number>;
-  /** `false` explicitly removes animation from icon.svg. Default: preserve it. */
-  animation?: boolean;
-  /** `true` writes an icons-only site.webmanifest; an object's members are merged in ahead of the icons. */
-  manifest?: boolean | Record<string, unknown>;
-  /** Zopfli effort when enabled: `'release'` uses 120 iterations; `'fast'` uses 15. */
-  mode?: 'release' | 'fast';
-  /** Extra lossless PNG compression. Slower; disabled by default. */
-  zopfli?: boolean;
   /** Prefix of every href in the links and every src in the manifest, e.g. `'/blog/'`. Default: `'/'`. */
   base?: string;
 }
 
 /** Returns its argument, typed. */
 export function defineConfig(config: FavseedConfig): FavseedConfig;
-
-/** How the mark was placed in one padded icon. */
-export interface Placement {
-  box: number;
-  canvas: number;
-  scale: number;
-  snapped: boolean;
-  radius: number | null;
-  fullBleed: boolean;
-  padding: number;
-}
 
 export interface BuildOptions extends FavseedConfig {
   input: string;
@@ -82,10 +55,35 @@ export function buildFiles(options: BuildOptions): Promise<BuildFilesResult>;
 /** The CLI on an argv array. Resolves to the exit code; exits the process on an error. */
 export function cli(argv: string[]): Promise<number>;
 
-export class FavseedError extends Error {}
-
 /** The engine's package versions, which the output bytes depend on. */
 export function engineVersions(): { '@napi-rs/image': string; '@gfx/zopfli': string; svgo: string };
 
-/** The `<link>` block for a set served under `base`. */
-export function linkTags(base?: string, manifest?: boolean): string;
+/** One synchronous SVG pass; does not run the full build's measured accuracy selection. */
+export const optimiseSvg: SvgStage['optimiseSvg'];
+
+/** The lazily loaded Node engine. Inputs are square SVGs with a valid viewBox or PNG bytes. */
+export interface RasterEngine {
+  render(svgText: string, px: number, background?: string | null): Promise<Uint8Array>;
+  renderRgba(svgText: string, px: number): Promise<RgbaImage & { rgba: Uint8Array }>;
+  probe(background: string): Promise<number[]>;
+  encode(png: Uint8Array, options: { colors?: number; quality?: number }): Promise<Uint8Array>;
+  finish(png: Uint8Array, options: { iterations: number }): Promise<Uint8Array>;
+}
+
+/** Loads and caches the native image engine on first use. */
+export function loadEngine(): Promise<RasterEngine>;
+
+/** Config filenames in discovery order. Treat this shared array as read-only. */
+export const CONFIG_FILES: string[];
+
+/** Loading checks the object shape and option names, not the values or input file. */
+export interface LoadedConfig {
+  config: Partial<Record<keyof FavseedConfig, unknown>>;
+  /** Basename of the selected config, or null when none exists. */
+  file: string | null;
+  /** Other config basenames present in the same directory. */
+  ignored: string[];
+}
+
+/** Imports the first config in dir (default cwd); does not build or normalize it. */
+export function loadConfigFile(dir?: string): Promise<LoadedConfig>;

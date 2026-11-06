@@ -131,6 +131,15 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       const args = [tsc, '--noEmit', '--strict', '--module', module, '--moduleResolution', resolution,
         '--skipLibCheck', '--pretty', 'false'];
       await command(process.execPath, [...args, 'good.mts'], root);
+      // Check our declarations too, rather than hiding errors behind skipLibCheck.
+      await command(process.execPath, [...args.filter((arg) => arg !== '--skipLibCheck'), 'api.mts'], root);
+      const declarations = [];
+      for (const [specifier, entry] of [['favseed', 'bin/index.mjs'], ['favseed/core', 'lib/core.mjs']]) {
+        const runtime = await import(pathToFileURL(join(installed, entry)));
+        declarations.push(`const exports${declarations.length}: Record<keyof typeof import(${JSON.stringify(specifier)}), true> = ${JSON.stringify(Object.fromEntries(Object.keys(runtime).map((key) => [key, true])))};`);
+      }
+      await writeFile(join(root, 'exports.mts'), declarations.join('\n'));
+      await command(process.execPath, [...args.filter((arg) => arg !== '--skipLibCheck'), 'exports.mts'], root);
       await assert.rejects(command(process.execPath, [...args, 'bad.mts'], root), (error) => {
         assert.ok(Number.isInteger(error.code) && error.code > 0, 'expected compiler diagnostics, not a startup error');
         // Separate calls prevent the first invalid property from masking the next.
@@ -152,6 +161,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     t.after(() => rm(root, { recursive: true, force: true }));
     await mkdir(join(root, 'node_modules'));
     await cp(installed, join(root, 'node_modules/favseed'), { recursive: true });
+    await cp(join(fixture, 'types/api.mts'), join(root, 'api.mts'));
     await writeFile(join(root, 'consumer.mts'), `
       import favseed, { build, defineConfig, type BuildResult } from 'favseed';
       const config = defineConfig({input:'logo.svg',sizes:[48]});
@@ -160,8 +170,10 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       export {result, integration};
     `);
     const tsc = join(workspace, 'node_modules/typescript/bin/tsc');
-    await command(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'NodeNext',
-      '--moduleResolution', 'NodeNext', '--pretty', 'false', 'consumer.mts'], root);
+    for (const [module, resolution] of [['NodeNext', 'NodeNext'], ['ESNext', 'Bundler']]) {
+      await command(process.execPath, [tsc, '--noEmit', '--strict', '--module', module,
+        '--moduleResolution', resolution, '--pretty', 'false', 'consumer.mts', 'api.mts'], root);
+    }
   });
 
   it('installs Favseed into a clean Astro project and builds the generated config with default input', async (t) => {
