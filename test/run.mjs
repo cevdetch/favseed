@@ -961,7 +961,11 @@ describe('the published tarball', () => {
     const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
     assert.deepEqual(manifest.bin, { favseed: 'bin/favseed.mjs' });
     const bin = pkg.files.find((f) => f.path === manifest.bin.favseed);
-    assert.equal(bin.mode & 0o111, 0o111, 'packed CLI must be executable');
+    // Windows pack metadata has no POSIX executable bits; npm installs command
+    // shims there. Keep the mode check on platforms where those bits apply.
+    if (process.platform !== 'win32') {
+      assert.equal(bin.mode & 0o111, 0o111, 'packed CLI must be executable');
+    }
     assert.match(readFileSync(join(ROOT, bin.path), 'utf8'), /^#!\/usr\/bin\/env node\r?\n/);
   });
 });
