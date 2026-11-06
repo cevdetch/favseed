@@ -1,0 +1,9 @@
+<!-- Chained SMIL events: cleanup must preserve the animation ID used by begin.
+     The stylesheet also exercises ID cleanup when style inlining is conservative. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>.mark { fill: #334E68 }</style>
+  <rect class="mark" x="12" y="12" width="40" height="40" rx="8">
+    <animate id="rounding" attributeName="rx" values="8;20;8" begin="0s" dur="3s"/>
+    <animate attributeName="opacity" values="1;.5;1" begin="rounding.end+0.2s" dur="2s"/>
+  </rect>
+</svg>

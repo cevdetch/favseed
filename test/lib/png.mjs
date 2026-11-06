@@ -129,16 +129,16 @@ export function decode(buf) {
 }
 
 /**
- * Build a PNG. Used only to synthesise the wrong-on-purpose images the suite needs (a
- * 31x31 icon, a stretched one), which is cheaper and more exact than trying to make the
- * pipeline produce them.
+ * Build an 8-bit RGBA PNG, or an indexed PNG with an RGBA palette and one index per pixel.
+ * Controlled representations keep container tests independent of encoder candidate selection.
  */
-export function encode({ width, height, data }) {
-  const raw = Buffer.alloc(height * (width * 4 + 1));
+export function encode({ width, height, data, palette }) {
+  const stride = width * (palette ? 1 : 4);
+  const raw = Buffer.alloc(height * (stride + 1));
   for (let y = 0; y < height; y++) {
-    raw[y * (width * 4 + 1)] = 0;                        // filter: none
-    Buffer.from(data.buffer, data.byteOffset + y * width * 4, width * 4)
-      .copy(raw, y * (width * 4 + 1) + 1);
+    raw[y * (stride + 1)] = 0;                        // filter: none
+    Buffer.from(data.buffer, data.byteOffset + y * stride, stride)
+      .copy(raw, y * (stride + 1) + 1);
   }
   const crcTable = [];
   for (let n = 0; n < 256; n++) {
@@ -159,9 +159,13 @@ export function encode({ width, height, data }) {
   };
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  ihdr[8] = 8; ihdr[9] = palette ? 3 : 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
   return Buffer.concat([
     SIGNATURE, chunk('IHDR', ihdr),
+    ...(palette ? [
+      chunk('PLTE', Buffer.from(palette.flatMap((rgba) => rgba.slice(0, 3)))),
+      chunk('tRNS', Buffer.from(palette.map((rgba) => rgba[3]))),
+    ] : []),
     chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
   ]);
 }
