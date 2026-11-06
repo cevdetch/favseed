@@ -11,6 +11,9 @@ minor at minimum, never patch.** Downstream users diff these files into git.
 
 ### Changed
 
+- Strengthen regression coverage for opt-in Zopfli, indexed and RGBA ICO payloads,
+  48px ICO source/encoding accuracy, safe-zone sizes, SMIL event references and
+  published package contents. Generated assets and runtime behavior are unchanged.
 - Share validated persistent-cache reads between Vite and Astro so partial or malformed
   entries rebuild. Distinguish the default opaque background from explicit transparency
   in cache keys and invalidate older ambiguous entries.

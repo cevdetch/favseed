@@ -1,13 +1,7 @@
-// Every line of the definition of done, as node:test. No bash, no ImageMagick.
-//
-// Two rules this suite holds itself to:
-//
-//   * Assert SELF-CONSISTENCY, never golden bytes. An engine upgrade changes bytes on
-//     purpose, and a golden file would only record the last one. "Two runs with the
-//     same inputs and the same tools produce the same bytes" is the property that
-//     matters and it is true on every machine.
-//   * Build as few times as possible. Zopfli is ~98% of the wall clock, so the builds are
-//     memoised by key and shared across tests; only the tests that need 256/512 pay for it.
+// Build/API contracts, independently decoded raster accuracy and package contents.
+// Builds are memoised across cases; opt-in Zopfli runs only where needed.
+// These tests compare behavior and pixels. test/hashes.mjs separately checks the
+// reviewed byte baseline across engine upgrades and platforms.
 
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
@@ -210,6 +204,24 @@ describe('explicit static SVG optimization', () => {
     const used = [...svg.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]);
     assert.ok(used.length > 0, 'the mask reference itself was lost');
     for (const id of used) assert.ok(svg.includes(`id="${id}"`), `url(#${id}) points at nothing`);
+    const general = await DEFAULT_BUILD();
+    assert.ok(!readFileSync(join(general.out, 'icon.svg'), 'utf8').includes('never-referenced'),
+      'the general fixture kept its unused id');
+  });
+
+  it('preserves SMIL event references and removes motion only when requested', async () => {
+    const kept = await SMALL('smil-events');
+    const svg = readFileSync(join(kept.out, 'icon.svg'), 'utf8');
+    const event = /begin="([^";]+)\.end\+0\.2s"/.exec(svg);
+    assert.ok(event, 'the chained SMIL begin event was lost');
+    assert.ok(svg.includes(`id="${event[1]}"`), 'the SMIL event points at a removed id');
+    assert.equal((svg.match(/<animate\b/g) ?? []).length, 2);
+    const stripped = await SMALL('smil-events', { animation: false });
+    const still = readFileSync(join(stripped.out, 'icon.svg'), 'utf8');
+    assert.doesNotMatch(still, /<animate\b|\sbegin=|\.end/);
+    for (const file of ['favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
+      assert.deepEqual(readFileSync(join(kept.out, file)), readFileSync(join(stripped.out, file)), file);
+    }
   });
 });
 
@@ -253,15 +265,34 @@ describe('the ICO container', () => {
     assert.equal(ico.readUInt32LE(14), ico.length - 22, 'dwBytesInRes');
   });
 
-  it('describes the decoded image, not the encoding', () => {
-    // A 1x1 paletted PNG: bColorCount must still be 0 and wBitCount still 32.
-    const png = encode({ width: 1, height: 1, data: new Uint8Array([1, 2, 3, 255]) });
-    // icoWrap returns a Uint8Array so the website can call it too; Buffer.from to read fields.
-    const ico = Buffer.from(icoWrap(png, 1));
-    assert.equal(ico[8], 0, 'bColorCount');
-    assert.equal(ico.readUInt16LE(10), 1, 'wPlanes');
-    assert.equal(ico.readUInt16LE(12), 32, 'wBitCount');
-  });
+  // Known pixels in both encodings, including transparent and partially opaque entries.
+  const palette = [[12, 34, 56, 255], [0, 0, 0, 0], [90, 120, 150, 128]];
+  const indices = new Uint8Array([0, 1, 2, 0]);
+  const rgba = new Uint8Array([...indices].flatMap((index) => palette[index]));
+  for (const [name, colorType, png] of [
+    ['indexed', 3, encode({ width: 2, height: 2, data: indices, palette })],
+    ['RGBA', 6, encode({ width: 2, height: 2, data: rgba })],
+  ]) {
+    it(`wraps ${name} PNG pixels and describes the decoded image`, () => {
+      assert.equal(header(png).colorType, colorType, 'test payload representation');
+      assert.deepEqual(decode(png).data, rgba, 'test payload pixels');
+      const ico = Buffer.from(icoWrap(png, 2));
+      assert.deepEqual([...ico.subarray(0, 10)], [0, 0, 1, 0, 1, 0, 2, 2, 0, 0]);
+      assert.equal(ico.readUInt16LE(10), 1, 'wPlanes');
+      assert.equal(ico.readUInt16LE(12), 32, 'wBitCount');
+      assert.equal(ico.readUInt32LE(14), png.length, 'dwBytesInRes');
+      assert.equal(ico.readUInt32LE(18), 22, 'dwImageOffset');
+      assert.deepEqual(ico.subarray(22), png, 'PNG payload must survive wrapping verbatim');
+    });
+
+    it(`matches icotool -c -r for ${name} PNG`, { skip: haveIcotool ? false : 'icotool not installed' }, () => {
+      assert.equal(header(png).colorType, colorType);
+      const payload = join(scratch, `payload-${name}.png`), ref = join(scratch, `icotool-${name}.ico`);
+      writeFileSync(payload, png);
+      execFileSync('icotool', ['-c', '-r', payload, '-o', ref]);
+      assert.deepEqual(Buffer.from(icoWrap(png, 2)), readFileSync(ref));
+    });
+  }
 
   it('stores 256 as 0 in the byte-wide fields', () => {
     const png = encode({ width: 256, height: 256, data: new Uint8Array(256 * 256 * 4) });
@@ -294,37 +325,36 @@ describe('the ICO container', () => {
 
 describe('accuracy', () => {
 
-  // Scored at the sizes favseed ships by default. The bar is a statement about those:
-  // at 32 px a mark is 1024 pixels of which almost all are anti-aliasing edges, and no palette
-  // reproduces that to 8/255; the size table in docs/BENCHMARKS.md shows the whole curve.
+  // Padded default outputs retain the 1% source-error bar. Tiny ICOs have their own
+  // accepted limits below; SVG's 512px precision budget is not an all-size guarantee.
   const CHECKS = [
     ['apple-touch-icon.png', 180, '#000000', true],   // background-matched and placed: the
     ['icon-192.png', 192, '#000000', true],            // ground and the placement are not error
     ['icon-512.png', 512, '#000000', true],
   ];
 
-  // Built at the DEFAULT palette, so the bar is a claim about what ships rather than about a
-  // palette chosen for the test (decision 24 retired the old default of 8, which missed it).
-  //
-  // zopfli is switched off for these builds. It is a lossless recompressor: it changes how
-  // the pixels are stored and not what they are, so the decoded image is identical and the
-  // gate measures the same thing ~50x faster. The next test is the proof.
+  // Use default quality80, with the default-off recompressor explicit for clarity.
   const accuracyBuild = (name) =>
     buildOnce(`acc-${name}`, { input: fixture(`${name}.svg`), sizes: [192, 512], zopfli: false });
 
   it('zopfli changes bytes, not pixels', async () => {
-    const withZopfli = await SMALL('second');
-    const without = await buildOnce('nozopfli', { input: fixture('second.svg'), sizes: [32], zopfli: false });
-    const a = readFileSync(join(withZopfli.out, 'icon-32.png'));
-    const b = readFileSync(join(without.out, 'icon-32.png'));
-    assert.ok(a.length <= b.length, 'zopfli made the file larger');
-    assert.deepEqual([...decode(a).data], [...decode(b).data], 'zopfli changed a pixel');
+    const withZopfli = await SMALL('second', { zopfli: true, mode: 'fast' });
+    const without = await SMALL('second', { zopfli: false, mode: 'fast' });
+    let saved = 0;
+    for (const file of ['favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
+      const a = readFileSync(join(withZopfli.out, file)), b = readFileSync(join(without.out, file));
+      assert.ok(a.length <= b.length, `${file}: zopfli made the file larger`);
+      saved += b.length - a.length;
+      const payload = (bytes) => file.endsWith('.ico') ? bytes.subarray(22) : bytes;
+      assert.deepEqual(decode(payload(a)), decode(payload(b)), `${file}: zopfli changed pixels`);
+    }
+    assert.ok(saved > 0, 'opt-in Zopfli did not reduce the fixture');
   });
 
   for (const name of ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'wide', 'smil', 'tiles',
     'gradient', 'grid-1', 'grid-16', 'grid-24', 'grid-tiny', 'grid-fallback',
-    'aspect-wide', 'aspect-tall', 'aspect-offset', 'aspect-percent']) {
-    it(`${name}: every raster is inside the bar`, async () => {
+    'aspect-wide', 'aspect-tall', 'aspect-offset', 'aspect-percent', 'dark']) {
+    it(`${name}: padded rasters are inside the bar`, async () => {
       const { out } = await accuracyBuild(name);
       const source = fixture(`${name}.svg`);
       for (const [file, px, bg, fitted] of CHECKS) {
@@ -334,17 +364,33 @@ describe('accuracy', () => {
           `${name}/${file}: pct ${s.pct.toFixed(4)}% > ${THRESHOLD_PCT}% (rmse ${s.rmse.toFixed(2)})`);
       }
     });
+
+    it(`${name}: 48px ICO stays within accepted source and encoding error`, async () => {
+      const { out } = await accuracyBuild(name);
+      const ico = readFileSync(join(out, 'favicon.ico'));
+      assert.equal(ico.readUInt16LE(4), 1, 'one ICO entry');
+      assert.deepEqual([...ico.subarray(6, 8)], [48, 48]);
+      const image = decode(ico.subarray(ico.readUInt32LE(18)));
+      const original = await reference({ source: fixture(`${name}.svg`), px: 48 });
+      const selected = await reference({ source: join(out, 'icon.svg'), px: 48 });
+      const sourceError = score(image, original), encodingError = score(image, selected);
+      // bench/ico-size/README.md accepts 28 of 2304 pixels (1.2153%) on these two
+      // grids. Other corpus members stay within 1%; encoding adds no errors >8/255.
+      const limit = ['grid-1', 'grid-tiny'].includes(name) ? 28 / (48 * 48) * 100 : THRESHOLD_PCT;
+      assert.ok(sourceError.pct <= limit,
+        `${name}/ICO source error ${sourceError.pct.toFixed(4)}% > ${limit.toFixed(4)}%`);
+      assert.equal(encodingError.pct, 0, `${name}/ICO encoding error vs selected SVG`);
+    });
   }
 
-  it('ships --colors 256 by default, and a lower palette is the accuracy trade', async () => {
-    // Two halves of one decision (24). If the default moves, the first assertion fails; if 8
-    // starts meeting the bar on flat's apple icon, the second does and the reason
-    // for leaving 8 behind needs re-stating.
+  it('keeps flat accurate at default quality, while an eight-color palette exceeds the bar', async () => {
+    // On this fixture quality80 matches explicit colors256; this does not make
+    // the default encoder policy a fixed 256-color palette.
     const dflt = await buildOnce('dflt-colors', { input: fixture('flat.svg'), sizes: [32], zopfli: false });
     const full = await buildOnce('full-colors', { input: fixture('flat.svg'), sizes: [32], colors: 256, zopfli: false });
     for (const f of ['icon-32.png', 'apple-touch-icon.png']) {
       assert.deepEqual([...readFileSync(join(dflt.out, f))], [...readFileSync(join(full.out, f))],
-        `the default palette is no longer 256 (${f} differs)`);
+        `default quality and colors256 differ on flat (${f})`);
     }
     const { out } = await buildOnce('flat-8', { input: fixture('flat.svg'), sizes: [192], colors: 8, zopfli: false });
     const ref = await reference({ source: fixture('flat.svg'), px: 180, bg: '#000000', vars: {}, fitted: true });
@@ -443,7 +489,7 @@ describe('optional outputs and option syntax', () => {
 describe('the masked icons', () => {
   const BG = '#123456';
   const MASKED = (name, extra = {}) =>
-    buildOnce(`masked-${name}${JSON.stringify(extra)}`, { input: fixture(`${name}.svg`), sizes: [32, 512], bg: BG, zopfli: false, ...extra });
+    buildOnce(`masked-${name}${JSON.stringify(extra)}`, { input: fixture(`${name}.svg`), sizes: [32, 64, 192, 512], bg: BG, zopfli: false, ...extra });
 
   // Distance from the icon's centre to the FAR corner of a pixel, so the whole pixel counts.
   const reach = (x, y, px) => Math.hypot(
@@ -467,14 +513,15 @@ describe('the masked icons', () => {
     assert.ok(pts.length > 0, `no mark pixels found in ${file}`);
     return Math.max(...pts.map(([x, y]) => reach(x, y, px)));
   };
-  const ICONS = [['apple-touch-icon.png', 180, 'apple'], ['icon-512.png', 512, 512]];
+  const ICONS = [['apple-touch-icon.png', 180, 'apple'], ['icon-64.png', 64, 64],
+    ['icon-192.png', 192, 192], ['icon-512.png', 512, 512]];
   // fit is { apple, icons: { [size]: fit } }: the apple icon plus one entry per size.
   const placed = (fit, key) => key === 'apple' ? fit.apple : fit.icons[key];
 
   it('are a 180px apple-touch-icon and padded size icons, all opaque', async () => {
     const { out } = await MASKED('general');
     assert.deepEqual(readdirSync(out).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-32.png', 'icon-512.png', 'icon.svg']);
+      ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-32.png', 'icon-512.png', 'icon-64.png', 'icon.svg']);
     for (const [file, px] of ICONS) {
       const buf = readFileSync(join(out, file));
       assert.equal(header(buf).width, px, `${file} width`);
@@ -616,7 +663,7 @@ describe('the masked icons', () => {
     writeFileSync(svg, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
       '<rect width="64" height="64" fill="#0E7C68"/><circle cx="32" cy="32" r="20" fill="#F4F1EA"/></svg>');
     const out = freshDir();
-    const r = await build({ input: svg, out, sizes: [32, 512], bg: '#000000', zopfli: false });
+    const r = await build({ input: svg, out, sizes: [32, 64, 192, 512], bg: '#000000', zopfli: false });
     for (const [file, px, key] of ICONS) {
       assert.equal(placed(r.fit, key).fullBleed, true, key);
       assert.equal(placed(r.fit, key).box, px, key);
@@ -890,7 +937,7 @@ describe('rendering', () => {
 // ---------------------------------------------------------------------- 18 --
 
 describe('the published tarball', () => {
-  it('contains bin/, lib/, astro/, vite/ and the docs, and nothing from test, docs, bench, site or .github', () => {
+  it('contains exactly the public package files and an executable CLI', () => {
     // On Windows `npm` is npm.cmd, which Node refuses to spawn without a shell since the
     // CVE-2024-27980 fix, so the Windows job would fail here with ENOENT. The arguments are
     // constants, so the shell has nothing to misquote.
@@ -899,21 +946,23 @@ describe('the published tarball', () => {
     // npm <= 11 prints an array of packages; npm 12 prints an object keyed by name.
     const parsed = JSON.parse(raw);
     const pkg = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
-    const files = pkg.files.map((f) => f.path);
-    assert.ok(files.includes('bin/favseed.mjs'), 'bin/favseed.mjs is missing');
-    for (const name of ['bin/index.mjs', 'bin/index.d.mts', 'bin/favseed.d.mts', 'astro/index.d.ts', 'astro/types.d.mts']) {
-      assert.ok(files.includes(name), `${name} is missing from the tarball`);
-    }
-    // bin/favseed.mjs imports lib/core.mjs, so a tarball without it installs and then throws
-    // ERR_MODULE_NOT_FOUND on first run. This assertion is the only thing standing between
-    // the split and a broken publish.
-    assert.ok(files.includes('lib/core.mjs'), 'lib/core.mjs is missing - the package cannot run');
-    for (const need of ['lib/zopfli.mjs', 'lib/zopfli-build.mjs', 'lib/zopfli.wasm', 'lib/ZOPFLI-LICENSE', 'lib/WASI-LICENSE', 'astro/index.mjs', 'astro/cache.mjs', 'astro/options.mjs', 'astro/Head.astro', 'vite/index.mjs', 'vite/cache.mjs', 'vite/index.d.mts', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']) {
-      assert.ok(files.includes(need), `${need} is missing from the tarball`);
-    }
-    for (const f of files) {
-      assert.ok(!/^(test|docs|bench|site|\.github)\//.test(f), `${f} must not ship`);
-    }
+    // Explicit allowlist catches new accidental files inside shipped directories too.
+    // Intentional package additions must update this list in the same change.
+    assert.deepEqual(pkg.files.map((f) => f.path).sort(), [
+      'CHANGELOG.md', 'LICENSE', 'README.md', 'package.json',
+      'astro/Head.astro', 'astro/cache.mjs', 'astro/index.d.ts', 'astro/index.mjs',
+      'astro/middleware.mjs', 'astro/options.mjs', 'astro/types.d.mts',
+      'bin/favseed.d.mts', 'bin/favseed.mjs', 'bin/index.d.mts', 'bin/index.mjs',
+      'lib/WASI-LICENSE', 'lib/ZOPFLI-LICENSE', 'lib/config.mjs', 'lib/core.mjs',
+      'lib/engine.mjs', 'lib/pipeline.mjs', 'lib/svg-precision.mjs',
+      'lib/zopfli-build.mjs', 'lib/zopfli.mjs', 'lib/zopfli.wasm',
+      'vite/cache.mjs', 'vite/index.d.mts', 'vite/index.mjs',
+    ].sort());
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+    assert.deepEqual(manifest.bin, { favseed: 'bin/favseed.mjs' });
+    const bin = pkg.files.find((f) => f.path === manifest.bin.favseed);
+    assert.equal(bin.mode & 0o111, 0o111, 'packed CLI must be executable');
+    assert.match(readFileSync(join(ROOT, bin.path), 'utf8'), /^#!\/usr\/bin\/env node\r?\n/);
   });
 });
 
