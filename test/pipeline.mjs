@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
+import { maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
 import { decode, header } from './lib/png.mjs';
 import { score } from './lib/accuracy.mjs';
 import { gridSvg } from './fixtures/small-grid.gen.mjs';
@@ -19,6 +20,33 @@ const rendered = async (svg) => {
   const { width, height, rgba } = await engine.renderRgba(svg, 512);
   return { width, height, data: rgba };
 };
+
+describe('opaque extent', () => {
+  it('measures outer pixel corners, including sparse rows and odd rectangular canvases', () => {
+    for (const [width, height, points] of [
+      [7, 5, [[1, 0], [5, 1], [3, 4]]],
+      [6, 8, [[2, 1], [0, 5], [5, 6]]],
+      [5, 3, [[2, 1]]],
+      [1, 1, [[0, 0]]],
+      [4, 4, [[0, 0], [3, 0], [0, 3], [3, 3]]],
+    ]) {
+      const rgba = new Uint8Array(width * height * 4);
+      for (const [x, y] of points) rgba[(y * width + x) * 4 + 3] = 1; // Any visible alpha counts.
+      const distance2 = points.flatMap(([x, y]) => [0, 1].flatMap((dx) =>
+        [0, 1].map((dy) => (x + dx - width / 2) ** 2 + (y + dy - height / 2) ** 2)));
+      const radius = Math.sqrt(Math.max(...distance2)) / width;
+      const fullBleed = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]]
+        .every(([x, y]) => points.some(([px, py]) => x === px && y === py));
+      assert.deepEqual(maskableFit({ width, height, rgba }),
+        { radius, fullBleed, scale: fullBleed ? 1 : MASK_SAFE_RADIUS / radius });
+    }
+  });
+
+  it('rejects an entirely transparent canvas', () => {
+    assert.throws(() => maskableFit({ width: 7, height: 5, rgba: new Uint8Array(7 * 5 * 4) }),
+      /renders nothing/);
+  });
+});
 
 describe('selective SVG precision', () => {
   for (const size of [1, 16, 24, .001]) {

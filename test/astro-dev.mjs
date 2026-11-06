@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, it } from 'node:test';
 import favseed from '../astro/index.mjs';
 import { buildFiles } from '../bin/favseed.mjs';
-import { writeSlot } from '../vite/cache.mjs';
+import { cacheIndex, writeSlot } from '../vite/cache.mjs';
 
 const fixture = (name) => new URL(`./fixtures/${name}.svg`, import.meta.url);
 const snapshot = (dir) => existsSync(dir) ? readdirSync(dir).sort().map((name) => [name, readFileSync(join(dir, name))]) : null;
@@ -228,6 +228,9 @@ describe('Astro bounded cache', () => {
     writeFileSync(join(slot, 'index.json'), JSON.stringify({ files: ['icon.svg'] }));
     const set = await readCachedSet(slot);
     assert.equal(set[0].name, 'icon.svg'); assert.equal(Buffer.from(set[0].bytes).toString(), '<svg/>');
+    const index = await cacheIndex(slot);
+    rmSync(join(slot, 'icon.svg'));
+    assert.equal(await readCachedSet(slot, index), null, 'asset disappeared after index validation');
   });
 
   it('neither reads nor prunes symlinked slots', async (t) => {

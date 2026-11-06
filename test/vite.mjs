@@ -78,6 +78,13 @@ describe('the cache', () => {
     await writeSlot(cache, 'k1', files);
     const back = await readSlot(cache, 'k1');
     assert.deepEqual(back.map((f) => [f.name, [...f.bytes]]), files.map((f) => [f.name, [...f.bytes]]));
+    const next = await readSlot(cache, 'k1');
+    back[0].bytes[0] = 99;
+    assert.equal(next[0].bytes[0], 1, 'separate reads own their bytes');
+    rmSync(join(cache, 'k1'), { recursive: true });
+    assert.deepEqual(next.map((f) => [f.name, [...f.bytes]]), files.map((f) => [f.name, [...f.bytes]]),
+      'eviction does not invalidate previously read bytes');
+    assert.ok(next.every((f) => f.bytes instanceof Uint8Array));
   });
 
   it('treats incomplete and malformed cache slots as misses', async () => {

@@ -14,7 +14,7 @@ export const pruneCache = async (cacheDir, currentKey) => {
     if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
     const slot = join(cacheDir, entry.name), index = await cacheIndex(slot);
     if (!index?.managed) continue;
-    const files = await readCachedSet(slot);
+    const files = await readCachedSet(slot, index);
     if (!files || !files.every((file) => createHash('sha256').update(file.bytes).digest('hex') === index.hashes[file.name])) continue;
     let used = index.info.mtimeMs;
     if (entry.name === currentKey) {

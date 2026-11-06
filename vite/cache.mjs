@@ -76,9 +76,9 @@ export const cacheIndex = async (slot) => {
   }
 };
 
-/** Own the bytes before publishing/serving, so eviction cannot interrupt either. */
-export const readCachedSet = async (slot) => {
-  const index = await cacheIndex(slot);
+/** Own the bytes before publishing/serving; pruning can reuse its validated index. */
+export const readCachedSet = async (slot, index) => {
+  if (index === undefined) index = await cacheIndex(slot);
   if (!index) return null;
   try {
     return await Promise.all(index.files.map(async (name) => ({ name, bytes: await readFile(join(slot, name)) })));
@@ -89,10 +89,7 @@ export const readCachedSet = async (slot) => {
 };
 
 /** The slot's files, or null on a miss. */
-export const readSlot = async (cacheDir, key) => {
-  const files = await readCachedSet(join(cacheDir, key));
-  return files?.map(({ name, bytes }) => ({ name, bytes: new Uint8Array(bytes) })) ?? null;
-};
+export const readSlot = (cacheDir, key) => readCachedSet(join(cacheDir, key));
 
 /** Writes the files whole or not at all; Astro supplies hashes for safe cache pruning. */
 export const writeSlot = async (cacheDir, key, files, hashes) => {
