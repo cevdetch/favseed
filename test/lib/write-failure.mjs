@@ -18,14 +18,11 @@ for (const method of ['writeFileSync', 'copyFileSync', 'renameSync', 'rmSync']) 
     const target = args[paired ? 1 : 0];
     const event = { method, from: paired ? area(args[0]) : null, to: area(target), name: basename(target) };
     const fault = faults.find(
-      (rule) =>
-        !rule.used &&
-        Object.entries(rule).every(([key, value]) => ['code', 'empty'].includes(key) || event[key] === value),
+      (rule) => !rule.used && Object.entries(rule).every(([key, value]) => key === 'code' || event[key] === value),
     );
     if (fault) {
       fault.used = true;
-      append(trace, JSON.stringify({ ...event, failed: !fault.empty, empty: !!fault.empty }) + '\n');
-      if (fault.empty) return original(args[0], new Uint8Array());
+      append(trace, JSON.stringify({ ...event, failed: true }) + '\n');
       throw Object.assign(new Error(`injected ${fault.code}: ${method} ${event.name}`), { code: fault.code });
     }
     const result = original(...args);
