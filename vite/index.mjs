@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 
 import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
 import { normaliseOptions, resolveOptions } from '../lib/config.mjs';
-import { declaresIcon, manifestIcons } from '../lib/core.mjs';
+import { declaresIcon, DEFAULT_BG, manifestIcons, manifestPurpose } from '../lib/core.mjs';
 import { cacheKey, favseedVersion, readSlot, writeSlot } from './cache.mjs';
 
 /**
@@ -17,7 +17,7 @@ import { cacheKey, favseedVersion, readSlot, writeSlot } from './cache.mjs';
  */
 export const favseedIcons = ({ sizes, bg, base } = {}) => {
   const o = normaliseOptions({ sizes, bg, base });
-  return manifestIcons({ sizes: o.sizes, base: o.base, purpose: o.bg === null ? null : 'any maskable' });
+  return manifestIcons({ sizes: o.sizes, base: o.base, purpose: manifestPurpose(o.bg) });
 };
 
 const VIRTUAL = 'virtual:favseed';
@@ -74,7 +74,7 @@ export default function favseed(options = {}) {
     if (dev) merged.mode = 'fast';
     if (merged.bg === undefined) {
       warnOnce(
-        'favseed: bg not given, using #000000 for the padded icons (iOS composites transparent icons onto black)',
+        `favseed: bg not given, using ${DEFAULT_BG} for the padded icons (iOS composites transparent icons onto black)`,
       );
     }
     // vite-plugin-pwa writes and links its own manifest.webmanifest.
