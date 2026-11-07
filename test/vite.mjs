@@ -471,6 +471,21 @@ describe('favseed/vite in dev', () => {
     }
   });
 
+  it("serves at favseed's base, where the links point, when it differs from Vite's", async () => {
+    // Astro leaves Vite's base at '/' in dev and strips its own base in a middleware.
+    const root = app();
+    const { server, url } = await serve(root, [favseed({ sizes: [32], bg: '#000000', base: '/blog/' })]);
+    try {
+      const ico = await fetch(url('/blog/favicon.ico'));
+      assert.equal(ico.status, 200);
+      assert.equal(ico.headers.get('content-type'), 'image/x-icon');
+      assert.notEqual((await fetch(url('/favicon.ico'))).headers.get('content-type'), 'image/x-icon');
+      assert.match(await (await fetch(url('/'))).text(), /href="\/blog\/favicon\.ico"/);
+    } finally {
+      await server.close();
+    }
+  });
+
   it('serves the public/ file and warns when it differs', async () => {
     warnings.length = 0;
     const root = app({ 'public/favicon.ico': 'mine' });

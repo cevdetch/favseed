@@ -141,19 +141,20 @@ export default function favseed(options = {}) {
     },
 
     configureServer(server) {
-      const base = server.config.base;
-
       // Registered here, not returned: as a post hook, public/ and a framework's router
       // answer first.
       server.middlewares.use(async (req, res, next) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         // Astro strips its base from req.url before later middleware; Connect keeps the original.
         const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
-        if (!path.startsWith(base)) return next();
-        const name = path.slice(base.length);
-        let files;
+        let name, files;
         try {
-          if (!(await settingsFor('dev')).names.includes(name)) return next();
+          // favseed's base, not Vite's: the icons are served where the links point. Astro
+          // leaves Vite's base at '/' in dev and handles its own base in a middleware.
+          const { names, o } = await settingsFor('dev');
+          if (!path.startsWith(o.base)) return next();
+          name = path.slice(o.base.length);
+          if (!names.includes(name)) return next();
           files = await setFor('dev');
         } catch (e) {
           sets.dev = null; // try again on the next request or change
