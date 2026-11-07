@@ -1408,7 +1408,7 @@ describe('the astro integration', () => {
   it('rejects unknown and CLI-only options before any Astro hook runs', () => {
     for (const [options, expected] of [
       [{ imput: 'logo.svg' }, /unknown option 'imput'/],
-      [{ out: 'icons' }, /out.*publicDir/],
+      [{ out: 'icons' }, /out is controlled by Astro's build output/],
       [{ base: '/other/' }, /base.*Astro/],
     ]) {
       assert.throws(
@@ -1714,6 +1714,21 @@ describe('the astro integration', () => {
     assert.ok(existsSync(join(p.dist, 'favicon.ico')));
   });
 
+  it('reads favseed.config.* from the project root, with integration options winning', async () => {
+    const config = 'export default { manifest: true, sizes: [64] };\n';
+    const p = await project({ sizes: [128] });
+    writeFileSync(join(p.root, 'favseed.config.mjs'), config);
+    const s = await p.build();
+    assert.ok(existsSync(join(p.dist, 'icon-128.png')), 'the integration option lost to the config file');
+    assert.ok(!existsSync(join(p.dist, 'icon-64.png')), 'the config file overrode the integration option');
+    assert.ok(existsSync(join(p.dist, 'site.webmanifest')), "the config file's manifest was ignored");
+    assert.match(await linksFrom(s.calls, p.root), /rel=\\"manifest\\" href=\\"\/site\.webmanifest\\"/);
+    const manual = await project({ sizes: [128], head: false });
+    writeFileSync(join(manual.root, 'favseed.config.mjs'), config);
+    const logged = (await manual.build()).calls.logs.map(([, m]) => m).join('\n');
+    assert.match(logged, /<link rel="manifest" href="\/site\.webmanifest">/);
+  });
+
   it('refuses to shadow a favicon.ico it does not build', async () => {
     const p = await project({ sizes: [32] });
     mkdirSync(p.pub, { recursive: true });
@@ -1733,7 +1748,7 @@ describe('the astro integration', () => {
     writeFileSync(join(pub, 'favicon.svg'), svg);
     const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
     await assert.rejects(astroBuild(integration, root, { publicDir: pub }), (error) => {
-      assert.match(error.message, /favseed: public\/favicon\.ico exists and is not the file favseed builds/);
+      assert.match(error.message, /favseed: static\/favicon\.ico exists and is not the file favseed builds/);
       assert.match(error.message, /Delete it to use favseed's/);
       return true;
     });

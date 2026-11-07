@@ -14,7 +14,7 @@ export const validateOptions = (options) => {
   const unknown = Object.keys(options).filter((key) => !keys.includes(key));
   if (unknown.length) {
     const hints = [];
-    if (unknown.includes('out')) hints.push('out is controlled by Astro publicDir');
+    if (unknown.includes('out')) hints.push("out is controlled by Astro's build output (outDir, build.client)");
     if (unknown.includes('base')) hints.push('base is controlled by Astro config.base');
     fail(
       `unknown option${unknown.length > 1 ? 's' : ''} ${unknown.map((key) => `'${key}'`).join(', ')}; ` +

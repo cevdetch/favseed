@@ -200,7 +200,7 @@ describe('lazy build dependencies', () => {
       const root = new URL('../', ${JSON.stringify(ASTRO)});
       for (const command of ['sync','preview']) {
         const integration = favseed({vars:{brand:'#123456'}, manifest:{name:'Example'}});
-        integration.hooks['astro:config:setup']({command,
+        await integration.hooks['astro:config:setup']({command,
           config:{root,publicDir:new URL('public/',root),base:'/blog'},
           addWatchFile(){throw Error('unexpected watch')},addMiddleware(){throw Error('unexpected middleware')},
           updateConfig(){throw Error('unexpected config')},logger:{info(){}}
