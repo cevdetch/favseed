@@ -11,10 +11,10 @@ import favseedVite, { favseedIcons, type ManifestIcon } from 'favseed/vite';
 import favseedAstro, { type FavseedOptions } from 'favseed/astro';
 import type { Plugin } from 'vite';
 import type { AstroIntegration } from 'astro';
-import { optimize, builtinPlugins } from 'svgo';
+import { optimize } from 'svgo';
 import { createSvgStage } from 'favseed/core';
 
-const stage = createSvgStage({ optimize, builtinPlugins });
+const stage = createSvgStage({ optimize });
 const svg: string = stage.optimiseSvg('<svg viewBox="0 0 48 48"/>').data;
 
 const config: FavseedConfig = defineConfig({

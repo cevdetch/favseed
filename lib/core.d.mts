@@ -41,10 +41,7 @@ export interface SvgStage {
 }
 
 /** Inject an SVGO-compatible optimizer; importing core does not load one. */
-export function createSvgStage(optimizer: {
-  optimize(source: string, config: object): { data: string };
-  builtinPlugins?: readonly { name: string; plugins?: readonly { name: string }[] }[];
-}): SvgStage;
+export function createSvgStage(optimizer: { optimize(source: string, config: object): { data: string } }): SvgStage;
 
 /** Normalize variable names to --name and stringify values. */
 export function normaliseVars(vars?: SvgVariables | null): Map<string, string>;
