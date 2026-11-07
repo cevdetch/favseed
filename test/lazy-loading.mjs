@@ -17,7 +17,7 @@ const guard = (blockBuild = false) => `
   const engines = new Set();
   registerHooks({ resolve(specifier, context, next) {
     const resolved = next(specifier, context);
-    if (specifier === 'svgo' || specifier === '@napi-rs/image') engines.add(resolved.url);
+    if (specifier === 'svgo' || specifier === 'svgo/browser' || specifier === '@napi-rs/image') engines.add(resolved.url);
     ${blockBuild ? `assert.notEqual(resolved.url, ${JSON.stringify(CLI)}, 'Astro configuration loaded the Node build module');` : ''}
     return resolved;
   }, load(url, context, next) {
@@ -98,6 +98,61 @@ describe('lazy build dependencies', () => {
       assert.deepEqual(api.optimiseSvg(source), first);
       assert.throws(() => api.optimiseSvg(readFileSync('test/fixtures/unresolved.svg','utf8')), api.FavseedError);
       await pending;
+    `);
+  });
+
+  it('builds concurrently with the bundled optimizer and keeps later SVG calls synchronous', async () => {
+    await probe(`
+      import assert from 'node:assert/strict';
+      import { registerHooks } from 'node:module';
+      import { readFileSync } from 'node:fs';
+      registerHooks({ resolve(specifier, context, next) {
+        assert.notEqual(specifier, 'svgo', 'full builds loaded the Node optimizer dependency tree');
+        return next(specifier, context);
+      }});
+      const api = await import(${JSON.stringify(CLI)});
+      const options = {input:'test/fixtures/flat.svg',bg:'none',sizes:[48]};
+      const [first, second] = await Promise.all([api.buildFiles(options), api.buildFiles(options)]);
+      assert.deepEqual(first, second);
+      assert.ok(first.files.length > 0);
+      const svg = api.optimiseSvg(readFileSync(options.input, 'utf8'));
+      assert.equal(typeof svg.data, 'string');
+      assert.equal(svg.then, undefined);
+      assert.throws(() => api.optimiseSvg(readFileSync('test/fixtures/unresolved.svg','utf8')), api.FavseedError);
+    `);
+  });
+
+  it('preserves a synchronous SVG stage initialized while a first build is pending', async () => {
+    await probe(`
+      import assert from 'node:assert/strict';
+      import { readFileSync } from 'node:fs';
+      const api = await import(${JSON.stringify(CLI)});
+      const options = {input:'test/fixtures/flat.svg',bg:'none',sizes:[48]};
+      const pending = api.buildFiles(options);
+      const source = readFileSync(options.input, 'utf8');
+      const svg = api.optimiseSvg(source);
+      const first = await pending;
+      assert.deepEqual(api.optimiseSvg(source), svg);
+      assert.deepEqual(await api.buildFiles(options), first);
+    `);
+  });
+
+  it('retries a first build after a transient optimizer resolution failure', async () => {
+    await probe(`
+      import assert from 'node:assert/strict';
+      import { registerHooks } from 'node:module';
+      let fail = true;
+      registerHooks({ resolve(specifier, context, next) {
+        if (specifier === 'svgo/browser' && fail) {
+          fail = false;
+          throw Error('temporary optimizer resolution failure');
+        }
+        return next(specifier, context);
+      }});
+      const api = await import(${JSON.stringify(CLI)});
+      const options = {input:'test/fixtures/flat.svg',bg:'none',sizes:[48]};
+      await assert.rejects(api.buildFiles(options), {name:'FavseedError', message:'temporary optimizer resolution failure'});
+      assert.ok((await api.buildFiles(options)).files.length > 0);
     `);
   });
 

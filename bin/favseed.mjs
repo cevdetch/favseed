@@ -154,7 +154,10 @@ export async function buildFiles(options = {}) {
     throw new FavseedError(`not an SVG (no <svg> element found): ${basename(o.input)}`);
   }
   try {
-    const engine = await loadEngine();
+    // SVGO's self-contained bundle avoids loading its Node dependency tree on a first
+    // build. Reuse a stage initialized by the synchronous API, including during this await.
+    const [engine, svgo] = await Promise.all([loadEngine(), svgStage ? null : import('svgo/browser')]);
+    svgStage ??= createSvgStage(svgo);
     return await buildSet(source, o, { engine, optimiseSvg, name: basename(o.input), warn });
   } catch (e) {
     if (e instanceof FavseedError) throw e;
