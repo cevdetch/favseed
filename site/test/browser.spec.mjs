@@ -10,13 +10,24 @@ const fixture = (mark) => fileURLToPath(new URL(`../../test/fixtures/${mark}.svg
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const summary = ({ files, fit, links, animated }) => ({
   files: files.map(({ name, bytes }) => ({ name, hash: hash(bytes), size: bytes.length })),
-  fit, links, animated,
+  fit,
+  links,
+  animated,
 });
-const downloads = (page) => page.locator('#files a').evaluateAll(async (links) => Promise.all(links.map(async (link) => {
-  const bytes = await (await fetch(link.href)).arrayBuffer();
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-  return { name: link.download, size: bytes.byteLength, hash: Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('') };
-})));
+const downloads = (page) =>
+  page.locator('#files a').evaluateAll(async (links) =>
+    Promise.all(
+      links.map(async (link) => {
+        const bytes = await (await fetch(link.href)).arrayBuffer();
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+        return {
+          name: link.download,
+          size: bytes.byteLength,
+          hash: Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join(''),
+        };
+      }),
+    ),
+  );
 const checkPage = async (page, compatibility = false) => {
   const response = await page.goto(compatibility ? '/check?no-isolation' : '/check');
   for (const [name, value] of Object.entries(siteHeaders)) {
@@ -26,15 +37,19 @@ const checkPage = async (page, compatibility = false) => {
   expect(await page.evaluate(() => window.favseedCheck.isolated)).toBe(!compatibility);
 };
 
-const clipboardStub = (page) => page.addInitScript(() => {
-  window.favseedClipboard = { writes: [], pending: [] };
-  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
-    writeText(text) {
-      window.favseedClipboard.writes.push(text);
-      return new Promise((resolve, reject) => window.favseedClipboard.pending.push({ resolve, reject }));
-    },
-  } });
-});
+const clipboardStub = (page) =>
+  page.addInitScript(() => {
+    window.favseedClipboard = { writes: [], pending: [] };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText(text) {
+          window.favseedClipboard.writes.push(text);
+          return new Promise((resolve, reject) => window.favseedClipboard.pending.push({ resolve, reject }));
+        },
+      },
+    });
+  });
 const generateHead = async (page) => {
   await page.locator('input[name=file]').setInputFiles(fixture('tiles'));
   await page.locator('input[name=sizes]').fill('32');
@@ -43,7 +58,10 @@ const generateHead = async (page) => {
   return page.locator('#links').textContent();
 };
 
-test('production policy protects documents and workers while generation and previews work', async ({ page, request }) => {
+test('production policy protects documents and workers while generation and previews work', async ({
+  page,
+  request,
+}) => {
   await page.addInitScript(() => {
     window.policyViolations = [];
     document.addEventListener('securitypolicyviolation', (event) => {
@@ -64,10 +82,14 @@ test('production policy protects documents and workers while generation and prev
   const workerResponse = await request.get(worker.url());
   expect(workerResponse.headers()['content-security-policy']).toBe(policy);
   expect(workerResponse.headers()['content-type']).toContain('javascript');
-  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files);
+  expect(await downloads(page)).toEqual(
+    summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files,
+  );
   const previews = page.locator('#result img');
   expect(await previews.count()).toBeGreaterThan(0);
-  await expect.poll(() => previews.evaluateAll((images) => images.every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
+  await expect
+    .poll(() => previews.evaluateAll((images) => images.every((img) => img.complete && img.naturalWidth > 0)))
+    .toBe(true);
   expect(await page.evaluate(() => window.policyViolations)).toEqual([]);
 
   // Inject actual DOM script elements: DevTools evaluation itself bypasses CSP.
@@ -77,11 +99,20 @@ test('production policy protects documents and workers while generation and prev
     document.body.append(script);
     const external = document.createElement('script');
     external.src = URL.createObjectURL(new Blob(['window.blobScriptRan = true'], { type: 'text/javascript' }));
-    await new Promise((resolve) => { external.onload = external.onerror = resolve; document.body.append(external); });
+    await new Promise((resolve) => {
+      external.onload = external.onerror = resolve;
+      document.body.append(external);
+    });
     URL.revokeObjectURL(external.src);
-    try { await fetch('https://favseed-policy-check.invalid/'); } catch { /* CSP rejects before networking. */ }
+    try {
+      await fetch('https://favseed-policy-check.invalid/');
+    } catch {
+      /* CSP rejects before networking. */
+    }
   });
-  await expect.poll(() => page.evaluate(() => window.policyViolations)).toEqual(expect.arrayContaining(['script-src-elem', 'connect-src']));
+  await expect
+    .poll(() => page.evaluate(() => window.policyViolations))
+    .toEqual(expect.arrayContaining(['script-src-elem', 'connect-src']));
   expect(await page.evaluate(() => [window.injectedScriptRan, window.blobScriptRan])).toEqual([undefined, undefined]);
   const artifact = await (await request.get('/_headers')).text();
   expect(artifact).toContain(`  Content-Security-Policy: ${policy}\n`);
@@ -89,7 +120,10 @@ test('production policy protects documents and workers while generation and prev
   expect(artifact.split('\n').every((line) => line.length <= 2000)).toBe(true);
 });
 
-test('head markup copies exact text with keyboard/touch feedback and rejection recovery', async ({ page, isMobile }) => {
+test('head markup copies exact text with keyboard/touch feedback and rejection recovery', async ({
+  page,
+  isMobile,
+}) => {
   await clipboardStub(page);
   if (isMobile) await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/');
@@ -104,7 +138,10 @@ test('head markup copies exact text with keyboard/touch feedback and rejection r
   await expect(page.locator('#copy-status')).toHaveAttribute('role', 'status');
   await expect(page.locator('#copy-status')).toHaveAttribute('aria-atomic', 'true');
   if (isMobile) await copy.tap();
-  else { await copy.focus(); await page.keyboard.press('Enter'); }
+  else {
+    await copy.focus();
+    await page.keyboard.press('Enter');
+  }
   await expect(copy).toBeDisabled();
   if (!isMobile) {
     await expect(copy).toBeFocused();
@@ -117,7 +154,9 @@ test('head markup copies exact text with keyboard/touch feedback and rejection r
   if (!isMobile) await expect(copy).toBeFocused();
   await copy.click();
   await expect(page.locator('#copy-status')).toHaveText('');
-  await page.evaluate(() => window.favseedClipboard.pending.shift().reject(new DOMException('Denied', 'NotAllowedError')));
+  await page.evaluate(() =>
+    window.favseedClipboard.pending.shift().reject(new DOMException('Denied', 'NotAllowedError')),
+  );
   await expect(page.locator('#copy-status')).toHaveText('Could not copy. Select and copy the markup below.');
   await expect(copy).toBeEnabled();
   await expect(page.locator('#links')).toHaveText(markup);
@@ -130,7 +169,9 @@ test('head markup copies exact text with keyboard/touch feedback and rejection r
   await expect(page.locator('#copy-status')).toHaveText('');
   if (isMobile) {
     expect((await copy.boundingBox()).height).toBeGreaterThanOrEqual(44);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    ).toBe(true);
   }
 });
 
@@ -138,7 +179,8 @@ for (const outcome of ['resolve', 'reject']) {
   test(`head markup ignores stale clipboard ${outcome} after new results`, async ({ page }) => {
     await clipboardStub(page);
     await page.goto('/');
-    const markup = await generateHead(page), copy = page.getByRole('button', { name: 'Copy markup', exact: true });
+    const markup = await generateHead(page),
+      copy = page.getByRole('button', { name: 'Copy markup', exact: true });
     await copy.click();
     await generateHead(page); // These settings produce the same links: result identity still matters.
     await expect(page.locator('#copy-status')).toHaveText('');
@@ -169,39 +211,73 @@ test('head markup stays selectable with manual guidance when clipboard support i
   await expect(page.locator('#zip')).toBeVisible();
 });
 
-for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} files and metadata match the CLI; archives, cache and page timers work`, async ({ page, isMobile }) => {
-  const errors = [];
-  const images = new Set();
-  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.add(request.url()); });
-  page.on('pageerror', (error) => errors.push(error.message));
-  await checkPage(page, compatibility);
-  const selected = isMobile ? cases.filter((item) =>
-    ['small-mark/placement', 'aspect-wide/proportions', 'aspect-tall/proportions', 'aspect-percent/transparent',
-      'grid-1/precision', 'grid-tiny/precision', 'grid-fallback/precision', 'gradient/fast', 'tiles/release', 'gradient/quality60-zopfli', 'transparent-aliases', 'custom-manifest'].includes(item.name)) : cases;
-  let fileCount = 0;
-  for (const item of selected) {
-    await test.step(item.name, async () => {
-      const input = fixture(item.mark), original = await readFile(input, 'utf8');
-      // Export annotations must not change bytes, including the source fallback.
-      const source = item.mark.startsWith('grid-')
-        ? `<!-- exported <svg> --><?export metadata?>${original}<!-- exported logo --><?export done?>` : original;
-      const options = { manifest: true, ...item.options };
-      const expected = summary(await buildFiles({ input, ...options }));
-      const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-      expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated }).toEqual(expected);
-      expect(actual.ticks).toBeGreaterThan(0);
-      fileCount += actual.files.length;
+for (const compatibility of [false, true])
+  test(`${compatibility ? 'compatibility' : 'threaded'} files and metadata match the CLI; archives, cache and page timers work`, async ({
+    page,
+    isMobile,
+  }) => {
+    const errors = [];
+    const images = new Set();
+    page.on('request', (request) => {
+      if (/image\.wasm32-.*\.wasm/.test(request.url())) images.add(request.url());
     });
-  }
-  const source = await readFile(fixture('general'), 'utf8'), options = { mode: 'fast', sizes: [180, 32] };
-  expect(await page.evaluate(({ source, options }) => window.favseedCheck.cache(source, options), { source, options })).toBe(true);
-  const repeat = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-  expect(repeat.progress).toEqual([]);
-  expect(errors).toEqual([]);
-  expect(images.size, 'Only the selected image WASM downloads').toBe(1);
-  expect([...images][0]).toContain(compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-');
-  console.log(`${test.info().project.name}: ${fileCount} files match native across ${selected.length} cases`);
-});
+    page.on('pageerror', (error) => errors.push(error.message));
+    await checkPage(page, compatibility);
+    const selected = isMobile
+      ? cases.filter((item) =>
+          [
+            'small-mark/placement',
+            'aspect-wide/proportions',
+            'aspect-tall/proportions',
+            'aspect-percent/transparent',
+            'grid-1/precision',
+            'grid-tiny/precision',
+            'grid-fallback/precision',
+            'gradient/fast',
+            'tiles/release',
+            'gradient/quality60-zopfli',
+            'transparent-aliases',
+            'custom-manifest',
+          ].includes(item.name),
+        )
+      : cases;
+    let fileCount = 0;
+    for (const item of selected) {
+      await test.step(item.name, async () => {
+        const input = fixture(item.mark),
+          original = await readFile(input, 'utf8');
+        // Export annotations must not change bytes, including the source fallback.
+        const source = item.mark.startsWith('grid-')
+          ? `<!-- exported <svg> --><?export metadata?>${original}<!-- exported logo --><?export done?>`
+          : original;
+        const options = { manifest: true, ...item.options };
+        const expected = summary(await buildFiles({ input, ...options }));
+        const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+          source,
+          options,
+        });
+        expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated }).toEqual(
+          expected,
+        );
+        expect(actual.ticks).toBeGreaterThan(0);
+        fileCount += actual.files.length;
+      });
+    }
+    const source = await readFile(fixture('general'), 'utf8'),
+      options = { mode: 'fast', sizes: [180, 32] };
+    expect(
+      await page.evaluate(({ source, options }) => window.favseedCheck.cache(source, options), { source, options }),
+    ).toBe(true);
+    const repeat = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+      source,
+      options,
+    });
+    expect(repeat.progress).toEqual([]);
+    expect(errors).toEqual([]);
+    expect(images.size, 'Only the selected image WASM downloads').toBe(1);
+    expect([...images][0]).toContain(compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-');
+    console.log(`${test.info().project.name}: ${fileCount} files match native across ${selected.length} cases`);
+  });
 
 test('site favicon metadata and actual ICO payload both declare48px', async ({ page }) => {
   for (const path of ['/', '/404']) {
@@ -220,19 +296,27 @@ test('site favicon metadata and actual ICO payload both declare48px', async ({ p
 
 test('SVG diagnostics match native and replay once on a cached build', async ({ page }) => {
   await checkPage(page);
-  const input = fixture('dependent'), source = await readFile(input, 'utf8');
-  const options = { manifest: true, sizes: [32], padding: 20, bg: '#fff' }, warnings = [];
+  const input = fixture('dependent'),
+    source = await readFile(input, 'utf8');
+  const options = { manifest: true, sizes: [32], padding: 20, bg: '#fff' },
+    warnings = [];
   const expected = summary(await buildFiles({ input, ...options, onWarn: (w) => warnings.push(w) }));
   expect(warnings).toHaveLength(2);
   for (let i = 0; i < 2; i++) {
-    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+      source,
+      options,
+    });
     expect(actual.warnings).toEqual(warnings);
     // The fixture intentionally depends on host fonts: native can substitute one
     // while WASM omits text. The self-contained corpus above checks all raster bytes.
     const reusable = (files) => files.filter((file) => /\.(svg|webmanifest)$/.test(file.name));
     expect(reusable(actual.files)).toEqual(reusable(expected.files));
-    expect({ fit: actual.fit, links: actual.links, animated: actual.animated })
-      .toEqual({ fit: expected.fit, links: expected.links, animated: expected.animated });
+    expect({ fit: actual.fit, links: actual.links, animated: actual.animated }).toEqual({
+      fit: expected.fit,
+      links: expected.links,
+      animated: expected.animated,
+    });
     if (i) expect(actual.progress).toEqual([]);
   }
 });
@@ -250,22 +334,37 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   await generate.click(); // Replaying the cached build must not lose or duplicate guidance.
   await expect(page.locator('output')).toHaveText(/^Done in/);
   await expect(page.locator('#warnings li')).toHaveCount(2);
-  await page.locator('input[name=file]').setInputFiles({ name: 'text.svg', mimeType: 'image/svg+xml',
-    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text font-family="FavseedOutlineOnlyMissingFont">F</text></svg>') });
+  await page.locator('input[name=file]').setInputFiles({
+    name: 'text.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text font-family="FavseedOutlineOnlyMissingFont">F</text></svg>',
+    ),
+  });
   await generate.click();
   await expect(page.locator('output')).toContainText('renders nothing');
   await expect(page.locator('#warnings li')).toHaveCount(1);
   await expect(page.locator('#warnings')).toContainText('Convert text to paths');
   expect(await downloads(page)).toEqual(previous);
-  await page.locator('input[name=file]').setInputFiles({ name: 'unsized.svg', mimeType: 'image/svg+xml',
-    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>') });
+  await page.locator('input[name=file]').setInputFiles({
+    name: 'unsized.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>',
+    ),
+  });
   await generate.click();
   await expect(page.locator('output')).toContainText('add a viewBox');
   await expect(page.locator('#warnings')).toBeHidden();
   expect(await downloads(page)).toEqual(previous);
   for (const box of [',0 64 64', '0 0 0x40 64', '0 0 64,,64']) {
-    await page.locator('input[name=file]').setInputFiles({ name: 'malformed.svg', mimeType: 'image/svg+xml',
-      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`) });
+    await page.locator('input[name=file]').setInputFiles({
+      name: 'malformed.svg',
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`,
+      ),
+    });
     await generate.click();
     await expect(page.locator('output')).toContainText('add a viewBox');
     expect(await downloads(page)).toEqual(previous);
@@ -276,56 +375,91 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   await expect(page.locator('#warnings')).toBeHidden();
 });
 
-for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} invalid options, cancellation and worker retry leave the engine usable`, async ({ page }) => {
-  await checkPage(page, compatibility);
-  const source = await readFile(fixture('general'), 'utf8'), options = { mode: 'fast', sizes: [32] };
-  expect(await page.evaluate((source) => window.favseedCheck.invalid(source), source)).toBe(true);
-  await page.evaluate(() => window.favseedCheck.dispose());
-  expect(await page.evaluate(({ source, options }) => window.favseedCheck.cancel(source, options, 'initialization'), { source, options })).toBe(true);
-  await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-  expect(await page.evaluate(({ source, options }) => window.favseedCheck.cancel(source, options, 'raster'),
-    { source, options: { ...options, padding: 20 } })).toBe(true);
-  const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-  expect(actual.files).toEqual(summary(await buildFiles({ input: fixture('general'), manifest: true, ...options })).files);
-});
+for (const compatibility of [false, true])
+  test(`${compatibility ? 'compatibility' : 'threaded'} invalid options, cancellation and worker retry leave the engine usable`, async ({
+    page,
+  }) => {
+    await checkPage(page, compatibility);
+    const source = await readFile(fixture('general'), 'utf8'),
+      options = { mode: 'fast', sizes: [32] };
+    expect(await page.evaluate((source) => window.favseedCheck.invalid(source), source)).toBe(true);
+    await page.evaluate(() => window.favseedCheck.dispose());
+    expect(
+      await page.evaluate(({ source, options }) => window.favseedCheck.cancel(source, options, 'initialization'), {
+        source,
+        options,
+      }),
+    ).toBe(true);
+    await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
+    expect(
+      await page.evaluate(({ source, options }) => window.favseedCheck.cancel(source, options, 'raster'), {
+        source,
+        options: { ...options, padding: 20 },
+      }),
+    ).toBe(true);
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+      source,
+      options,
+    });
+    expect(actual.files).toEqual(
+      summary(await buildFiles({ input: fixture('general'), manifest: true, ...options })).files,
+    );
+  });
 
-for (const compatibility of [false, true]) test(`a 1024px raster matches native after ${compatibility ? 'unshared' : 'shared'} memory grows`, async ({ page }) => {
-  let worker;
-  page.on('worker', (value) => { if (value.url().includes('engine-worker-')) worker = value; });
-  await page.route('**/engine-worker-*.js', async (route) => {
-    const response = await route.fetch();
-    const observe = `const memories = []; const OriginalMemory = WebAssembly.Memory;
+for (const compatibility of [false, true])
+  test(`a 1024px raster matches native after ${compatibility ? 'unshared' : 'shared'} memory grows`, async ({
+    page,
+  }) => {
+    let worker;
+    page.on('worker', (value) => {
+      if (value.url().includes('engine-worker-')) worker = value;
+    });
+    await page.route('**/engine-worker-*.js', async (route) => {
+      const response = await route.fetch();
+      const observe = `const memories = []; const OriginalMemory = WebAssembly.Memory;
       WebAssembly.Memory = new Proxy(OriginalMemory, { construct(Target, [descriptor]) {
         const memory = new Target(descriptor);
         if (!!descriptor.shared === ${!compatibility} && descriptor.initial > 1) memories.push({memory, initial: descriptor.initial * 65536});
         return memory;
       } });
       globalThis.favseedMemoryGrew = () => memories.some(({memory, initial}) => memory.buffer.byteLength > initial);\n`;
-    await route.fulfill({ response, body: observe + await response.text() });
+      await route.fulfill({ response, body: observe + (await response.text()) });
+    });
+    await checkPage(page, compatibility);
+    const input = fixture('general'),
+      source = await readFile(input, 'utf8');
+    const options = { mode: 'fast', sizes: [1024], padding: 0, bg: 'none' };
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+      source,
+      options,
+    });
+    expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated }).toEqual(
+      summary(await buildFiles({ input, manifest: true, ...options })),
+    );
+    expect(await worker.evaluate(() => globalThis.favseedMemoryGrew())).toBe(true);
   });
-  await checkPage(page, compatibility);
-  const input = fixture('general'), source = await readFile(input, 'utf8');
-  const options = { mode: 'fast', sizes: [1024], padding: 0, bg: 'none' };
-  const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-  expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated })
-    .toEqual(summary(await buildFiles({ input, manifest: true, ...options })));
-  expect(await worker.evaluate(() => globalThis.favseedMemoryGrew())).toBe(true);
-});
 
-test('form downloads match native and survive failed and cancelled builds', async ({ page, isMobile, browserName, context }) => {
+test('form downloads match native and survive failed and cancelled builds', async ({
+  page,
+  isMobile,
+  browserName,
+  context,
+}) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   if (isMobile) await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/');
-  if (isMobile) await page.evaluate(() => {
-    window.favseedTouches = 0;
-    document.addEventListener('touchstart', () => window.favseedTouches++);
-  });
+  if (isMobile)
+    await page.evaluate(() => {
+      window.favseedTouches = 0;
+      document.addEventListener('touchstart', () => window.favseedTouches++);
+    });
   await expect(page.locator('#cancel')).toBeHidden();
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
   await page.locator('select[name=mode]').selectOption('fast');
   const generate = page.getByRole('button', { name: 'Generate', exact: true });
-  if (isMobile) await generate.tap(); else await generate.click();
+  if (isMobile) await generate.tap();
+  else await generate.click();
   await expect(page.locator('output')).toHaveClass('good', { timeout: 90_000 });
   await expect(page.locator('#result')).toBeVisible();
   const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', manifest: true }));
@@ -334,12 +468,14 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   if (browserName === 'chromium') {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const copy = page.getByRole('button', { name: 'Copy markup', exact: true });
-    if (isMobile) await copy.tap(); else await copy.click();
+    if (isMobile) await copy.tap();
+    else await copy.click();
     await expect(page.locator('#copy-status')).toHaveText('Copied head markup.');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expected.links.trim());
   }
   const downloadEvent = page.waitForEvent('download');
-  if (isMobile) await page.locator('#zip').tap(); else await page.locator('#zip').click();
+  if (isMobile) await page.locator('#zip').tap();
+  else await page.locator('#zip').click();
   const download = await downloadEvent;
   expect(download.suggestedFilename()).toBe('favseed.zip');
   const zip = await readFile(await download.path());
@@ -357,10 +493,16 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('output')).toHaveText('Cancelled.');
   await expect(page.locator('#zip')).toHaveAttribute('href', url);
-  expect(await page.evaluate(async () => (await (await fetch(document.getElementById('zip').href)).arrayBuffer()).byteLength)).toBe(zip.length);
+  expect(
+    await page.evaluate(
+      async () => (await (await fetch(document.getElementById('zip').href)).arrayBuffer()).byteLength,
+    ),
+  ).toBe(zip.length);
   if (isMobile) {
-    const layout = await page.evaluate(() => ({ width: document.documentElement.scrollWidth,
-      viewport: document.documentElement.clientWidth }));
+    const layout = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      viewport: document.documentElement.clientWidth,
+    }));
     expect(layout.width).toBeLessThanOrEqual(layout.viewport);
     expect(await page.evaluate(() => window.favseedTouches)).toBeGreaterThan(0);
     for (const control of ['button[type=submit]', '#zip']) {
@@ -372,7 +514,8 @@ test('form downloads match native and survive failed and cancelled builds', asyn
 
 test('PNG quality controls palette availability and downloads match native', async ({ page }) => {
   await page.goto('/');
-  const quality = page.locator('[name=quality]'), colors = page.locator('[name=colors]');
+  const quality = page.locator('[name=quality]'),
+    colors = page.locator('[name=colors]');
   await expect(quality).toHaveValue('80');
   await expect(colors).toBeDisabled();
   await quality.fill('100');
@@ -401,8 +544,9 @@ test('PNG quality controls palette availability and downloads match native', asy
 test('form defaults skip extra compression and opt-in matches native bytes', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('input[name=zopfli]')).not.toBeChecked();
-  expect(await page.locator('header img').getAttribute('src'))
-    .toBe(await page.locator('link[type="image/svg+xml"]').getAttribute('href'));
+  expect(await page.locator('header img').getAttribute('src')).toBe(
+    await page.locator('link[type="image/svg+xml"]').getAttribute('href'),
+  );
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
   await page.locator('select[name=mode]').selectOption('fast');
   await page.locator('input[name=zopfli]').check();
@@ -429,7 +573,9 @@ test('missing worker isolation headers follow browser policy and allow retry', a
   test.setTimeout(30_000);
   let intercepted = false;
   const images = [];
-  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
+  page.on('request', (request) => {
+    if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url());
+  });
   await page.route('**/engine-worker-*.js', async (route) => {
     intercepted = true;
     const response = await route.fetch();
@@ -440,11 +586,16 @@ test('missing worker isolation headers follow browser policy and allow retry', a
   if (browserName === 'webkit') {
     // WebKit starts a nonisolated worker; Chromium and Firefox reject its startup.
     await page.evaluate(() => window.favseedCheck.warm());
-    const input = fixture('tiles'), source = await readFile(input, 'utf8');
+    const input = fixture('tiles'),
+      source = await readFile(input, 'utf8');
     const options = { manifest: true, mode: 'fast', sizes: [32] };
-    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), { source, options });
-    expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated })
-      .toEqual(summary(await buildFiles({ input, ...options })));
+    const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
+      source,
+      options,
+    });
+    expect({ files: actual.files, fit: actual.fit, links: actual.links, animated: actual.animated }).toEqual(
+      summary(await buildFiles({ input, ...options })),
+    );
     expect(images).toHaveLength(1);
     expect(images[0]).toContain('image.wasm32-wasip1-');
   } else {
@@ -460,19 +611,24 @@ test('missing worker isolation headers follow browser policy and allow retry', a
   expect(images[0]).toContain('image.wasm32-wasi-');
 });
 
-for (const restriction of ['document', 'worker', 'worker-isolation']) test(`${restriction} shared-memory restrictions select only compatibility`, async ({ page }) => {
-  const images = [], workers = [];
-  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
-  page.on('worker', (worker) => workers.push(worker));
-  if (restriction === 'document') {
-    // The worker still supports sharing; the document's refusal must win.
-    await page.addInitScript(() => Object.defineProperty(globalThis, 'SharedArrayBuffer', { value: undefined }));
-  } else {
-    await page.route('**/engine-worker-*.js', async (route) => {
-      const response = await route.fetch();
-      const block = restriction === 'worker-isolation'
-        ? `Object.defineProperty(globalThis, 'crossOriginIsolated', { value: false });\n`
-        : `const OriginalChannel = MessageChannel;
+for (const restriction of ['document', 'worker', 'worker-isolation'])
+  test(`${restriction} shared-memory restrictions select only compatibility`, async ({ page }) => {
+    const images = [],
+      workers = [];
+    page.on('request', (request) => {
+      if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url());
+    });
+    page.on('worker', (worker) => workers.push(worker));
+    if (restriction === 'document') {
+      // The worker still supports sharing; the document's refusal must win.
+      await page.addInitScript(() => Object.defineProperty(globalThis, 'SharedArrayBuffer', { value: undefined }));
+    } else {
+      await page.route('**/engine-worker-*.js', async (route) => {
+        const response = await route.fetch();
+        const block =
+          restriction === 'worker-isolation'
+            ? `Object.defineProperty(globalThis, 'crossOriginIsolated', { value: false });\n`
+            : `const OriginalChannel = MessageChannel;
         globalThis.MessageChannel = class extends OriginalChannel {
           constructor() {
             super(); const post = this.port1.postMessage.bind(this.port1);
@@ -482,28 +638,35 @@ for (const restriction of ['document', 'worker', 'worker-isolation']) test(`${re
             };
           }
         };\n`;
-      await route.fulfill({ response, body: block + await response.text() });
-    });
-  }
-  await page.goto('/');
-  await generateHead(page);
-  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files);
-  expect(images).toHaveLength(1);
-  expect(images[0]).toContain('image.wasm32-wasip1-');
-  expect(workers).toHaveLength(1);
-});
+        await route.fulfill({ response, body: block + (await response.text()) });
+      });
+    }
+    await page.goto('/');
+    await generateHead(page);
+    expect(await downloads(page)).toEqual(
+      summary(await buildFiles({ input: fixture('tiles'), manifest: true, sizes: [32] })).files,
+    );
+    expect(images).toHaveLength(1);
+    expect(images[0]).toContain('image.wasm32-wasip1-');
+    expect(workers).toHaveLength(1);
+  });
 
-for (const compatibility of [false, true]) test(`${compatibility ? 'compatibility' : 'threaded'} load failure stays visible and retry uses the same engine`, async ({ page }) => {
-  const images = [];
-  page.on('request', (request) => { if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url()); });
-  await page.route('**/image.wasm32-*.wasm', (route) => route.fulfill({ status: 503, body: 'Unavailable' }));
-  await checkPage(page, compatibility);
-  await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/503/);
-  expect(images).toHaveLength(1);
-  const expected = compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-';
-  expect(images[0]).toContain(expected);
-  await page.unroute('**/image.wasm32-*.wasm');
-  await page.evaluate(() => window.favseedCheck.warm());
-  expect(images).toHaveLength(2);
-  expect(images[1]).toContain(expected);
-});
+for (const compatibility of [false, true])
+  test(`${compatibility ? 'compatibility' : 'threaded'} load failure stays visible and retry uses the same engine`, async ({
+    page,
+  }) => {
+    const images = [];
+    page.on('request', (request) => {
+      if (/image\.wasm32-.*\.wasm/.test(request.url())) images.push(request.url());
+    });
+    await page.route('**/image.wasm32-*.wasm', (route) => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await checkPage(page, compatibility);
+    await expect(page.evaluate(() => window.favseedCheck.warm())).rejects.toThrow(/503/);
+    expect(images).toHaveLength(1);
+    const expected = compatibility ? 'image.wasm32-wasip1-' : 'image.wasm32-wasi-';
+    expect(images[0]).toContain(expected);
+    await page.unroute('**/image.wasm32-*.wasm');
+    await page.evaluate(() => window.favseedCheck.warm());
+    expect(images).toHaveLength(2);
+    expect(images[1]).toContain(expected);
+  });

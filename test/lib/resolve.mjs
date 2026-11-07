@@ -7,23 +7,36 @@
 
 const substitute = (text, vars, depth = 0) => {
   if (depth > 32) throw new Error('var() nested too deep');
-  let out = '', i = 0;
+  let out = '',
+    i = 0;
   for (;;) {
     const at = text.indexOf('var(', i);
     if (at === -1) return out + text.slice(i);
-    if (at > 0 && /[\w-]/.test(text[at - 1])) { out += text.slice(i, at + 4); i = at + 4; continue; }
-    let depth2 = 0, close = -1;
+    if (at > 0 && /[\w-]/.test(text[at - 1])) {
+      out += text.slice(i, at + 4);
+      i = at + 4;
+      continue;
+    }
+    let depth2 = 0,
+      close = -1;
     for (let j = at + 3; j < text.length; j++) {
       if (text[j] === '(') depth2++;
-      else if (text[j] === ')' && --depth2 === 0) { close = j; break; }
+      else if (text[j] === ')' && --depth2 === 0) {
+        close = j;
+        break;
+      }
     }
     if (close === -1) throw new Error('unbalanced var(');
     const inner = text.slice(at + 4, close);
-    let split = -1, d = 0;
+    let split = -1,
+      d = 0;
     for (let j = 0; j < inner.length; j++) {
       if (inner[j] === '(') d++;
       else if (inner[j] === ')') d--;
-      else if (inner[j] === ',' && d === 0) { split = j; break; }
+      else if (inner[j] === ',' && d === 0) {
+        split = j;
+        break;
+      }
     }
     const name = (split === -1 ? inner : inner.slice(0, split)).trim();
     const fallback = split === -1 ? null : inner.slice(split + 1).trim();

@@ -11,10 +11,16 @@ export const GET = () => {
   });
   headers.append('Set-Cookie', 'first=one; Path=/');
   headers.append('Set-Cookie', 'second=two; Path=/');
-  return new Response(new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(head));
-      pending.then(() => { controller.enqueue(encoder.encode(tail)); controller.close(); });
-    },
-  }), { status: 207, headers });
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(head));
+        pending.then(() => {
+          controller.enqueue(encoder.encode(tail));
+          controller.close();
+        });
+      },
+    }),
+    { status: 207, headers },
+  );
 };

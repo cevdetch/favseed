@@ -11,22 +11,37 @@ import { checkCapabilities } from './capabilities.mjs';
 globalThis.Buffer ??= Buffer;
 const { optimiseSvg } = createSvgStage({ optimize, builtinPlugins });
 const cache = createBuildCache();
-const zopfli = createZopfli({ loadWasm: async () => {
-  const response = await fetch(new URL('../../../lib/zopfli.wasm', import.meta.url));
-  if (!response.ok) throw new Error(`Could not load compression engine: HTTP ${response.status}`);
-  return response.arrayBuffer();
-} });
+const zopfli = createZopfli({
+  loadWasm: async () => {
+    const response = await fetch(new URL('../../../lib/zopfli.wasm', import.meta.url));
+    if (!response.ok) throw new Error(`Could not load compression engine: HTTP ${response.status}`);
+    return response.arrayBuffer();
+  },
+});
 let loading;
 const load = (parentThreaded) => {
   if (loading) return loading;
   const threaded = checkCapabilities() && parentThreaded !== false;
-  const image = threaded ? import('@napi-rs/image-wasm32-wasi')
+  const image = threaded
+    ? import('@napi-rs/image-wasm32-wasi')
     : import('../../vendor/image-wasm32-wasip1/image.wasip1-browser.js');
-  return (loading = image.then((image) => createEngine({
-    image, zopfli,
-    inflate: async (bytes) => new Uint8Array(await new Response(
-      new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer()),
-  })).catch((error) => { loading = undefined; throw error; }));
+  return (loading = image
+    .then((image) =>
+      createEngine({
+        image,
+        zopfli,
+        inflate: async (bytes) =>
+          new Uint8Array(
+            await new Response(
+              new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate')),
+            ).arrayBuffer(),
+          ),
+      }),
+    )
+    .catch((error) => {
+      loading = undefined;
+      throw error;
+    }));
 };
 
 self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
@@ -34,15 +49,24 @@ self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
   try {
     const engine = await load(threaded);
     initialized = true;
-    if (type === 'warm') { self.postMessage({ id, type: 'ready' }); return; }
+    if (type === 'warm') {
+      self.postMessage({ id, type: 'ready' });
+      return;
+    }
     if (type !== 'build') return;
     const key = buildKey(source, options);
     let result = cache.get(key);
     if (!result) {
       const warnings = [];
-      const built = await buildSet(source, options, { engine, optimiseSvg,
-        warn: (message) => { warnings.push(message); self.postMessage({ id, type: 'warning', message }); },
-        progress: (progress) => self.postMessage({ id, type: 'progress', progress }) });
+      const built = await buildSet(source, options, {
+        engine,
+        optimiseSvg,
+        warn: (message) => {
+          warnings.push(message);
+          self.postMessage({ id, type: 'warning', message });
+        },
+        progress: (progress) => self.postMessage({ id, type: 'progress', progress }),
+      });
       result = { ...built, warnings, archiveBytes: zip(built.files) };
       cache.set(key, result);
     } else {

@@ -24,32 +24,64 @@ const rendered = async (svg) => {
 describe('opaque extent', () => {
   it('measures outer pixel corners, including sparse rows and odd rectangular canvases', () => {
     for (const [width, height, points] of [
-      [7, 5, [[1, 0], [5, 1], [3, 4]]],
-      [6, 8, [[2, 1], [0, 5], [5, 6]]],
+      [
+        7,
+        5,
+        [
+          [1, 0],
+          [5, 1],
+          [3, 4],
+        ],
+      ],
+      [
+        6,
+        8,
+        [
+          [2, 1],
+          [0, 5],
+          [5, 6],
+        ],
+      ],
       [5, 3, [[2, 1]]],
       [1, 1, [[0, 0]]],
-      [4, 4, [[0, 0], [3, 0], [0, 3], [3, 3]]],
+      [
+        4,
+        4,
+        [
+          [0, 0],
+          [3, 0],
+          [0, 3],
+          [3, 3],
+        ],
+      ],
     ]) {
       const rgba = new Uint8Array(width * height * 4);
       for (const [x, y] of points) rgba[(y * width + x) * 4 + 3] = 1; // Any visible alpha counts.
-      const distance2 = points.flatMap(([x, y]) => [0, 1].flatMap((dx) =>
-        [0, 1].map((dy) => (x + dx - width / 2) ** 2 + (y + dy - height / 2) ** 2)));
+      const distance2 = points.flatMap(([x, y]) =>
+        [0, 1].flatMap((dx) => [0, 1].map((dy) => (x + dx - width / 2) ** 2 + (y + dy - height / 2) ** 2)),
+      );
       const radius = Math.sqrt(Math.max(...distance2)) / width;
-      const fullBleed = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]]
-        .every(([x, y]) => points.some(([px, py]) => x === px && y === py));
-      assert.deepEqual(maskableFit({ width, height, rgba }),
-        { radius, fullBleed, scale: fullBleed ? 1 : MASK_SAFE_RADIUS / radius });
+      const fullBleed = [
+        [0, 0],
+        [width - 1, 0],
+        [0, height - 1],
+        [width - 1, height - 1],
+      ].every(([x, y]) => points.some(([px, py]) => x === px && y === py));
+      assert.deepEqual(maskableFit({ width, height, rgba }), {
+        radius,
+        fullBleed,
+        scale: fullBleed ? 1 : MASK_SAFE_RADIUS / radius,
+      });
     }
   });
 
   it('rejects an entirely transparent canvas', () => {
-    assert.throws(() => maskableFit({ width: 7, height: 5, rgba: new Uint8Array(7 * 5 * 4) }),
-      /renders nothing/);
+    assert.throws(() => maskableFit({ width: 7, height: 5, rgba: new Uint8Array(7 * 5 * 4) }), /renders nothing/);
   });
 });
 
 describe('selective SVG precision', () => {
-  for (const size of [1, 16, 24, .001]) {
+  for (const size of [1, 16, 24, 0.001]) {
     it(`keeps the ${size}-unit mark within the source SVG error budget`, async () => {
       const source = gridSvg(size);
       const set = await buildSet(source, opts({ padding: 20 }), { engine, optimiseSvg });
@@ -60,7 +92,8 @@ describe('selective SVG precision', () => {
   }
 
   it('keeps gradient stop rounding within the SVG error budget', async () => {
-    const source = read('gradient'), set = await run('gradient', { padding: 20 });
+    const source = read('gradient'),
+      set = await run('gradient', { padding: 20 });
     const icon = new TextDecoder().decode(set.files.find((f) => f.name === 'icon.svg').bytes);
     assert.ok(score(await rendered(icon), await rendered(source)).pct <= 1);
   });
@@ -103,24 +136,38 @@ describe('buildSet', () => {
   it('shares an unpadded48px PNG with the ICO while preserving an explicit32px PNG', async () => {
     const renderedSizes = [];
     const set = await buildSet(read('general'), opts({ bg: 'none', sizes: [32, 48], padding: 0 }), {
-      optimiseSvg, engine: { ...engine, render: async (...args) => {
-        renderedSizes.push(args[1]); return engine.render(...args);
-      } },
+      optimiseSvg,
+      engine: {
+        ...engine,
+        render: async (...args) => {
+          renderedSizes.push(args[1]);
+          return engine.render(...args);
+        },
+      },
     });
     const file = (name) => set.files.find((f) => f.name === name).bytes;
-    const ico = file('favicon.ico'), png32 = file('icon-32.png');
+    const ico = file('favicon.ico'),
+      png32 = file('icon-32.png');
     assert.deepEqual([...ico.subarray(6, 8)], [48, 48]);
     assert.deepEqual(file('icon-48.png'), ico.subarray(22));
     assert.deepEqual([header(Buffer.from(png32)).width, header(Buffer.from(png32)).height], [32, 32]);
-    assert.deepEqual(renderedSizes.toSorted((a, b) => a - b), [32, 48, 180]);
+    assert.deepEqual(
+      renderedSizes.toSorted((a, b) => a - b),
+      [32, 48, 180],
+    );
   });
 
   it('renders padded48px output separately from the unpadded48px ICO', async () => {
     const renderedSizes = [];
     const set = await buildSet(read('general'), opts({ sizes: [48], padding: 20 }), {
-      optimiseSvg, engine: { ...engine, render: async (...args) => {
-        renderedSizes.push(args[1]); return engine.render(...args);
-      } },
+      optimiseSvg,
+      engine: {
+        ...engine,
+        render: async (...args) => {
+          renderedSizes.push(args[1]);
+          return engine.render(...args);
+        },
+      },
     });
     const ico = set.files.find((f) => f.name === 'favicon.ico').bytes;
     const png = set.files.find((f) => f.name === 'icon-48.png').bytes;
@@ -131,22 +178,33 @@ describe('buildSet', () => {
 
   it('returns the set in the CLI order, as bytes', async () => {
     const set = await run('general', { manifest: true });
-    assert.deepEqual(set.files.map((f) => f.name),
-      ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png', 'site.webmanifest']);
+    assert.deepEqual(
+      set.files.map((f) => f.name),
+      ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png', 'site.webmanifest'],
+    );
     for (const f of set.files) assert.ok(f.bytes instanceof Uint8Array && f.bytes.length > 0, f.name);
     assert.equal(header(Buffer.from(set.files[2].bytes)).width, 180);
   });
 
   it('gives the same bytes twice', async () => {
-    const a = await run('heavy', { iterations: 15 }), b = await run('heavy', { iterations: 15 });
-    assert.deepEqual(a.files.map((f) => [...f.bytes]), b.files.map((f) => [...f.bytes]));
+    const a = await run('heavy', { iterations: 15 }),
+      b = await run('heavy', { iterations: 15 });
+    assert.deepEqual(
+      a.files.map((f) => [...f.bytes]),
+      b.files.map((f) => [...f.bytes]),
+    );
   });
 
   it('default quality 80 matches its explicit setting and quality 100 restores higher fidelity', async () => {
-    const defaults = await run('gradient'), full = await run('gradient', { quality: 100 }), low = await run('gradient', { quality: 80 });
+    const defaults = await run('gradient'),
+      full = await run('gradient', { quality: 100 }),
+      low = await run('gradient', { quality: 80 });
     assert.deepEqual(low, defaults);
     assert.deepEqual(low.fit, full.fit);
-    assert.deepEqual(low.files.find((f) => f.name === 'icon.svg'), full.files.find((f) => f.name === 'icon.svg'));
+    assert.deepEqual(
+      low.files.find((f) => f.name === 'icon.svg'),
+      full.files.find((f) => f.name === 'icon.svg'),
+    );
     const pixels = (set) => set.files.find((f) => f.name === 'apple-touch-icon.png').bytes;
     assert.ok(pixels(low).length < pixels(full).length);
     assert.notDeepEqual(pixels(low), pixels(full));
@@ -155,7 +213,10 @@ describe('buildSet', () => {
   it('emits one SVG preserving motion, style references and accessibility', async () => {
     const set = await run('animated');
     assert.equal(set.animated, true);
-    assert.deepEqual(set.files.filter((f) => f.name.endsWith('.svg')).map((f) => f.name), ['icon.svg']);
+    assert.deepEqual(
+      set.files.filter((f) => f.name.endsWith('.svg')).map((f) => f.name),
+      ['icon.svg'],
+    );
     const icon = new TextDecoder().decode(set.files.find((f) => f.name === 'icon.svg').bytes);
     assert.match(icon, /@keyframes/);
     assert.match(icon, /prefers-reduced-motion/);
@@ -163,15 +224,21 @@ describe('buildSet', () => {
     assert.match(icon, /aria-label="Animated fixture"/);
     const still = await run('animated', { animation: false });
     assert.equal(still.animated, false);
-    assert.doesNotMatch(new TextDecoder().decode(still.files.find((f) => f.name === 'icon.svg').bytes), /@keyframes|animation:/);
+    assert.doesNotMatch(
+      new TextDecoder().decode(still.files.find((f) => f.name === 'icon.svg').bytes),
+      /@keyframes|animation:/,
+    );
   });
 
   it('optimizes an already-accurate SVG once and leaves its non-square viewBox intact', async () => {
     let calls = 0;
-    const set = await buildSet(read('wide'), opts(), { engine, optimiseSvg: (...args) => {
-      if (!args[1]?.reference) calls++;
-      return optimiseSvg(...args);
-    } });
+    const set = await buildSet(read('wide'), opts(), {
+      engine,
+      optimiseSvg: (...args) => {
+        if (!args[1]?.reference) calls++;
+        return optimiseSvg(...args);
+      },
+    });
     assert.equal(calls, 1);
     const icon = new TextDecoder().decode(set.files.find((f) => f.name === 'icon.svg').bytes);
     assert.match(icon, /viewBox="0 0 128 64"/);
@@ -179,8 +246,10 @@ describe('buildSet', () => {
   });
 
   it('rejects input that is not an SVG', async () => {
-    await assert.rejects(buildSet('hello', opts(), { engine, optimiseSvg, name: 'x.txt' }),
-      /not an SVG \(no <svg> element found\): x\.txt/);
+    await assert.rejects(
+      buildSet('hello', opts(), { engine, optimiseSvg, name: 'x.txt' }),
+      /not an SVG \(no <svg> element found\): x\.txt/,
+    );
   });
 
   it('rejects a translucent ground before rendering anything', async () => {
@@ -188,15 +257,24 @@ describe('buildSet', () => {
   });
 
   it('overlaps default raster jobs within four slots and keeps large jobs serial', async () => {
-    for (const [sizes, concurrent] of [[[192, 512], true], [[1024], false]]) {
-      let active = 0, peak = 0;
-      const counted = { ...engine,
+    for (const [sizes, concurrent] of [
+      [[192, 512], true],
+      [[1024], false],
+    ]) {
+      let active = 0,
+        peak = 0;
+      const counted = {
+        ...engine,
         render: async (...args) => {
           peak = Math.max(peak, ++active);
           await new Promise((resolve) => setTimeout(resolve, 5));
           return engine.render(...args);
         },
-        finish: async (...args) => { const out = await engine.finish(...args); active--; return out; },
+        finish: async (...args) => {
+          const out = await engine.finish(...args);
+          active--;
+          return out;
+        },
       };
       const set = await buildSet(read('tiles'), opts({ sizes, padding: 20 }), { engine: counted, optimiseSvg });
       assert.equal(active, 0);
@@ -208,7 +286,8 @@ describe('buildSet', () => {
 
   it('drains sibling raster jobs before reporting a failed batch', async () => {
     const finished = [];
-    const failing = { ...engine,
+    const failing = {
+      ...engine,
       render: async (svg, px, bg) => {
         if (px === 180) throw new Error('raster failed');
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -220,25 +299,43 @@ describe('buildSet', () => {
         return out;
       },
     };
-    await assert.rejects(buildSet(read('tiles'), opts({ sizes: [192, 512], padding: 20 }),
-      { engine: failing, optimiseSvg }), /raster failed/);
-    assert.deepEqual(finished.sort((a, b) => a - b), [48, 192, 512]);
+    await assert.rejects(
+      buildSet(read('tiles'), opts({ sizes: [192, 512], padding: 20 }), { engine: failing, optimiseSvg }),
+      /raster failed/,
+    );
+    assert.deepEqual(
+      finished.sort((a, b) => a - b),
+      [48, 192, 512],
+    );
   });
 
   it('reuses transparent placement renders and reports completed raster jobs', async () => {
-    const calls = new Map(), events = [];
-    const counted = { ...engine, renderRgba: async (svg, px) => {
-      const key = `${svg}\0${px}`;
-      calls.set(key, (calls.get(key) ?? 0) + 1);
-      return engine.renderRgba(svg, px);
-    } };
+    const calls = new Map(),
+      events = [];
+    const counted = {
+      ...engine,
+      renderRgba: async (svg, px) => {
+        const key = `${svg}\0${px}`;
+        calls.set(key, (calls.get(key) ?? 0) + 1);
+        return engine.renderRgba(svg, px);
+      },
+    };
     const options = opts({ sizes: [180, 192] });
-    const actual = await buildSet(read('general'), options,
-      { engine: counted, optimiseSvg, progress: (event) => events.push(event) });
-    assert.ok([...calls.values()].every((n) => n === 1), 'each placement render is reused');
+    const actual = await buildSet(read('general'), options, {
+      engine: counted,
+      optimiseSvg,
+      progress: (event) => events.push(event),
+    });
+    assert.ok(
+      [...calls.values()].every((n) => n === 1),
+      'each placement render is reused',
+    );
     assert.equal(events[0].phase, 'placement');
     assert.deepEqual(events.at(-1), { phase: 'complete', completed: 3, total: 3 });
-    assert.deepEqual(events.filter((e) => e.phase === 'raster').map((e) => e.completed), [0, 1, 2, 3]);
+    assert.deepEqual(
+      events.filter((e) => e.phase === 'raster').map((e) => e.completed),
+      [0, 1, 2, 3],
+    );
     const expected = await buildSet(read('general'), options, { engine, optimiseSvg });
     assert.deepEqual(actual, expected);
     assert.deepEqual(actual.files[2].bytes, actual.files[3].bytes, '180px alias matches apple');
@@ -247,9 +344,14 @@ describe('buildSet', () => {
   it('reuses moderate-margin probes across output sizes', async () => {
     let calls = 0;
     await buildSet(read('flat'), opts({ sizes: [192, 512], manifest: true }), {
-      optimiseSvg, engine: { ...engine, renderRgba: (...args) => {
-        calls++; return engine.renderRgba(...args);
-      } },
+      optimiseSvg,
+      engine: {
+        ...engine,
+        renderRgba: (...args) => {
+          calls++;
+          return engine.renderRgba(...args);
+        },
+      },
     });
     // The calibrated PR30 build uses59 callbacks, including SVG validation.
     // Wrapping every oversized probe loses shared180/192px work and needs64.

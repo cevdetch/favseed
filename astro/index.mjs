@@ -26,7 +26,14 @@ import { configurationError, validateOptions } from './options.mjs';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 
-const exists = async (p) => { try { await stat(p); return true; } catch { return false; } };
+const exists = async (p) => {
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /** `/` and `/blog/` both come out as a prefix ending in a single slash. */
 const basePrefix = (base) => (base && base !== '/' ? `/${base.replace(/^\/+|\/+$/g, '')}/` : '/');
@@ -37,7 +44,9 @@ const checkPublic = async ({ files, publicDir, stampPath }) => {
   try {
     const value = JSON.parse(await readFile(stampPath, 'utf8'));
     if (value && typeof value === 'object' && !Array.isArray(value)) stamp = value;
-  } catch { /* Missing or unreadable ownership metadata grants no ownership. */ }
+  } catch {
+    /* Missing or unreadable ownership metadata grants no ownership. */
+  }
 
   for (const f of files) {
     const target = join(publicDir, f.name);
@@ -49,14 +58,15 @@ const checkPublic = async ({ files, publicDir, stampPath }) => {
     // bytes. Without this, a clean install would accuse the user of hand-editing their own
     // generated favicon.
     if (current === sha256(f.bytes)) continue;
-    if (stamp[f.name] === current) continue;              // ours, from an earlier build
-    const starter = f.name === 'favicon.ico' && await exists(join(publicDir, 'favicon.svg'))
-      ? `\n       If migrating an Astro starter, also move ${join(publicDir, 'favicon.svg')} and remove its old <link rel="icon"> tags.`
-      : '';
+    if (stamp[f.name] === current) continue; // ours, from an earlier build
+    const starter =
+      f.name === 'favicon.ico' && (await exists(join(publicDir, 'favicon.svg')))
+        ? `\n       If migrating an Astro starter, also move ${join(publicDir, 'favicon.svg')} and remove its old <link rel="icon"> tags.`
+        : '';
     throw new FavseedError(
       `${target} already exists and differs from the generated file.\n` +
-      `       Favseed cannot verify ownership: the file may be edited or its ownership record missing.\n` +
-      `       Back up and move the existing file before rebuilding.${starter}`,
+        `       Favseed cannot verify ownership: the file may be edited or its ownership record missing.\n` +
+        `       Back up and move the existing file before rebuilding.${starter}`,
     );
   }
   return stamp;
@@ -81,12 +91,23 @@ const publish = async ({ files, publicDir, stampPath, logger }) => {
   const active = new Set(files.map((f) => f.name));
   for (const entry of await readdir(publicDir, { withFileTypes: true })) {
     const name = entry.name;
-    if (active.has(name) || !generatedAsset(name) || !entry.isFile()
-        || !Object.hasOwn(stamp, name) || typeof stamp[name] !== 'string' || !/^[a-f0-9]{64}$/.test(stamp[name])) continue;
+    if (
+      active.has(name) ||
+      !generatedAsset(name) ||
+      !entry.isFile() ||
+      !Object.hasOwn(stamp, name) ||
+      typeof stamp[name] !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(stamp[name])
+    )
+      continue;
     const target = join(publicDir, name);
     let bytes;
-    try { bytes = await readFile(target); }
-    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    try {
+      bytes = await readFile(target);
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
     if (sha256(bytes) === stamp[name]) await rm(target, { force: true });
     else logger?.warn(`kept public/${name}: it changed since favseed wrote it`);
   }
@@ -97,18 +118,16 @@ const publish = async ({ files, publicDir, stampPath, logger }) => {
 
 export default function favseed(options = {}) {
   validateOptions(options);
-  const {
-    input = 'src/logo.svg',
-    dev = 'fast',
-    head = 'inject',
-    ...buildOptions
-  } = options;
+  const { input = 'src/logo.svg', dev = 'fast', head = 'inject', ...buildOptions } = options;
 
   const state = { links: '', inputPath: '', publicDir: '', cacheDir: '', base: '/', devFiles: new Map(), devStamp: {} };
   const stampPath = () => join(state.cacheDir, 'written.json');
   const prune = async (key, logger) => {
-    try { await pruneCache(state.cacheDir, key); }
-    catch (error) { logger?.warn(`could not prune favicon cache: ${error.message}`); }
+    try {
+      await pruneCache(state.cacheDir, key);
+    } catch (error) {
+      logger?.warn(`could not prune favicon cache: ${error.message}`);
+    }
   };
 
   /** One build, cache-first. `mode` is 'full' or 'fast'. */
@@ -117,13 +136,17 @@ export default function favseed(options = {}) {
     // Dev uses one size and, only when opted in, 15 Zopfli iterations.
     // base goes into the build, not only the links: the manifest's icon URLs carry it too,
     // and without it a site under /blog links /blog/site.webmanifest whose icons 404.
-    const opts = mode === 'fast'
-      ? { ...buildOptions, base: state.base, sizes: [256], mode: 'fast' }
-      : { ...buildOptions, base: state.base };
+    const opts =
+      mode === 'fast'
+        ? { ...buildOptions, base: state.base, sizes: [256], mode: 'fast' }
+        : { ...buildOptions, base: state.base };
 
     // Recheck mutable values before cache lookup, including values that share a key.
-    try { normaliseOptions(opts); }
-    catch (error) { throw configurationError(error); }
+    try {
+      normaliseOptions(opts);
+    } catch (error) {
+      throw configurationError(error);
+    }
     // Config, sync, preview and dev:skip need only the shared options and links.
     // Even a cache hit can inspect engine identity without initializing SVG/native engines.
     const { buildFiles, engineVersions } = await import('../bin/favseed.mjs');
@@ -135,8 +158,11 @@ export default function favseed(options = {}) {
       return { files: cached, key };
     }
 
-    const { files } = await buildFiles({ ...opts, input: state.inputPath, onWarn: (m) => logger?.warn(m) })
-      .catch((error) => { throw configurationError(error); });
+    const { files } = await buildFiles({ ...opts, input: state.inputPath, onWarn: (m) => logger?.warn(m) }).catch(
+      (error) => {
+        throw configurationError(error);
+      },
+    );
     await writeSlot(state.cacheDir, key, files, Object.fromEntries(files.map((f) => [f.name, sha256(f.bytes)])));
     return { files, key };
   };
@@ -165,28 +191,31 @@ export default function favseed(options = {}) {
             // Astro hashes Vite defines for incremental builds, but not integration
             // options or middleware. Include both the links and whether we inject
             // them so cached HTML cannot retain a previous head configuration.
-            ...(command === 'build' && config.experimental?.incrementalBuild ? {
-              define: {
-                __FAVSEED_HEAD_SIGNATURE__: JSON.stringify(sha256(JSON.stringify([
-                  state.links, head === true || head === 'inject',
-                ]))),
-              },
-            } : {}),
-            plugins: [{
-              name: 'favseed:virtual',
-              // Astro has separate dev/prerender/SSR environments. All server imports
-              // need transformation because our installed middleware uses a virtual ID.
-              configEnvironment(name, config) {
-                const consumer = config.consumer ?? (name === 'client' ? 'client' : 'server');
-                if (consumer === 'server' && config.resolve?.noExternal !== true) {
-                  return { resolve: { noExternal: ['favseed'] } };
+            ...(command === 'build' && config.experimental?.incrementalBuild
+              ? {
+                  define: {
+                    __FAVSEED_HEAD_SIGNATURE__: JSON.stringify(
+                      sha256(JSON.stringify([state.links, head === true || head === 'inject'])),
+                    ),
+                  },
                 }
+              : {}),
+            plugins: [
+              {
+                name: 'favseed:virtual',
+                // Astro has separate dev/prerender/SSR environments. All server imports
+                // need transformation because our installed middleware uses a virtual ID.
+                configEnvironment(name, config) {
+                  const consumer = config.consumer ?? (name === 'client' ? 'client' : 'server');
+                  if (consumer === 'server' && config.resolve?.noExternal !== true) {
+                    return { resolve: { noExternal: ['favseed'] } };
+                  }
+                },
+                resolveId: (id) => (id === 'virtual:favseed' ? '\0virtual:favseed' : null),
+                load: (id) =>
+                  id === '\0virtual:favseed' ? `export const links = ${JSON.stringify(state.links)};` : null,
               },
-              resolveId: (id) => (id === 'virtual:favseed' ? '\0virtual:favseed' : null),
-              load: (id) => (id === '\0virtual:favseed'
-                ? `export const links = ${JSON.stringify(state.links)};`
-                : null),
-            }],
+            ],
           },
         });
 
@@ -203,8 +232,18 @@ export default function favseed(options = {}) {
       'astro:server:setup': async ({ server, logger }) => {
         if (!state.inputPath || dev === 'skip') return;
         const warned = new Set();
-        const warnOnce = (message) => { if (!warned.has(message)) { warned.add(message); logger?.warn(message); } };
-        const types = { ico: 'image/x-icon', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json' };
+        const warnOnce = (message) => {
+          if (!warned.has(message)) {
+            warned.add(message);
+            logger?.warn(message);
+          }
+        };
+        const types = {
+          ico: 'image/x-icon',
+          svg: 'image/svg+xml',
+          png: 'image/png',
+          webmanifest: 'application/manifest+json',
+        };
         server.middlewares.use(async (req, res, next) => {
           if (req.method !== 'GET' && req.method !== 'HEAD') return next();
           // Astro strips base from req.url before integrations; Connect keeps the original.
@@ -218,8 +257,9 @@ export default function favseed(options = {}) {
               const target = join(state.publicDir, file.name);
               if ((await lstat(target)).isSymbolicLink()) return next();
               current = sha256(await readFile(target));
+            } catch (error) {
+              if (error.code !== 'ENOENT') throw error;
             }
-            catch (error) { if (error.code !== 'ENOENT') throw error; }
             // Recheck on requests: an author may replace a public file after startup.
             if (current && current !== sha256(file.bytes) && current !== state.devStamp[file.name]) {
               warnOnce(`kept public/${file.name}: it differs from the generated file; serving yours`);
@@ -229,7 +269,10 @@ export default function favseed(options = {}) {
             res.setHeader('Content-Length', file.bytes.byteLength);
             res.setHeader('Cache-Control', 'no-cache');
             res.end(req.method === 'HEAD' ? undefined : file.bytes);
-          } catch (error) { warnOnce(String(error?.message ?? error)); next(); }
+          } catch (error) {
+            warnOnce(String(error?.message ?? error));
+            next();
+          }
         });
         try {
           const { files, key } = await runBuild(dev === 'full' ? 'full' : 'fast', logger);

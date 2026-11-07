@@ -2,13 +2,19 @@
 const aborted = () => new DOMException('Build cancelled', 'AbortError');
 
 export function createWorkerClient({ createWorker, checkCapabilities }) {
-  let worker, threaded, sequence = 0, activeBuild;
+  let worker,
+    threaded,
+    sequence = 0,
+    activeBuild;
   const pending = new Map();
   const reset = (error = aborted()) => {
     const previous = worker;
     worker = undefined;
     previous?.terminate();
-    for (const request of pending.values()) { request.cleanup(); request.reject(error); }
+    for (const request of pending.values()) {
+      request.cleanup();
+      request.reject(error);
+    }
     pending.clear();
     activeBuild = undefined;
   };
@@ -21,9 +27,18 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
       if (worker !== current) return;
       const request = pending.get(data.id);
       if (!request) return;
-      if (data.type === 'progress') { request.onProgress?.(data.progress); return; }
-      if (data.type === 'warning') { request.onWarn?.(data.message); return; }
-      if (data.type === 'error' && data.fatal) { reset(new Error(data.message)); return; }
+      if (data.type === 'progress') {
+        request.onProgress?.(data.progress);
+        return;
+      }
+      if (data.type === 'warning') {
+        request.onWarn?.(data.message);
+        return;
+      }
+      if (data.type === 'error' && data.fatal) {
+        reset(new Error(data.message));
+        return;
+      }
       pending.delete(data.id);
       request.cleanup();
       if (activeBuild === data.id) activeBuild = undefined;
@@ -39,19 +54,32 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
     };
     return current;
   };
-  const request = (type, payload = {}, { signal, onProgress, onWarn } = {}) => new Promise((resolve, reject) => {
-    if (signal?.aborted) { reject(aborted()); return; }
-    if (type === 'build' && activeBuild !== undefined) reset();
-    let current;
-    try { current = start(); } catch (e) { reject(e); return; }
-    const id = ++sequence;
-    const cancel = () => reset();
-    const cleanup = () => signal?.removeEventListener('abort', cancel);
-    pending.set(id, { resolve, reject, cleanup, onProgress, onWarn });
-    if (type === 'build') activeBuild = id;
-    signal?.addEventListener('abort', cancel, { once: true });
-    try { current.postMessage({ id, type, threaded, ...payload }); } catch (e) { reset(e); }
-  });
+  const request = (type, payload = {}, { signal, onProgress, onWarn } = {}) =>
+    new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(aborted());
+        return;
+      }
+      if (type === 'build' && activeBuild !== undefined) reset();
+      let current;
+      try {
+        current = start();
+      } catch (e) {
+        reject(e);
+        return;
+      }
+      const id = ++sequence;
+      const cancel = () => reset();
+      const cleanup = () => signal?.removeEventListener('abort', cancel);
+      pending.set(id, { resolve, reject, cleanup, onProgress, onWarn });
+      if (type === 'build') activeBuild = id;
+      signal?.addEventListener('abort', cancel, { once: true });
+      try {
+        current.postMessage({ id, type, threaded, ...payload });
+      } catch (e) {
+        reset(e);
+      }
+    });
   return {
     warm: () => request('warm'),
     build: (source, options, controls) => request('build', { source, options }, controls),

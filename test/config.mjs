@@ -60,21 +60,34 @@ describe('normaliseOptions', () => {
   });
 
   it('normalises base to a path with a slash at each end', () => {
-    for (const [given, want] of [['/', '/'], ['', '/'], ['blog', '/blog/'], ['/blog', '/blog/'],
-      ['/blog/', '/blog/'], ['a/b', '/a/b/'], ['/a//b/', '/a/b/']]) {
+    for (const [given, want] of [
+      ['/', '/'],
+      ['', '/'],
+      ['blog', '/blog/'],
+      ['/blog', '/blog/'],
+      ['/blog/', '/blog/'],
+      ['a/b', '/a/b/'],
+      ['/a//b/', '/a/b/'],
+    ]) {
       assert.equal(normaliseOptions({ base: given }).base, want, `base '${given}'`);
     }
   });
 
   it('refuses a base that is a URL, not a path', () => {
-    fails(() => normaliseOptions({ base: 'https://cdn.example.com/' }), /^base must be a path such as '\/' or '\/blog\/', got 'https:\/\/cdn\.example\.com\/'$/);
+    fails(
+      () => normaliseOptions({ base: 'https://cdn.example.com/' }),
+      /^base must be a path such as '\/' or '\/blog\/', got 'https:\/\/cdn\.example\.com\/'$/,
+    );
     fails(() => normaliseOptions({ base: '//cdn.example.com' }), /^base must be a path/);
     fails(() => normaliseOptions({ base: 42 }), /^base must be a path/);
   });
 
   it('refuses an animation or manifest of the wrong type', () => {
     fails(() => normaliseOptions({ animation: 'no' }), /^animation must be true or false, got 'no'$/);
-    fails(() => normaliseOptions({ manifest: 'yes' }), /^manifest must be true, false or an object of manifest members, got 'yes'$/);
+    fails(
+      () => normaliseOptions({ manifest: 'yes' }),
+      /^manifest must be true, false or an object of manifest members, got 'yes'$/,
+    );
   });
 });
 
@@ -89,8 +102,18 @@ describe('resolveOptions', () => {
   });
 
   it('merges vars by name, the inline value winning, with or without the dashes', () => {
-    const r = resolveOptions({}, { vars: { ground: '#111111', ink: '#222222' } }, { vars: new Map([['--ground', '#333333']]) });
-    assert.deepEqual([...r.vars], [['--ground', '#333333'], ['--ink', '#222222']]);
+    const r = resolveOptions(
+      {},
+      { vars: { ground: '#111111', ink: '#222222' } },
+      { vars: new Map([['--ground', '#333333']]) },
+    );
+    assert.deepEqual(
+      [...r.vars],
+      [
+        ['--ground', '#333333'],
+        ['--ink', '#222222'],
+      ],
+    );
   });
 
   it('keeps a manifest object from the file when the inline value is only true', () => {
@@ -103,18 +126,37 @@ describe('resolveOptions', () => {
 
 describe('checkConfig', () => {
   it('lists the keys it knows', () => {
-    assert.deepEqual(CONFIG_KEYS, ['input', 'out', 'colors', 'quality', 'sizes', 'bg', 'padding', 'vars', 'animation', 'manifest', 'mode', 'zopfli', 'base']);
+    assert.deepEqual(CONFIG_KEYS, [
+      'input',
+      'out',
+      'colors',
+      'quality',
+      'sizes',
+      'bg',
+      'padding',
+      'vars',
+      'animation',
+      'manifest',
+      'mode',
+      'zopfli',
+      'base',
+    ]);
   });
 
   it('refuses a default export that is not an object', () => {
     for (const bad of [undefined, null, 3, 'x', [1]]) {
-      fails(() => checkConfig(bad, 'favseed.config.mjs'), /^favseed\.config\.mjs must export an object as its default export$/);
+      fails(
+        () => checkConfig(bad, 'favseed.config.mjs'),
+        /^favseed\.config\.mjs must export an object as its default export$/,
+      );
     }
   });
 
   it('names every unknown key and the keys it accepts', () => {
-    fails(() => checkConfig({ colours: 8, quiet: true }, 'favseed.config.mjs'),
-      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, mode, zopfli, base$/);
+    fails(
+      () => checkConfig({ colours: 8, quiet: true }, 'favseed.config.mjs'),
+      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, mode, zopfli, base$/,
+    );
   });
 
   it('defineConfig returns what it was given', () => {
@@ -168,9 +210,30 @@ describe('CLI argument boundaries', () => {
 
   it('recognizes every existing flag, inline long flags and the option delimiter as a missing value', async () => {
     const dir = project({ 'favseed.config.mjs': "throw new Error('config must not load');" });
-    for (const next of ['-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var',
-      '--no-animation', '--zopfli', '--no-zopfli', '--manifest', '--html', '-q', '--quiet',
-      '-V', '--version', '-h', '--help', '--quality=80', '--bg=none', '--']) {
+    for (const next of [
+      '-o',
+      '--out',
+      '--colors',
+      '--quality',
+      '--sizes',
+      '--bg',
+      '--padding',
+      '--var',
+      '--no-animation',
+      '--zopfli',
+      '--no-zopfli',
+      '--manifest',
+      '--html',
+      '-q',
+      '--quiet',
+      '-V',
+      '--version',
+      '-h',
+      '--help',
+      '--quality=80',
+      '--bg=none',
+      '--',
+    ]) {
       const r = await run(dir, ['--out', next, 'logo.svg']);
       assert.equal(r.code, 1, next);
       assert.match(r.stderr, /^favseed: --out needs an argument$/m, next);
@@ -193,7 +256,8 @@ describe('CLI argument boundaries', () => {
   it('accepts CSS assignments whose names match known options', async () => {
     const dir = project({
       'favseed.config.mjs': `export default { ${FAST} };`,
-      'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect x="24" y="24" width="var(--quality)" height="80" fill="var(--bg)"/></svg>',
+      'logo.svg':
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect x="24" y="24" width="var(--quality)" height="80" fill="var(--bg)"/></svg>',
     });
     const r = await run(dir, ['--var', '--bg=#654321', '--var', '--quality=80']);
     assert.equal(r.code, 0, r.stderr);
@@ -226,12 +290,19 @@ describe('CLI argument boundaries', () => {
     const baseline = await run(dir, ['--quiet']);
     assert.equal(baseline.code, 0, baseline.stderr);
     assert.doesNotMatch(baseline.stderr, /--padding/);
-    const before = Object.fromEntries(['apple-touch-icon.png', 'favicon.ico', 'icon-32.png'].map((name) =>
-      [name, readFileSync(join(dir, 'public', name))]));
+    const before = Object.fromEntries(
+      ['apple-touch-icon.png', 'favicon.ico', 'icon-32.png'].map((name) => [
+        name,
+        readFileSync(join(dir, 'public', name)),
+      ]),
+    );
     const r = await run(dir, ['--bg', 'none', '--padding', '20', '--quiet']);
     assert.equal(r.code, 0, r.stderr);
     assert.equal(r.stdout, '');
-    assert.match(r.stderr, /^favseed: warning: --padding only affects apple-touch-icon\.png with --bg none; size icons and favicon\.ico stay unpadded$/m);
+    assert.match(
+      r.stderr,
+      /^favseed: warning: --padding only affects apple-touch-icon\.png with --bg none; size icons and favicon\.ico stay unpadded$/m,
+    );
     assert.notDeepEqual(readFileSync(join(dir, 'public/apple-touch-icon.png')), before['apple-touch-icon.png']);
     for (const name of ['favicon.ico', 'icon-32.png']) {
       assert.deepEqual(readFileSync(join(dir, 'public', name)), before[name], name);
@@ -239,7 +310,9 @@ describe('CLI argument boundaries', () => {
   });
 
   it('uses effective config and CLI values for the transparent padding warning', async () => {
-    const dir = project({ 'favseed.config.mjs': `export default { ${FAST.replace("bg: '#000000'", 'bg: null')}, padding: 20 };` });
+    const dir = project({
+      'favseed.config.mjs': `export default { ${FAST.replace("bg: '#000000'", 'bg: null')}, padding: 20 };`,
+    });
     const configured = await run(dir, ['--quiet']);
     assert.equal(configured.code, 0, configured.stderr);
     assert.match(configured.stderr, /warning: --padding only affects apple-touch-icon\.png/);
@@ -322,14 +395,18 @@ describe('the CLI with a config file', () => {
   });
 
   it('loads a .ts config through type stripping', async () => {
-    const dir = project({ 'favseed.config.ts': `const sizes: number[] = [32];\nexport default { input: 'logo.svg', out: 'public', sizes, mode: 'fast' as const, bg: '#000000' };` });
+    const dir = project({
+      'favseed.config.ts': `const sizes: number[] = [32];\nexport default { input: 'logo.svg', out: 'public', sizes, mode: 'fast' as const, bg: '#000000' };`,
+    });
     const r = await run(dir);
     assert.equal(r.code, 0, r.stderr);
     assert.ok(existsSync(join(dir, 'public', 'icon-32.png')));
   });
 
   it('names favseed.config.mjs when Node cannot load a .ts config', async () => {
-    const dir = project({ 'favseed.config.ts': `enum Size { Small = 32 }\nexport default { input: 'logo.svg', sizes: [Size.Small] };` });
+    const dir = project({
+      'favseed.config.ts': `enum Size { Small = 32 }\nexport default { input: 'logo.svg', sizes: [Size.Small] };`,
+    });
     const r = await run(dir);
     assert.equal(r.code, 1);
     assert.match(r.stderr, /^favseed: favseed\.config\.ts could not be loaded: /m);
@@ -368,7 +445,10 @@ describe('the CLI with a config file', () => {
     });
     const r = await run(dir);
     assert.equal(r.code, 0, r.stderr);
-    assert.match(r.stderr, /^favseed: warning: favseed\.config\.mjs ignored: favseed\.config\.js is the config file in use$/m);
+    assert.match(
+      r.stderr,
+      /^favseed: warning: favseed\.config\.mjs ignored: favseed\.config\.js is the config file in use$/m,
+    );
   });
 
   it('still prints the usage and fails with no input from flags or config', async () => {
@@ -406,7 +486,9 @@ describe('defineConfig from favseed', () => {
     // The config imports the very module the CLI is running. With a top-level await on cli()
     // that module is still evaluating, the import waits for it, and it waits for the import.
     const url = pathToFileURL(CLI).href;
-    const dir = project({ 'favseed.config.mjs': `import { defineConfig } from '${url}';\nexport default defineConfig({ ${FAST} });` });
+    const dir = project({
+      'favseed.config.mjs': `import { defineConfig } from '${url}';\nexport default defineConfig({ ${FAST} });`,
+    });
     const r = await run(dir);
     assert.equal(r.code, 0, `exit ${r.code}\n${r.stderr}`);
     assert.ok(existsSync(join(dir, 'public', 'icon-32.png')));
@@ -424,9 +506,30 @@ describe('defineConfig from favseed', () => {
     const dir = join(scratch, `tsc${++n}`);
     mkdirSync(dir);
     const spec = JSON.stringify(CLI.replace(/\\/g, '/'));
-    writeFileSync(join(dir, 'good.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, mode: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`);
-    writeFileSync(join(dir, 'bad.mts'), `import { defineConfig } from ${spec};\nexport default defineConfig({ colours: 8 });\n`);
-    const check = (f) => spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', join(dir, f)], { encoding: 'utf8', timeout: 30000 });
+    writeFileSync(
+      join(dir, 'good.mts'),
+      `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, mode: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`,
+    );
+    writeFileSync(
+      join(dir, 'bad.mts'),
+      `import { defineConfig } from ${spec};\nexport default defineConfig({ colours: 8 });\n`,
+    );
+    const check = (f) =>
+      spawnSync(
+        process.execPath,
+        [
+          tsc,
+          '--noEmit',
+          '--strict',
+          '--module',
+          'nodenext',
+          '--moduleResolution',
+          'nodenext',
+          '--skipLibCheck',
+          join(dir, f),
+        ],
+        { encoding: 'utf8', timeout: 30000 },
+      );
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
     const bad = check('bad.mts');

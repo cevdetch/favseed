@@ -23,7 +23,7 @@ export function chunks(buf) {
     const data = buf.subarray(i + 8, i + 8 + len);
     if (!out.has(type)) out.set(type, []);
     out.get(type).push(data);
-    i += 12 + len;                       // length + type + data + CRC
+    i += 12 + len; // length + type + data + CRC
     if (type === 'IEND') break;
   }
   return out;
@@ -45,7 +45,10 @@ export function header(buf) {
 const CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
 
 const paeth = (a, b, c) => {
-  const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+  const p = a + b - c,
+    pa = Math.abs(p - a),
+    pb = Math.abs(p - b),
+    pc = Math.abs(p - c);
   return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
 };
 
@@ -67,7 +70,7 @@ export function decode(buf) {
   const plte = cs.get('PLTE')?.[0];
   const trns = cs.get('tRNS')?.[0];
 
-  const bpp = Math.max(1, (chs * h.depth) >> 3);       // filters work on whole bytes
+  const bpp = Math.max(1, (chs * h.depth) >> 3); // filters work on whole bytes
   const rowBytes = Math.ceil((chs * h.depth * h.width) / 8);
   const out = new Uint8Array(h.width * h.height * 4);
 
@@ -78,7 +81,9 @@ export function decode(buf) {
     const line = Uint8Array.prototype.slice.call(raw, pos, pos + rowBytes);
     pos += rowBytes;
     for (let x = 0; x < rowBytes; x++) {
-      const a = x >= bpp ? line[x - bpp] : 0, b = prev[x], c = x >= bpp ? prev[x - bpp] : 0;
+      const a = x >= bpp ? line[x - bpp] : 0,
+        b = prev[x],
+        c = x >= bpp ? prev[x - bpp] : 0;
       if (filter === 1) line[x] = (line[x] + a) & 0xff;
       else if (filter === 2) line[x] = (line[x] + b) & 0xff;
       else if (filter === 3) line[x] = (line[x] + ((a + b) >> 1)) & 0xff;
@@ -91,7 +96,7 @@ export function decode(buf) {
     // samples appear in, so the shift counts down.
     const sample = (idx) => {
       if (h.depth === 8) return line[idx];
-      if (h.depth === 16) return line[idx * 2];              // drop the low byte
+      if (h.depth === 16) return line[idx * 2]; // drop the low byte
       const per = 8 / h.depth;
       const byte = line[Math.floor(idx / per)];
       const shift = 8 - h.depth * ((idx % per) + 1);
@@ -103,7 +108,9 @@ export function decode(buf) {
       const o = (y * h.width + x) * 4;
       if (h.colorType === 3) {
         const idx = sample(x);
-        out[o] = plte[idx * 3]; out[o + 1] = plte[idx * 3 + 1]; out[o + 2] = plte[idx * 3 + 2];
+        out[o] = plte[idx * 3];
+        out[o + 1] = plte[idx * 3 + 1];
+        out[o + 2] = plte[idx * 3 + 2];
         out[o + 3] = trns && idx < trns.length ? trns[idx] : 255;
       } else if (h.colorType === 0 || h.colorType === 4) {
         const g = Math.round(sample(x * chs) * scale);
@@ -115,12 +122,11 @@ export function decode(buf) {
       }
       // Greyscale and truecolour carry transparency as one "this exact value is clear" entry.
       if (trns && (h.colorType === 0 || h.colorType === 2)) {
-        const key = h.colorType === 0
-          ? [trns.readUInt16BE(0)]
-          : [trns.readUInt16BE(0), trns.readUInt16BE(2), trns.readUInt16BE(4)];
-        const hit = h.colorType === 0
-          ? sample(x) === key[0]
-          : [0, 1, 2].every((c) => sample(x * chs + c) === key[c]);
+        const key =
+          h.colorType === 0
+            ? [trns.readUInt16BE(0)]
+            : [trns.readUInt16BE(0), trns.readUInt16BE(2), trns.readUInt16BE(4)];
+        const hit = h.colorType === 0 ? sample(x) === key[0] : [0, 1, 2].every((c) => sample(x * chs + c) === key[c]);
         if (hit) out[o + 3] = 0;
       }
     }
@@ -136,9 +142,8 @@ export function encode({ width, height, data, palette }) {
   const stride = width * (palette ? 1 : 4);
   const raw = Buffer.alloc(height * (stride + 1));
   for (let y = 0; y < height; y++) {
-    raw[y * (stride + 1)] = 0;                        // filter: none
-    Buffer.from(data.buffer, data.byteOffset + y * stride, stride)
-      .copy(raw, y * (stride + 1) + 1);
+    raw[y * (stride + 1)] = 0; // filter: none
+    Buffer.from(data.buffer, data.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1);
   }
   const crcTable = [];
   for (let n = 0; n < 256; n++) {
@@ -152,20 +157,31 @@ export function encode({ width, height, data, palette }) {
     return (c ^ 0xffffffff) >>> 0;
   };
   const chunk = (type, data) => {
-    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
     const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
-    const c = Buffer.alloc(4); c.writeUInt32BE(crc(body));
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(body));
     return Buffer.concat([len, body, c]);
   };
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; ihdr[9] = palette ? 3 : 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = palette ? 3 : 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
   return Buffer.concat([
-    SIGNATURE, chunk('IHDR', ihdr),
-    ...(palette ? [
-      chunk('PLTE', Buffer.from(palette.flatMap((rgba) => rgba.slice(0, 3)))),
-      chunk('tRNS', Buffer.from(palette.map((rgba) => rgba[3]))),
-    ] : []),
-    chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
+    SIGNATURE,
+    chunk('IHDR', ihdr),
+    ...(palette
+      ? [
+          chunk('PLTE', Buffer.from(palette.flatMap((rgba) => rgba.slice(0, 3)))),
+          chunk('tRNS', Buffer.from(palette.map((rgba) => rgba[3]))),
+        ]
+      : []),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
   ]);
 }

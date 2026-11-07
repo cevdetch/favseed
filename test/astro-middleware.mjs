@@ -5,29 +5,38 @@ import { registerHooks } from 'node:module';
 import { describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const LINKS = '<link rel="icon" href="/blog/favicon.ico" sizes="48x48">\n'
-  + '<link rel="icon" href="/blog/icon.svg" type="image/svg+xml">\n'
-  + '<link rel="apple-touch-icon" href="/blog/apple-touch-icon.png">\n';
+const LINKS =
+  '<link rel="icon" href="/blog/favicon.ico" sizes="48x48">\n' +
+  '<link rel="icon" href="/blog/icon.svg" type="image/svg+xml">\n' +
+  '<link rel="apple-touch-icon" href="/blog/apple-touch-icon.png">\n';
 const hook = registerHooks({
   resolve(specifier, context, next) {
     return specifier === 'virtual:favseed'
-      ? { url: `data:text/javascript,${encodeURIComponent(`export const links = ${JSON.stringify(LINKS)};`)}`, shortCircuit: true }
+      ? {
+          url: `data:text/javascript,${encodeURIComponent(`export const links = ${JSON.stringify(LINKS)};`)}`,
+          shortCircuit: true,
+        }
       : next(specifier, context);
   },
 });
 let onRequest;
-try { ({ onRequest } = await import('../astro/middleware.mjs')); }
-finally { hook.deregister(); }
+try {
+  ({ onRequest } = await import('../astro/middleware.mjs'));
+} finally {
+  hook.deregister();
+}
 
 const encode = (text) => new TextEncoder().encode(text);
-const htmlResponse = (body, init = {}) => new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' }, ...init });
+const htmlResponse = (body, init = {}) =>
+  new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' }, ...init });
 const run = (response) => onRequest({}, async () => response);
-const chunks = (values) => new ReadableStream({
-  start(controller) {
-    for (const value of values) controller.enqueue(value);
-    controller.close();
-  },
-});
+const chunks = (values) =>
+  new ReadableStream({
+    start(controller) {
+      for (const value of values) controller.enqueue(value);
+      controller.close();
+    },
+  });
 const bytes = async (response) => Buffer.from(await response.arrayBuffer());
 const promptly = async (operation) => {
   const abort = new AbortController();
@@ -36,21 +45,32 @@ const promptly = async (operation) => {
       operation,
       delay(2000, undefined, { signal: abort.signal }).then(() => assert.fail('head waited for the unfinished body')),
     ]);
-  } finally { abort.abort(); }
+  } finally {
+    abort.abort();
+  }
 };
 
 describe('Astro streaming head injection', () => {
   it('delivers the injected head while the body is still pending', async () => {
     let source;
-    const input = htmlResponse(new ReadableStream({ start(c) { source = c; c.enqueue(encode('<html><head><title>Hi</title></head>')); } }));
+    const input = htmlResponse(
+      new ReadableStream({
+        start(c) {
+          source = c;
+          c.enqueue(encode('<html><head><title>Hi</title></head>'));
+        },
+      }),
+    );
     let reader;
     try {
       const output = await promptly(run(input));
       reader = output.body.getReader();
       const received = [];
-      await promptly((async () => {
-        while (!Buffer.concat(received).includes('</head>')) received.push(Buffer.from((await reader.read()).value));
-      })());
+      await promptly(
+        (async () => {
+          while (!Buffer.concat(received).includes('</head>')) received.push(Buffer.from((await reader.read()).value));
+        })(),
+      );
       assert.equal(Buffer.concat(received).toString(), `<html><head><title>Hi</title>${LINKS}</head>`);
       source.enqueue(encode('<body>later</body></html>'));
       source.close();
@@ -71,31 +91,61 @@ describe('Astro streaming head injection', () => {
     const input = Buffer.from('\uFEFF<html><head><title>café 🐱</title></head><body>世界</body></html>');
     const expected = Buffer.from(`\uFEFF<html><head><title>café 🐱</title>${LINKS}</head><body>世界</body></html>`);
     for (let split = 0; split <= input.length; split++) {
-      assert.deepEqual(await bytes(await run(htmlResponse(chunks([input.subarray(0, split), input.subarray(split)])))), expected, `split ${split}`);
+      assert.deepEqual(
+        await bytes(await run(htmlResponse(chunks([input.subarray(0, split), input.subarray(split)])))),
+        expected,
+        `split ${split}`,
+      );
     }
-    assert.deepEqual(await bytes(await run(htmlResponse(chunks(Array.from(input, (byte) => Uint8Array.of(byte)))))), expected);
+    assert.deepEqual(
+      await bytes(await run(htmlResponse(chunks(Array.from(input, (byte) => Uint8Array.of(byte)))))),
+      expected,
+    );
   });
 
   it('preserves undecodable bytes around the insertion', async () => {
-    const input = Buffer.concat([Buffer.from('<head>'), Buffer.from([0xff, 0xc0]), Buffer.from('</head>'), Buffer.from([0xfe])]);
-    const expected = Buffer.concat([Buffer.from('<head>'), Buffer.from([0xff, 0xc0]), Buffer.from(LINKS + '</head>'), Buffer.from([0xfe])]);
+    const input = Buffer.concat([
+      Buffer.from('<head>'),
+      Buffer.from([0xff, 0xc0]),
+      Buffer.from('</head>'),
+      Buffer.from([0xfe]),
+    ]);
+    const expected = Buffer.concat([
+      Buffer.from('<head>'),
+      Buffer.from([0xff, 0xc0]),
+      Buffer.from(LINKS + '</head>'),
+      Buffer.from([0xfe]),
+    ]);
     assert.deepEqual(await bytes(await run(htmlResponse(chunks([input])))), expected);
   });
 
   it('honors existing icon tokens in the head across chunk boundaries', async () => {
-    for (const declaration of ['<link rel="shortcut icon" href="custom.ico">', "<LINK REL='alternate ICON' href='custom.svg'>", '<link rel=icon href=custom.ico>']) {
+    for (const declaration of [
+      '<link rel="shortcut icon" href="custom.ico">',
+      "<LINK REL='alternate ICON' href='custom.svg'>",
+      '<link rel=icon href=custom.ico>',
+    ]) {
       const input = encode(`<head>${declaration}</head><body>unchanged</body>`);
-      assert.deepEqual(await bytes(await run(htmlResponse(chunks(Array.from(input, (byte) => Uint8Array.of(byte)))))), Buffer.from(input));
+      assert.deepEqual(
+        await bytes(await run(htmlResponse(chunks(Array.from(input, (byte) => Uint8Array.of(byte)))))),
+        Buffer.from(input),
+      );
     }
   });
 
   it('ignores body icon links when deciding whether to inject', async () => {
     const input = '<head></head><body><link rel="icon" href="body.svg"></body>';
-    assert.equal(await (await run(htmlResponse(input))).text(), `<head>${LINKS}</head><body><link rel="icon" href="body.svg"></body>`);
+    assert.equal(
+      await (await run(htmlResponse(input))).text(),
+      `<head>${LINKS}</head><body><link rel="icon" href="body.svg"></body>`,
+    );
   });
 
   it('recognizes ASCII case variations in the closing head', async () => {
-    assert.equal(await (await run(htmlResponse('<HEAD></HeAd><body>ok</body>'))).text(), `<HEAD>${LINKS}</HeAd><body>ok</body>`);
+    assert.equal(
+      await (await run(htmlResponse('<HEAD></HeAd><body>ok</body>'))).text(),
+      `<HEAD>${LINKS}</HeAd><body>ok</body>`,
+    );
   });
 
   it('releases 64KiB without a head marker and passes later bytes through unchanged', async () => {
@@ -103,7 +153,18 @@ describe('Astro streaming head injection', () => {
     let source;
     let reader;
     try {
-      const output = await promptly(run(htmlResponse(new ReadableStream({ start(c) { source = c; c.enqueue(prefix); } }))));
+      const output = await promptly(
+        run(
+          htmlResponse(
+            new ReadableStream({
+              start(c) {
+                source = c;
+                c.enqueue(prefix);
+              },
+            }),
+          ),
+        ),
+      );
       reader = output.body.getReader();
       assert.deepEqual(Buffer.from((await promptly(reader.read())).value), Buffer.from(prefix));
       source.enqueue(encode('</head><body>late</body>'));
@@ -125,9 +186,19 @@ describe('Astro streaming head injection', () => {
   });
 
   it('keeps status and other headers while dropping the stale HTML length', async () => {
-    const output = await run(new Response('<head></head>', { status: 404, statusText: 'Missing', headers: {
-      'content-type': 'text/html', 'content-length': '13', 'cache-control': 'private', 'x-test': 'kept', 'set-cookie': 'a=b; HttpOnly',
-    } }));
+    const output = await run(
+      new Response('<head></head>', {
+        status: 404,
+        statusText: 'Missing',
+        headers: {
+          'content-type': 'text/html',
+          'content-length': '13',
+          'cache-control': 'private',
+          'x-test': 'kept',
+          'set-cookie': 'a=b; HttpOnly',
+        },
+      }),
+    );
     assert.equal(output.status, 404);
     assert.equal(output.statusText, 'Missing');
     assert.equal(output.headers.get('content-length'), null);
@@ -138,7 +209,10 @@ describe('Astro streaming head injection', () => {
   });
 
   it('returns non-HTML and null-body responses without consuming or replacing them', async () => {
-    for (const response of [new Response('{"ok":true}', { headers: { 'content-type': 'application/json', 'content-length': '11' } }), new Response(null, { status: 204, headers: { 'content-type': 'text/html' } })]) {
+    for (const response of [
+      new Response('{"ok":true}', { headers: { 'content-type': 'application/json', 'content-length': '11' } }),
+      new Response(null, { status: 204, headers: { 'content-type': 'text/html' } }),
+    ]) {
       assert.equal(await run(response), response);
       assert.equal(response.bodyUsed, false);
     }
@@ -147,12 +221,23 @@ describe('Astro streaming head injection', () => {
   it('forwards cancellation to the source without draining the body', async () => {
     let pulls = 0;
     let cancelled;
-    const cancellation = new Promise((resolve) => { cancelled = resolve; });
-    const input = htmlResponse(new ReadableStream({
-      start(c) { c.enqueue(encode('<head></head>')); },
-      pull(c) { pulls++; c.enqueue(new Uint8Array(1024)); },
-      cancel(reason) { cancelled(reason); },
-    }));
+    const cancellation = new Promise((resolve) => {
+      cancelled = resolve;
+    });
+    const input = htmlResponse(
+      new ReadableStream({
+        start(c) {
+          c.enqueue(encode('<head></head>'));
+        },
+        pull(c) {
+          pulls++;
+          c.enqueue(new Uint8Array(1024));
+        },
+        cancel(reason) {
+          cancelled(reason);
+        },
+      }),
+    );
     const output = await promptly(run(input));
     const reader = output.body.getReader();
     await reader.read();
@@ -164,12 +249,20 @@ describe('Astro streaming head injection', () => {
   it('propagates upstream failures before and after the head', async () => {
     for (const prefix of ['<head>unfinished', '<head></head><body>partial']) {
       let source;
-      const input = htmlResponse(new ReadableStream({ start(c) { source = c; c.enqueue(encode(prefix)); } }));
+      const input = htmlResponse(
+        new ReadableStream({
+          start(c) {
+            source = c;
+            c.enqueue(encode(prefix));
+          },
+        }),
+      );
       const output = await promptly(run(input));
       const reader = output.body.getReader();
       if (prefix.includes('</head>')) {
         const received = [];
-        while (!Buffer.concat(received).includes('</head>')) received.push(Buffer.from((await promptly(reader.read())).value));
+        while (!Buffer.concat(received).includes('</head>'))
+          received.push(Buffer.from((await promptly(reader.read())).value));
         assert.match(Buffer.concat(received).toString(), /favicon\.ico/);
       }
       source.error(new Error('render failed'));

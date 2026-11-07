@@ -33,8 +33,12 @@ test('homepage metadata agrees with the canonical URL and served share image', a
   const schema = head.locator('script[type="application/ld+json"]');
   await expect(schema).toHaveCount(1);
   expect(JSON.parse(await schema.textContent())).toMatchObject({
-    '@context': 'https://schema.org', '@type': 'WebSite',
-    name, url: canonical, description, inLanguage: 'en',
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name,
+    url: canonical,
+    description,
+    inLanguage: 'en',
   });
 
   const image = new URL(await attribute('meta[property="og:image"]'));
@@ -58,7 +62,8 @@ for (const path of ['/check', '/404']) {
 }
 
 test('/check stays idle until explicitly initialized', async ({ page }) => {
-  const workers = [], requests = [];
+  const workers = [],
+    requests = [];
   page.on('worker', (worker) => workers.push(worker.url()));
   page.on('request', (request) => requests.push(request.url()));
   const response = await page.goto('/check', { waitUntil: 'networkidle' });
@@ -66,8 +71,10 @@ test('/check stays idle until explicitly initialized', async ({ page }) => {
   await expect(page.locator('#out')).toHaveText('ready');
   // Observe settled startup, not arbitrarily delayed background work.
   expect(workers, 'Visiting the diagnostic page starts no workers').toEqual([]);
-  expect(requests.filter((url) => /(?:engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
-    'Visiting the diagnostic page downloads no engine or WASM assets').toEqual([]);
+  expect(
+    requests.filter((url) => /(?:engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
+    'Visiting the diagnostic page downloads no engine or WASM assets',
+  ).toEqual([]);
 
   // The diagnostic API must remain usable against the same deployed build.
   const worker = page.waitForEvent('worker');
@@ -78,7 +85,9 @@ test('/check stays idle until explicitly initialized', async ({ page }) => {
 });
 
 test('cold startup stays small and defers engine loading until SVG selection', async ({ page }, testInfo) => {
-  const responses = [], requests = [], workers = [];
+  const responses = [],
+    requests = [],
+    workers = [];
   const pending = new Set();
   let lastActivity = 0;
   const onResponse = (response) => responses.push(response);
@@ -94,8 +103,12 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   const settled = async () => {
     // Start a fresh quiet interval: navigation's networkidle can already be satisfied.
     lastActivity = Date.now();
-    await expect.poll(() => pending.size === 0 && Date.now() - lastActivity >= 500,
-      { message: 'Startup network settles', timeout: 10_000 }).toBe(true);
+    await expect
+      .poll(() => pending.size === 0 && Date.now() - lastActivity >= 500, {
+        message: 'Startup network settles',
+        timeout: 10_000,
+      })
+      .toBe(true);
   };
   page.on('response', onResponse);
   page.on('request', onRequest);
@@ -111,7 +124,9 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   await expect(page.locator('input[name=colors]')).toBeDisabled();
   await page.locator('input[name=sizes]').fill('32');
   await page.locator('input[name=file]').setInputFiles({
-    name: 'not-an-svg.png', mimeType: 'image/png', buffer: Buffer.from('not an SVG'),
+    name: 'not-an-svg.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('not an SVG'),
   });
   await expect(page.locator('output')).toHaveText('That is not an SVG.');
   await settled();
@@ -120,32 +135,41 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   page.off('requestfinished', onFinished);
   page.off('requestfailed', onFinished);
   expect(workers, 'No workers before SVG selection').toEqual([]);
-  expect(requests.filter((url) => /(?:pipeline|engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
-    'No engine or WASM requests before SVG selection').toEqual([]);
+  expect(
+    requests.filter((url) => /(?:pipeline|engine-worker|wasi-worker)[-.]|\.wasm(?:$|\?)/.test(url)),
+    'No engine or WASM requests before SVG selection',
+  ).toEqual([]);
 
   // Include imported/preloaded resources, not just scripts linked in HTML.
   const resources = [];
   for (const response of responses) {
     const type = response.request().resourceType();
     const mime = response.headers()['content-type'] ?? '';
-    const kind = type === 'document' || mime.includes('text/html') ? 'html'
-      : type === 'script' || /(?:java|ecma)script/.test(mime) ? 'js'
-        : type === 'stylesheet' || mime.includes('text/css') ? 'css' : undefined;
+    const kind =
+      type === 'document' || mime.includes('text/html')
+        ? 'html'
+        : type === 'script' || /(?:java|ecma)script/.test(mime)
+          ? 'js'
+          : type === 'stylesheet' || mime.includes('text/css')
+            ? 'css'
+            : undefined;
     if (!kind) continue;
     expect(response.status(), response.url()).toBe(200);
     const bytes = await response.body();
     resources.push({ url: response.url(), kind, raw: bytes.length, gzip: gzipSync(bytes, { level: 9 }).length });
   }
   const inlineCSS = await page.locator('style').allTextContents();
-  const sum = (kind, field) => resources.filter((resource) => resource.kind === kind)
-    .reduce((total, resource) => total + resource[field], 0);
+  const sum = (kind, field) =>
+    resources.filter((resource) => resource.kind === kind).reduce((total, resource) => total + resource[field], 0);
   const totals = {
-    htmlGzip: sum('html', 'gzip'), jsGzip: sum('js', 'gzip'),
+    htmlGzip: sum('html', 'gzip'),
+    jsGzip: sum('js', 'gzip'),
     totalGzip: resources.reduce((total, resource) => total + resource.gzip, 0),
     cssRaw: sum('css', 'raw') + inlineCSS.reduce((total, css) => total + Buffer.byteLength(css), 0),
   };
   await testInfo.attach('startup-budget', {
-    body: JSON.stringify({ totals, resources }, null, 2), contentType: 'application/json',
+    body: JSON.stringify({ totals, resources }, null, 2),
+    contentType: 'application/json',
   });
   expect(totals.htmlGzip).toBeGreaterThan(0);
   expect(totals.jsGzip).toBeGreaterThan(0);

@@ -19,22 +19,31 @@ describe('benchmark path boundaries', () => {
   // creates its result directory. Removing any entry-point guard breaks this.
   const outside = parse(ROOT).root;
   for (const [script, outputOnly] of [
-    ['default-performance.mjs', false], ['pipeline-concurrency.mjs', true],
-    ['png-lossless-screen.mjs', false], ['png-quality.mjs', false],
-    ['png-quantize-screen.mjs', true], ['vite-pwa-encode.mjs', false],
-    ['vite-pwa-pipeline.mjs', false], ['zopfli/build.mjs', false], ['browser-compat/build.mjs', false],
+    ['default-performance.mjs', false],
+    ['pipeline-concurrency.mjs', true],
+    ['png-lossless-screen.mjs', false],
+    ['png-quality.mjs', false],
+    ['png-quantize-screen.mjs', true],
+    ['vite-pwa-encode.mjs', false],
+    ['vite-pwa-pipeline.mjs', false],
+    ['zopfli/build.mjs', false],
+    ['browser-compat/build.mjs', false],
   ]) {
     it(`${script} rejects paths outside the checkout and temporary directory before doing I/O`, async () => {
       const scratch = mkdtempSync(join(tmpdir(), 'favseed-bench-path-test.'));
       const output = join(scratch, 'results');
       try {
-        await assert.rejects(execFileAsync(process.execPath,
-          [join(ROOT, 'bench', script), outside, ...(outputOnly ? [] : [output])],
-          { cwd: ROOT, timeout: 10000 }), (error) => {
-          assert.equal(error.code, 1);
-          assert.match(error.stderr, /Benchmark path must be inside/);
-          return true;
-        });
+        await assert.rejects(
+          execFileAsync(process.execPath, [join(ROOT, 'bench', script), outside, ...(outputOnly ? [] : [output])], {
+            cwd: ROOT,
+            timeout: 10000,
+          }),
+          (error) => {
+            assert.equal(error.code, 1);
+            assert.match(error.stderr, /Benchmark path must be inside/);
+            return true;
+          },
+        );
         assert.equal(existsSync(output), false, 'Rejected input must not create results');
       } finally {
         rmSync(scratch, { recursive: true, force: true });
@@ -80,13 +89,18 @@ describe('benchmark path boundaries', () => {
       const escape = join(scratch, 'escape');
       symlinkSync(outside, escape, 'junction');
       for (const cargoHome of [outside, escape]) {
-        await assert.rejects(execFileAsync(process.execPath,
-          [join(ROOT, 'bench/browser-compat/build.mjs'), archive, archive],
-          { cwd: ROOT, env: { ...process.env, CARGO_HOME: cargoHome }, timeout: 10000 }), (error) => {
-          assert.equal(error.code, 1);
-          assert.match(error.stderr, /Benchmark path must be inside/);
-          return true;
-        });
+        await assert.rejects(
+          execFileAsync(process.execPath, [join(ROOT, 'bench/browser-compat/build.mjs'), archive, archive], {
+            cwd: ROOT,
+            env: { ...process.env, CARGO_HOME: cargoHome },
+            timeout: 10000,
+          }),
+          (error) => {
+            assert.equal(error.code, 1);
+            assert.match(error.stderr, /Benchmark path must be inside/);
+            return true;
+          },
+        );
       }
     } finally {
       rmSync(scratch, { recursive: true, force: true });
@@ -104,18 +118,21 @@ describe('SVG viewport validation', () => {
       assert.throws(() => optimiseSvg(source, { reference: true }), /viewBox/);
       console.log('finished');
     `;
-    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', script],
-      { cwd: ROOT, timeout: 5000 });
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: ROOT,
+      timeout: 5000,
+    });
     assert.equal(stdout.trim(), 'finished');
   });
 });
 
 describe('CSS comment scanning', () => {
   it('keeps selectors needed by animation rules when comments surround the rules', () => {
-    const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
-      + '<style>/* before */.mark{fill:#123456}/* between */'
-      + '@media(prefers-reduced-motion:no-preference){.mark{animation:pulse 1s}}/* after */'
-      + '</style><path class="mark" d="M0 0h10v10H0z"/></svg>';
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<style>/* before */.mark{fill:#123456}/* between */' +
+      '@media(prefers-reduced-motion:no-preference){.mark{animation:pulse 1s}}/* after */' +
+      '</style><path class="mark" d="M0 0h10v10H0z"/></svg>';
     const icon = optimiseSvg(source, { icon: true }).data;
     assert.match(icon, /fill="#123456"/);
     assert.doesNotMatch(icon, /<style/);
@@ -138,8 +155,10 @@ describe('CSS comment scanning', () => {
         assert.doesNotMatch(data, /<style/);
         console.log('finished');
       `;
-      const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', script],
-        { cwd: ROOT, timeout: 5000 });
+      const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '-e', script], {
+        cwd: ROOT,
+        timeout: 5000,
+      });
       assert.equal(stdout.trim(), 'finished');
     });
   }
@@ -148,25 +167,33 @@ describe('CSS comment scanning', () => {
 describe('benchmark sweep selection', () => {
   for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'no-such-sweep']) {
     it(`rejects ${name} as an unknown sweep`, async () => {
-      await assert.rejects(execFileAsync(process.execPath, [join(ROOT, 'bench/bench.mjs'), name],
-        { cwd: ROOT, timeout: 5000 }), (error) => {
-        assert.equal(error.code, 1);
-        assert.equal(error.stderr, `bench: no sweep '${name}'\n`);
-        assert.equal(error.stdout, '');
-        return true;
-      });
+      await assert.rejects(
+        execFileAsync(process.execPath, [join(ROOT, 'bench/bench.mjs'), name], { cwd: ROOT, timeout: 5000 }),
+        (error) => {
+          assert.equal(error.code, 1);
+          assert.equal(error.stderr, `bench: no sweep '${name}'\n`);
+          assert.equal(error.stdout, '');
+          return true;
+        },
+      );
     });
   }
 });
 
 describe('browser executable selection', () => {
   it('rejects an executable outside the supported browsers before starting the check', async () => {
-    await assert.rejects(execFileAsync(process.execPath, [join(ROOT, 'site/test/cdp-check.mjs')],
-      { cwd: ROOT, env: { ...process.env, CHROME: process.execPath }, timeout: 5000 }), (error) => {
-      assert.equal(error.code, 1);
-      assert.match(error.stderr, /^cdp-check: CHROME must be chromium or google-chrome\n$/);
-      assert.equal(error.stdout, '');
-      return true;
-    });
+    await assert.rejects(
+      execFileAsync(process.execPath, [join(ROOT, 'site/test/cdp-check.mjs')], {
+        cwd: ROOT,
+        env: { ...process.env, CHROME: process.execPath },
+        timeout: 5000,
+      }),
+      (error) => {
+        assert.equal(error.code, 1);
+        assert.match(error.stderr, /^cdp-check: CHROME must be chromium or google-chrome\n$/);
+        assert.equal(error.stdout, '');
+        return true;
+      },
+    );
   });
 });

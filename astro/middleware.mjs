@@ -21,10 +21,16 @@ const encodedLinks = new TextEncoder().encode(links);
 const decoder = new TextDecoder();
 
 const injectHead = () => {
-  let pending = new Uint8Array(0), length = 0, scanned = 0, passthrough = false;
+  let pending = new Uint8Array(0),
+    length = 0,
+    scanned = 0,
+    passthrough = false;
   return new TransformStream({
     transform(chunk, controller) {
-      if (passthrough) { controller.enqueue(chunk); return; }
+      if (passthrough) {
+        controller.enqueue(chunk);
+        return;
+      }
 
       const take = Math.min(chunk.byteLength, HEAD_LIMIT - length);
       if (length + take > pending.byteLength) {
@@ -40,10 +46,18 @@ const injectHead = () => {
       // Byte offsets keep BOM, split UTF-8 and even undecodable bytes intact. Rescan
       // only the unfinished marker suffix, never the previously inspected prefix.
       for (; scanned + 7 <= length; scanned++) {
-        if (pending[scanned] === 60 && pending[scanned + 1] === 47
-            && (pending[scanned + 2] | 32) === 104 && (pending[scanned + 3] | 32) === 101
-            && (pending[scanned + 4] | 32) === 97 && (pending[scanned + 5] | 32) === 100
-            && pending[scanned + 6] === 62) { end = scanned; break; }
+        if (
+          pending[scanned] === 60 &&
+          pending[scanned + 1] === 47 &&
+          (pending[scanned + 2] | 32) === 104 &&
+          (pending[scanned + 3] | 32) === 101 &&
+          (pending[scanned + 4] | 32) === 97 &&
+          (pending[scanned + 5] | 32) === 100 &&
+          pending[scanned + 6] === 62
+        ) {
+          end = scanned;
+          break;
+        }
       }
       if (end < 0 && length < HEAD_LIMIT) return;
 
@@ -73,5 +87,9 @@ export const onRequest = async (context, next) => {
   const headers = new Headers(response.headers);
   // Decide during consumption, so the final length is not known when headers leave.
   headers.delete('content-length');
-  return new Response(response.body.pipeThrough(injectHead()), { status: response.status, statusText: response.statusText, headers });
+  return new Response(response.body.pipeThrough(injectHead()), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 };

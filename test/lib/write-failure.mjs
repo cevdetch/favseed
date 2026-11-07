@@ -17,8 +17,11 @@ for (const method of ['writeFileSync', 'copyFileSync', 'renameSync', 'rmSync']) 
     const paired = method === 'renameSync' || method === 'copyFileSync';
     const target = args[paired ? 1 : 0];
     const event = { method, from: paired ? area(args[0]) : null, to: area(target), name: basename(target) };
-    const fault = faults.find((rule) => !rule.used && Object.entries(rule).every(([key, value]) =>
-      ['code', 'empty'].includes(key) || event[key] === value));
+    const fault = faults.find(
+      (rule) =>
+        !rule.used &&
+        Object.entries(rule).every(([key, value]) => ['code', 'empty'].includes(key) || event[key] === value),
+    );
     if (fault) {
       fault.used = true;
       append(trace, JSON.stringify({ ...event, failed: !fault.empty, empty: !!fault.empty }) + '\n');
