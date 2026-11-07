@@ -10,7 +10,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
 import { FavseedError } from '../lib/core.mjs';
-import { checkConfig, CONFIG_KEYS, defineConfig, normaliseOptions, resolveOptions } from '../lib/config.mjs';
+import {
+  buildIdentity,
+  checkConfig,
+  CONFIG_KEYS,
+  defineConfig,
+  normaliseOptions,
+  resolveOptions,
+} from '../lib/config.mjs';
 
 const fails = (fn, re) => assert.throws(fn, (e) => e instanceof FavseedError && re.test(e.message));
 
@@ -88,6 +95,21 @@ describe('normaliseOptions', () => {
       () => normaliseOptions({ manifest: 'yes' }),
       /^manifest must be true, false or an object of manifest members, got 'yes'$/,
     );
+  });
+});
+
+describe('buildIdentity', () => {
+  const id = (options) => JSON.stringify(buildIdentity(normaliseOptions(options)));
+  it('is equal for spellings of the same build', () => {
+    assert.equal(id({ vars: { brand: '#fff' } }), id({ vars: new Map([['--brand', '#fff']]) }));
+    assert.equal(id({}), id({ bg: '#000000', sizes: [192, 512], padding: 'auto' }));
+  });
+  it('differs when the bytes would', () => {
+    assert.notEqual(id({}), id({ bg: 'none' }));
+    assert.notEqual(id({ sizes: [192, 512] }), id({ sizes: [512, 192] })); // manifest order
+    assert.notEqual(id({}), id({ zopfli: true }));
+    assert.notEqual(id({ manifest: true }), id({ manifest: { name: 'x' } }));
+    assert.notEqual(id({}), id({ base: '/blog/', manifest: true }));
   });
 });
 

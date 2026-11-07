@@ -1,5 +1,5 @@
 // One completed build, owned by the worker. Transfer/caller mutation never reaches this copy.
-import { DEFAULT_QUALITY, manifestJson, manifestPurpose } from '../../../lib/core.mjs';
+import { buildIdentity } from '../../../lib/config.mjs';
 export const createBuildCache = (limit = 16 * 1024 * 1024) => {
   let entry;
   return {
@@ -12,28 +12,5 @@ export const createBuildCache = (limit = 16 * 1024 * 1024) => {
   };
 };
 
-export const buildKey = (source, o) => {
-  // Key exactly what the shared emitter writes. JSON.stringify(options) can discard
-  // accepted members such as undefined and conflate builds with different file bytes.
-  const manifest = o.manifest
-    ? manifestJson({
-        sizes: o.sizes,
-        base: o.base,
-        purpose: manifestPurpose(o.bg),
-        extra: typeof o.manifest === 'object' ? o.manifest : null,
-      })
-    : null;
-  return JSON.stringify([
-    source,
-    o.colors,
-    o.quality ?? DEFAULT_QUALITY,
-    o.sizes,
-    o.padding,
-    o.bg,
-    [...o.vars].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-    o.animation,
-    manifest,
-    o.base,
-    o.iterations,
-  ]);
-};
+/** Key exactly what the shared emitter writes; the options arrive normalised (pipeline.mjs). */
+export const buildKey = (source, o) => JSON.stringify([source, ...buildIdentity(o)]);

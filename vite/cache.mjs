@@ -6,8 +6,7 @@ import { readFileSync } from 'node:fs';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { resolveQuality } from '../lib/config.mjs';
-import { DEFAULT_BG, normaliseVars } from '../lib/core.mjs';
+import { buildIdentity, normaliseOptions } from '../lib/config.mjs';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 
@@ -17,40 +16,19 @@ export const favseedVersion = () =>
   (version ??= JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
 
 /**
- * The cache key, and the reason the cache is safe to trust.
- *
- * favseed's own version, the input bytes, the canonicalised options, and the versions of
- * @napi-rs/image, SVGO and the Zopfli build, because they change output bytes across releases, so a
- * cache keyed only on the SVG hands back stale files after an upgrade. vars are canonical
- * whether they arrive as an object or a Map (the merged options are a Map), and with or
- * without their leading dashes: Object.entries of a Map is empty, which would drop every
- * --var from the key and serve one var's bytes for another's.
+ * The cache key, and the reason the cache is safe to trust: favseed's version, the input bytes,
+ * the engine versions (each changes bytes across releases) and buildIdentity of the normalised
+ * options.
  */
 export const cacheKey = ({ version, source, options, engine }) =>
   sha256(
     JSON.stringify({
-      // Discard older slots whose keys conflated omitted bg with transparent bg: null.
-      schema: 2,
+      // 3: options are keyed through buildIdentity; older slots simply miss.
+      schema: 3,
       version,
       source: sha256(source),
       engine,
-      // Preserve size order because the manifest uses it. Resolve quality and background
-      // with shared defaults. Other omitted values retain a sentinel; `version`
-      // covers changes to their build defaults.
-      options: {
-        colors: options.colors ?? null,
-        quality: Number(resolveQuality(options)),
-        sizes: options.sizes ? [...options.sizes].map(Number) : null,
-        bg: options.bg === undefined ? DEFAULT_BG : options.bg,
-        padding: options.padding ?? null,
-        vars: [...normaliseVars(options.vars)].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-        animation: options.animation !== false,
-        manifest: options.manifest ?? false,
-        mode: options.zopfli ? (options.mode ?? 'release') : null,
-        zopfli: options.zopfli ?? false,
-        // The manifest's bytes depend on it, so a changed base must not hit an old slot.
-        base: options.base ?? '/',
-      },
+      options: buildIdentity(normaliseOptions(options)),
     }),
   );
 
