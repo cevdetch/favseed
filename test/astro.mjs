@@ -569,7 +569,8 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     const foreign = await project();
     await writeFile(join(foreign.pub, 'favicon.ico'), 'foreign asset');
     const preserved = await snapshot(foreign.pub);
-    await assert.rejects(foreign.build(), /public\/favicon\.ico exists and is not the file favseed builds/);
+    // The fixture sets publicDir to ./static, and the message names the real path.
+    await assert.rejects(foreign.build(), /static\/favicon\.ico exists and is not the file favseed builds/);
     assert.deepEqual(await snapshot(foreign.pub), preserved);
   });
 

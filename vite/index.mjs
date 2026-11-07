@@ -3,7 +3,7 @@
 // written to public/, and a file there with a name favseed emits is never shadowed.
 import { lstatSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 
 import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
 import { configurationError, normaliseOptions, resolveOptions } from '../lib/config.mjs';
@@ -149,6 +149,9 @@ export default function favseed(options = {}) {
     }
   };
 
+  /** Where the clashing file is, from the root: public/ for Vite, often static/ for Astro. */
+  const publicPath = (f) => relative(root, join(publicDir, f.name)).split(sep).join('/');
+
   return {
     name: 'favseed',
 
@@ -185,7 +188,7 @@ export default function favseed(options = {}) {
         const f = files.find((x) => x.name === name);
         if (!f) return next();
         if (clash(f)) {
-          warnOnce(`favseed: public/${f.name} exists and is not the file favseed builds; serving yours`);
+          warnOnce(`favseed: ${publicPath(f)} exists and is not the file favseed builds; serving yours`);
           return next();
         }
         res.setHeader('Content-Type', TYPES[name.split('.').pop()]);
@@ -237,7 +240,7 @@ export default function favseed(options = {}) {
       for (const f of built) {
         if (clash(f)) {
           this.error(
-            `favseed: public/${f.name} exists and is not the file favseed builds. ` +
+            `favseed: ${publicPath(f)} exists and is not the file favseed builds. ` +
               "Delete it to use favseed's, or remove the favseed plugin to keep yours.",
           );
         }
