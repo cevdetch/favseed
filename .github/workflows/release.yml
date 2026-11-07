@@ -2,7 +2,7 @@ name: Release
 
 # A pushed v* tag builds, tests and stages the package. Nothing reaches npm until the
 # maintainer approves the staged version with 2FA: `npm stage list`, then `npm stage approve`.
-# See RELEASING.md, including why 0.1.0 is published by hand.
+# See RELEASING.md, including why 1.0.0 is published by hand.
 
 on:
   push:
@@ -72,7 +72,7 @@ jobs:
 
       # Node 24 ships npm 11: `stage` needs 11.15, OIDC 11.5.1. No token and no
       # registry-url: trusted publishing exchanges this job's OIDC token. A version already on
-      # npm (0.1.0, published by hand before a trusted publisher could exist) is left alone;
+      # npm (1.0.0, published by hand before a trusted publisher could exist) is left alone;
       # the release notes still follow.
       - name: Stage
         run: |
