@@ -5,13 +5,6 @@ export default defineConfig({
   input: 'src/icon.svg',
   out: 'public',
   bg: '#25170d', // Keep the existing Apple icon's ground for every padded PNG.
-  quality: 80,
-  sizes: [192, 512],
-  padding: 'auto',
-  animation: true,
-  mode: 'release',
-  zopfli: false,
-  base: '/',
   manifest: {
     name: 'favseed',
     short_name: 'favseed',

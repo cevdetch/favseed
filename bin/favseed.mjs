@@ -233,12 +233,6 @@ const publishSet = (set, out) => {
     LIVE.add(stage);
     for (const f of set.files) writeFileSync(join(stage, f.name), f.bytes);
     const files = set.files.map((f) => f.name);
-    // Validate the complete staged set before backing up or changing destinations.
-    for (const f of files) {
-      const from = join(stage, f);
-      if (!existsSync(from) || statSync(from).size === 0)
-        throw new FavseedError(`internal error: ${f} was not produced`);
-    }
     const previous = join(stage, 'previous');
     mkdirSync(previous);
     const entries = files.map((name) => {
