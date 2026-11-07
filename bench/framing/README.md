@@ -16,8 +16,9 @@ Square inputs use the same raster source as before. Version 0.4.0 invalidates in
 
 ## Accuracy and bytes
 
-[Raw results and hashes](results.json) compare merged PR27 (`deaba2b`) with the new framing,
-using the same installed engine, default quality 80 and no Zopfli. Non-square references are
+Regenerate with `node bench/bench.mjs framing`; raw results and hashes compare merged PR27
+(`deaba2b`) with the new framing, using the same installed engine, default quality 80 and
+no Zopfli. Non-square references are
 literal square goldens derived by hand. Padded references apply the existing placement to
 those goldens. Error counts pixels differing by more than 8/255 on black and white composites.
 These references expose stretching that the old stretch-matched accuracy reference hid.

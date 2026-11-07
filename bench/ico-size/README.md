@@ -3,8 +3,8 @@
 Measured on 1 November 2026 with image 1.15.0, Node 26.12.1 and an AMD Ryzen 7 7840U.
 The baseline is merged PR28 (`f526aff07fd28aa7e97f93aef6eef66a10f7dc26`), with one
 32px ICO entry. Current builds use one 48px entry. Quality 80 and default-off Zopfli
-are unchanged. [Raw full-build results](results.json) include source/code hashes,
-per-file bytes and hashes, timings and source/encoding errors.
+are unchanged. Regenerate with `node bench/bench.mjs ico-size`; raw full-build results
+include source/code hashes, per-file bytes and hashes, timings and source/encoding errors.
 
 | Across 20 fixtures | Baseline 32px | Current 48px |
 |---|---:|---:|
@@ -60,8 +60,9 @@ those sweeps now compares their baselines against the current whole pipeline.
 
 ## Matched Vite PWA comparison
 
-[Encoder and matched-file data](vite-pwa.json) uses assets-generator 2.0.0 and Sharp 0.35.5.
-Four fixtures (tiles, general, heavy and gradient) produce 16 matching raster files:
+Encoder and matched-file data, regenerated with the install and run commands further
+below, use assets-generator 2.0.0 and Sharp 0.35.5. Four fixtures (tiles, general, heavy
+and gradient) produce 16 matching raster files:
 one 48px ICO plus 180/192/512px PNG per fixture. Both encoders receive identical
 already-placed, unquantized pixels with identity resize and no extra padding.
 SVG and manifest bytes are excluded. Vite uses its actual `generateFavicon` route;

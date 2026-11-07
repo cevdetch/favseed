@@ -21,8 +21,9 @@ independently of this budget. No Zopfli in the pipeline comparison below.
 
 ## Full-pipeline comparison
 
-[Raw results, hashes and methods](results.json) compare PR26 at `9427866` with selective
-precision using the same installed engine. Three repetitions rotate and reverse arm order;
+Regenerate with `node bench/bench.mjs precision`; raw results, hashes and methods compare
+PR26 at `9427866` with selective precision using the same installed engine. Three
+repetitions rotate and reverse arm order;
 repetition 0 is warmup, and the table uses median whole-corpus totals from repetitions 1–2.
 Times include in-memory optimization, validation, placement, encoding and artifact construction.
 Imports, input reads, reference preparation, disk writes and post-build grading are excluded.
@@ -37,9 +38,9 @@ Node timings on the recorded CPU, not browser timing claims.
 | Selective quality 100 | 3.372 | 74,549 | 4,652 | 0.114% |
 
 The default uses **963 more PNG/ICO bytes (1.4%)** here. The final run is 3.2% faster,
-while an [earlier run](earlier-run.json), before the nonvisual document-annotation fix,
-measured 2.595s versus 2.672s, or 3.0% slower. Output bytes and accuracy agree across these
-runs. Timing variation does not establish a stable speedup or precise validation overhead.
+while an earlier run, before the nonvisual document-annotation fix, measured 2.595s versus
+2.672s, or 3.0% slower. Output bytes and accuracy agree across these runs. Timing variation
+does not establish a stable speedup or precise validation overhead.
 The extra SVG cost is two bytes. All six artifacts for each of the ten non-gradient fixtures
 remain byte-identical to the old default. Gradient stops are no longer rounded from
 `.42/.78` to `.4/.8`; the gradient's SVG-stage error falls from 2.478% to 0%.
@@ -66,9 +67,10 @@ separate work: the 16MiB placement cache is not a process-memory ceiling.
 
 ## Fresh Vite PWA comparison
 
-[Encoder and matched-file data](vite-pwa.json) uses assets-generator 2.0.0 and Sharp 0.35.5.
-All arms receive identical already-placed, unquantized pixels from the corrected SVGs, with
-identity resize and no extra padding. Four fixtures produce 16 matching raster files:
+Encoder and matched-file data, regenerated with the commands under Reproduce below, use
+assets-generator 2.0.0 and Sharp 0.35.5. All arms receive identical already-placed,
+unquantized pixels from the corrected SVGs, with identity resize and no extra padding.
+Four fixtures produce 16 matching raster files:
 32px ICO and 180/192/512px PNG per fixture. SVG and manifest bytes are excluded. The actual
 Vite ICO route is used, with decoded pixels verified unchanged after wrapping.
 
@@ -93,9 +95,9 @@ With the pinned engine installed and git history containing PR26:
 node bench/bench.mjs precision
 ```
 
-This sweep needs no external resvg/pngquant/oxipng tools. Raw data and first-repetition files
-go under ignored `bench/out/precision/`; baseline modules come from git. Other sweeps retain
-their native-reference tool requirements. Do not use `--write` for a partial sweep.
+This sweep needs no external resvg/pngquant/oxipng tools, and neither does any other sweep.
+Raw data and first-repetition files go under ignored `bench/out/precision/`; baseline modules
+come from git. Do not use `--write` for a partial sweep.
 
 For the encoder comparison, install assets-generator 2.0.0 and Sharp 0.35.5 in an isolated
 dependency directory under the checkout or system temporary directory, then use fresh outputs:
