@@ -19,8 +19,8 @@
 //     that ends in quantising throws away everything the recompressor did.
 //   * An ICO holding a PNG is a 22-byte header plus that PNG verbatim, so nothing can be
 //     optimised after packing. The payload has to be final before it goes in.
-//   * Zopfli runs once, on the file that already won the lossy/lossless comparison.
-//     Running it on both sides costs three times as much for the same bytes.
+//   * Zopfli runs once, on the file that already won the lossy/lossless comparison, and
+//     only when Zopfli is enabled.
 //   * Raster jobs and complete alignment searches use bounded batches; large custom sizes
 //     stay serial. Active native work drains before a failed build returns.
 //   * icon.svg preserves animation and styling. The rasterizer uses the mark's base appearance;
@@ -83,8 +83,8 @@ import { createEngine } from '../lib/engine.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
 import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
 
-// Re-exported so the public API is the same as before the split: the Astro
-// integration, the test suite and bench/ all import these from here.
+// Re-exported: the package root (`.`) is this file's API, and bench/ and the tests import from
+// here.
 export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone };
 
 const require = createRequire(import.meta.url);
