@@ -119,7 +119,7 @@ export const loadEngine = () =>
 /** Package versions and compression build identity: inputs to the integration cache key. */
 export const engineVersions = () => ({
   '@napi-rs/image': require('@napi-rs/image/package.json').version,
-  '@gfx/zopfli': ZOPFLI_VERSION,
+  zopfli: ZOPFLI_VERSION,
   // SVGO does not export package.json. Resolve its entry without loading the optimizer.
   svgo: JSON.parse(readFileSync(join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version,
 });
@@ -514,9 +514,7 @@ export async function cli(argv) {
       case '-V':
       case '--version': {
         const v = engineVersions();
-        process.stdout.write(
-          `${PROG} ${readVersion()} (@napi-rs/image ${v['@napi-rs/image']}, @gfx/zopfli ${v['@gfx/zopfli']})\n`,
-        );
+        process.stdout.write(`${PROG} ${readVersion()} (@napi-rs/image ${v['@napi-rs/image']}, zopfli ${v.zopfli})\n`);
         return 0;
       }
       case '-h':

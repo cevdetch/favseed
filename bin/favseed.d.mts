@@ -56,7 +56,7 @@ export function buildFiles(options: BuildOptions): Promise<BuildFilesResult>;
 export function cli(argv: string[]): Promise<number>;
 
 /** The engine's package versions, which the output bytes depend on. */
-export function engineVersions(): { '@napi-rs/image': string; '@gfx/zopfli': string; svgo: string };
+export function engineVersions(): { '@napi-rs/image': string; zopfli: string; svgo: string };
 
 /** One synchronous SVG pass; does not run the full build's measured accuracy selection. */
 export const optimiseSvg: SvgStage['optimiseSvg'];
