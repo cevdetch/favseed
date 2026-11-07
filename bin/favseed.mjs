@@ -139,13 +139,8 @@ const normalise = (options) => {
 
 // =================================================================== build() ==
 
-/**
- * The set in memory: validated like build(), nothing written. The Vite plugin serves and
- * emits these bytes; build() writes them.
- */
-export async function buildFiles(options = {}) {
-  const o = normalise(options);
-  const warn = options.onWarn ?? (() => {});
+const buildFilesWithOptions = async (o, onWarn) => {
+  const warn = onWarn ?? (() => {});
   let source;
   try { source = readFileSync(o.input, 'utf8'); } catch (e) {
     throw new FavseedError(`cannot read ${o.input}: ${e.message}`);
@@ -166,6 +161,14 @@ export async function buildFiles(options = {}) {
 }
 
 /**
+ * The set in memory: validated like build(), nothing written. The Vite plugin serves and
+ * emits these bytes; build() writes them.
+ */
+export async function buildFiles(options = {}) {
+  return buildFilesWithOptions(normalise(options), options.onWarn);
+}
+
+/**
  * Build the set. Throws FavseedError with a finished message; never exits, never writes to
  * stdout. Returns { files, bytes, animated, fit, links }, where `fit` is
  * { apple, icons: { [size]: fit } } (how the mark was placed in each masked icon), and
@@ -173,7 +176,7 @@ export async function buildFiles(options = {}) {
  */
 export async function build(options = {}) {
   const o = normalise(options);
-  const set = await buildFiles(options);
+  const set = await buildFilesWithOptions(o, options.onWarn);
   return publishSet(set, o.out);
 }
 
