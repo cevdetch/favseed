@@ -14,7 +14,7 @@ const result = await buildFiles(options);
 const placement: Placement = result.fit.apple;
 const canvas: number = placement.canvas;
 // @ts-expect-error Build results carry measurements, not the wrapped SVG.
-placement.svg;
+void placement.svg;
 const optimized = optimiseSvg(source, { vars: normalized, precision: 2, onWarn: (message) => message.toUpperCase() });
 const optimizedText: string = optimized.data;
 const animated: boolean = optimized.animated;
@@ -32,13 +32,13 @@ const rgba = await engine.renderRgba(source, 48);
 const pixels: Uint8Array = rgba.rgba;
 const ground: number[] = await engine.probe('#fff');
 const encoded = await engine.encode(raw, { colors: 256, quality: 80 });
-const qualityOnly: Uint8Array = await engine.encode(raw, { quality: 80 });
+const _qualityOnly: Uint8Array = await engine.encode(raw, { quality: 80 });
 const finished: Uint8Array = await engine.finish(encoded, { iterations: 0 });
 const ico: Uint8Array = icoWrap(finished, 48);
 // @ts-expect-error ICO input must be bytes.
 icoWrap('png', 48);
 // @ts-expect-error Engine rendering is asynchronous.
-const immediate: Uint8Array = engine.render(source, 48);
+const _immediate: Uint8Array = engine.render(source, 48);
 // @ts-expect-error Engine options require a numeric iteration count.
 engine.finish(raw, { iterations: '15' });
 const fit = maskableFit(rgba);
@@ -47,7 +47,7 @@ const safe = await placeInSafeZone(source, engine.renderRgba, 48);
 const safeText: string = safe.svg;
 const safePadding: number = safe.padding;
 // @ts-expect-error Low-level placement does not return the canvas field.
-safe.canvas;
+void safe.canvas;
 await core.placeInSafeZone(source, (_svg, px) => ({ width: px, height: px, rgba: new Uint8ClampedArray(px * px * 4) }), 48, 20);
 // @ts-expect-error Renderer callbacks must return decoded pixels, not PNG bytes.
 placeInSafeZone(source, engine.render, 48);
@@ -63,7 +63,7 @@ const configFile: string | null = loaded.file;
 const ignored: string[] = loaded.ignored;
 const rawQuality: unknown = loaded.config.quality;
 // @ts-expect-error Config loading does not validate field values.
-const validatedQuality: number | undefined = loaded.config.quality;
+const _validatedQuality: number | undefined = loaded.config.quality;
 
 const defaults: number[] = [core.ICO_SIZE, core.APPLE_SIZE, core.DEFAULT_QUALITY, core.DEFAULT_COLORS,
   core.ZOPFLI_ITERATIONS, core.FAST_ZOPFLI_ITERATIONS, core.MASK_SAFE_RADIUS, core.SNAP_WINDOW];
@@ -81,7 +81,7 @@ const mappedName: string = mapped[0].name;
 const mappedBytes: Uint8Array = mapped[0].bytes;
 const syncNames: string[] = await core.mapImages([48], (size) => size, String);
 // @ts-expect-error Inferred results retain the callback's shape.
-mapped[0].missing;
+void mapped[0].missing;
 // @ts-expect-error Canvas sizing must produce a number.
 core.mapImages([48], String, String);
 // @ts-expect-error Manifest sizes are numeric.

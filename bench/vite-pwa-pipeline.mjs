@@ -6,7 +6,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { cpus } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL, fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { decode } from '../test/lib/png.mjs';
 import { benchmarkPath } from './path.mjs';
 

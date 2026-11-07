@@ -6,10 +6,10 @@
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { after, before, describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -139,7 +139,7 @@ describe('the output set', () => {
   it('keeps the alpha when --bg none is asked for', async () => {
     const { out } = await buildOnce('bgnone', { input: fixture('flat.svg'), sizes: [32], bg: null });
     const img = decode(readFileSync(join(out, 'apple-touch-icon.png')));
-    assert.ok([...img.data.filter((_, i) => i % 4 === 3)].some((a) => a === 0),
+    assert.ok(img.data.filter((_, i) => i % 4 === 3).some((a) => a === 0),
       'flat.svg has a wide transparent margin; none of it survived');
   });
 });
@@ -670,7 +670,7 @@ describe('the masked icons', () => {
       // The --bg ground never shows: the corner is the source's own ground, not black.
       const img = decode(readFileSync(join(out, file)));
       assert.ok(Math.abs(img.data[0] - 0x0E) + Math.abs(img.data[1] - 0x7C) + Math.abs(img.data[2] - 0x68) < 24,
-        `${file}: corner pixel is ${[...img.data.slice(0, 3)]}, expected the source's own ground`);
+        `${file}: corner pixel is ${img.data.slice(0, 3)}, expected the source's own ground`);
     }
   });
 });
@@ -1339,7 +1339,7 @@ describe('the astro integration', () => {
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
-    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'user-edited icon');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1362,7 +1362,7 @@ describe('the astro integration', () => {
     writeFileSync(edited, 'legacy user edit');
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
-    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'legacy user edit');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1375,7 +1375,7 @@ describe('the astro integration', () => {
     const before = readdirSync(first.pub).sort().map((name) => [name, readFileSync(join(first.pub, name))]);
     const stamp = readFileSync(first.stamp);
     const second = await project({ sizes: [64] }, first.root);
-    await assert.rejects(second.build(), /public[\\\/]icon-64\.png already exists/);
+    await assert.rejects(second.build(), /public[\\/]icon-64\.png already exists/);
     assert.deepEqual(readdirSync(second.pub).sort().map((name) => [name, readFileSync(join(second.pub, name))]), before);
     assert.deepEqual(readFileSync(second.stamp), stamp);
   });
@@ -1607,7 +1607,7 @@ describe('the astro integration', () => {
 
       await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
       await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }),
-        /public[\\\/]favicon\.ico already exists and differs from the generated file/);
+        /public[\\/]favicon\.ico already exists and differs from the generated file/);
     });
 
   it('names custom public paths and starter recovery without changing conflicting files', async () => {

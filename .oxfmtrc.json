@@ -1,0 +1,21 @@
+{
+  "printWidth": 120,
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "site/dist/**",
+    "site/.astro/**",
+    "site/vendor/**",
+    "bench/out/**",
+    "bench/**/*.json",
+    "bench/**/*.csv",
+    "test/bytes.json",
+    "test/fixtures/**",
+    "lib/zopfli-build.mjs",
+    "pnpm-lock.yaml",
+    "**/*.md"
+  ]
+}

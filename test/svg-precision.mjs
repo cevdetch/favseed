@@ -114,7 +114,7 @@ describe('SVG error comparison', () => {
   });
 
   it('rejects disappearance even when the source occupies only one percent', () => {
-    const ref = pixels(new Array(400).fill(0)), candidate = pixels(new Array(400).fill(0));
+    const ref = pixels(Array.from({ length: 400 }, () => 0)), candidate = pixels(Array.from({ length: 400 }, () => 0));
     ref.rgba.set([0, 0, 0, 255]);
     assert.equal(withinSvgBudget(candidate, ref), false);
   });

@@ -24,11 +24,11 @@ const links: string = memory.links;
 const animated: boolean = memory.animated;
 const placement: BuildResult['fit'] = memory.fit;
 // @ts-expect-error In-memory output has no published directory.
-memory.dir;
+void memory.dir;
 // @ts-expect-error Input remains required for an in-memory build.
 buildFiles({ quality: 80 });
 // @ts-expect-error File contents are bytes, not text.
-const text: string = memory.files[0].bytes;
+const _text: string = memory.files[0].bytes;
 const plugin: Plugin = favseedVite({ input: 'src/logo.svg', sizes: [48], quality: 80, base: '/blog/' });
 const icons: ManifestIcon[] = favseedIcons({ sizes: [192, 512], bg: null, base: '/blog/' });
 const options: FavseedOptions = {

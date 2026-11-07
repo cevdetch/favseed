@@ -50,7 +50,7 @@ self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
     }
     // Warnings belong to each request's callback; retain them only in the private
     // cache so a repeated build gives the same guidance without rebuilding bytes.
-    const { warnings, ...output } = result;
+    const { warnings: _warnings, ...output } = result;
     // apple and icon-180 can alias. Shared WASM memory is already copied by createEngine.
     const buffers = [...new Set([...result.files.map((f) => f.bytes.buffer), result.archiveBytes.buffer])];
     self.postMessage({ id, type: 'result', result: output }, buffers);
