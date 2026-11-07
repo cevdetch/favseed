@@ -30,7 +30,7 @@ Vite option type checks; a missing compiler fails instead of skipping them.
 the packed package in a temporary external consumer with Astro 7.3.8 and Node adapter 11.1.9,
 plus the checkout's installed image/SVGO/Vite/TypeScript versions. Direct test-host versions are pinned;
 the temporary npm install resolves transitive dependencies normally and disables lifecycle
-scripts. It checks CLI bytes, base paths, both head paths, dev modes, cache/public ownership
+scripts. It checks CLI bytes, base paths, both head paths, dev serving, public/ clashes
 and streaming SSR responses. The stream body waits for an explicit release request, so the
 test proves head delivery before the body completes. It also type-checks the public `favseed`,
 `favseed/vite` and `favseed/astro` imports under NodeNext and bundler resolution, accepting
@@ -146,10 +146,10 @@ The root suite, packed-package Astro suite and site browser checks cover these c
     config that fails to load is a `favseed: …` message with no stack trace; a `.ts` Node cannot
     load names `favseed.config.mjs`.
 20. `base` prefixes every `href` from `--html` and every icon `src` in the manifest.
-21. `favseed/vite` emits the same bytes as the CLI, once, at the output root of a client build
-    and nowhere in an SSR build; links them in `index.html` unless the page already has a
-    `<link rel="icon">`; serves them in dev at `base`; and never replaces a different file in
-    `public/`.
+21. `favseed/vite` (and `favseed/astro`, which uses it) emits the same bytes as the CLI, once,
+    at the output root of a client build and nowhere in an SSR build; links them in `index.html`
+    unless the page already has a `<link rel="icon">`; serves them in dev at `base`; and never
+    replaces a different file in `public/`.
 22. Full builds select the first precision in 1/2/3/4/6/8 whose static 512px render meets a
     1% source-error budget on both black and white composites. Whole-mark disappearance fails.
     If no candidate passes, preserve source geometry. This does not grade every animation frame,
@@ -189,6 +189,7 @@ favseed regressed.
   import each other, but receive platform-specific engines from their host. The integrations
   use these APIs, and share disk cache code in `vite/cache.mjs`. Keep the CLI implementation and
   shared engine independent of the Astro integration.
+- The Astro integration is the Vite plugin plus head injection.
 - No new CLI flags without a stated user need. The surface is kept small on purpose.
 - Comments explain **why**, and cite the measurement. The code is dense in places because the
   obvious version is wrong, and a reader must be able to find out why without a git
