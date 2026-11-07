@@ -1,7 +1,7 @@
 {
   "name": "favseed",
   "version": "0.8.0",
-  "description": "One SVG in, an optimised favicon set out.",
+  "description": "Generate optimized, maskable favicons from SVG with the CLI, Vite, or Astro.",
   "type": "module",
   "license": "MIT",
   "author": {
@@ -69,16 +69,19 @@
   "keywords": [
     "favicon",
     "favicons",
+    "favicon-generator",
     "icon",
     "svg",
+    "maskable",
     "astro-integration",
     "astro",
+    "vite",
     "pwa",
     "apple-touch-icon",
     "webmanifest",
     "ico",
     "png",
-    "optimisation",
+    "optimization",
     "cli",
     "vite-plugin"
   ],
