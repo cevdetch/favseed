@@ -85,10 +85,10 @@ Two more traps this repo has already fallen into, both caught only by measuring:
 pnpm install                   # the whole setup: the root and site/, one workspace, one lockfile
 ```
 
-Three optional tools turn on more checks. `resvg` on PATH runs the render-fidelity test, which
+Two optional tools turn on more checks. `resvg` on PATH runs the render-fidelity test, which
 holds the engine to the resvg CLI pixel for pixel. `icotool` (from `icoutils`) runs the test
 asserting favseed's 22-byte ICO writer is byte-identical to `icotool -c -r`. `bench/` needs
-resvg, pngquant and oxipng for its native reference arm.
+nothing beyond `pnpm install`.
 
 ## Definition of done
 
