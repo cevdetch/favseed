@@ -54,7 +54,7 @@ export const cacheKey = ({ version, source, options, engine }) =>
     }),
   );
 
-export const generatedAsset = (name) =>
+const generatedAsset = (name) =>
   typeof name === 'string' &&
   (['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'site.webmanifest'].includes(name) ||
     /^icon-[1-9]\d*\.png$/.test(name));

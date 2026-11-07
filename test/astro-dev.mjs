@@ -9,6 +9,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -34,13 +35,17 @@ const writeLegacySlot = async (cache, name, files) => {
   await writeSlot(cache, name, files);
   writeFileSync(join(cache, name, 'index.json'), JSON.stringify({ files: files.map((f) => f.name) }));
 };
+// The integration's Vite plugin, driven as Astro's dev server drives it: Vite's base stays '/'
+// in dev, and Astro's own middleware strips its base from req.url before later middleware.
 const project = async (t, options = {}, root = mkdtempSync(join(tmpdir(), 'favseed astro dev '))) => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const pub = join(root, 'static'),
     cache = join(root, 'node_modules/.cache/favseed');
   if (!existsSync(join(root, 'logo.svg'))) copyFileSync(fixture('flat'), join(root, 'logo.svg'));
   const logs = [],
-    middleware = [];
+    middleware = [],
+    watchers = [],
+    configs = [];
   const logger = { info: (m) => logs.push(['info', m]), warn: (m) => logs.push(['warn', m]) };
   const integration = favseed({ input: 'logo.svg', sizes: [48], ...options });
   await integration.hooks['astro:config:setup']({
@@ -48,7 +53,7 @@ const project = async (t, options = {}, root = mkdtempSync(join(tmpdir(), 'favse
     config: { root: pathToFileURL(root + '/'), publicDir: pathToFileURL(pub + '/'), base: '/blog' },
     addWatchFile() {},
     addMiddleware() {},
-    updateConfig() {},
+    updateConfig: (c) => configs.push(c),
     logger,
   });
   const server = createServer((req, res) => {
@@ -83,53 +88,57 @@ const project = async (t, options = {}, root = mkdtempSync(join(tmpdir(), 'favse
     pub,
     cache,
     logs,
-    stamp: join(cache, 'written.json'),
     request: (path, init) => fetch(`http://127.0.0.1:${server.address().port}${path}`, init),
-    dev: () =>
-      integration.hooks['astro:server:setup']({
-        server: { middlewares: { use: (fn) => middleware.push(fn) } },
-        logger,
-      }),
-    build: () => integration.hooks['astro:build:start']({ logger }),
+    dev: () => {
+      const plugins = configs.flatMap((c) => c.vite?.plugins ?? []);
+      const vite = plugins.find((p) => p.name === 'favseed');
+      vite.configResolved({ root, publicDir: pub, base: '/', logger, plugins });
+      vite.configureServer({
+        middlewares: { use: (fn) => middleware.push(fn) },
+        watcher: { add() {}, on: (event, fn) => watchers.push(fn) },
+        environments: { client: { moduleGraph: { getModuleById: () => null } } },
+        ws: { send() {} },
+      });
+    },
+    /** What the Vite watcher reports when the mark changes. */
+    changed: (file) => Promise.all(watchers.map((fn) => fn(file))),
   };
 };
 
 describe('Astro development assets', () => {
-  it('serves fast and full CLI bytes without creating public assets or an ownership stamp', async (t) => {
-    for (const dev of ['fast', 'full']) {
-      const p = await project(t, { dev, manifest: true });
-      await p.dev();
-      assert.equal(existsSync(p.pub), false);
-      assert.equal(existsSync(p.stamp), false);
-      const expected = await buildFiles({
-        input: join(p.root, 'logo.svg'),
-        sizes: dev === 'fast' ? [256] : [48],
-        ...(dev === 'fast' ? { mode: 'fast' } : {}),
-        base: '/blog/',
-        manifest: true,
-      });
-      for (const file of expected.files) {
-        const response = await p.request('/blog/' + file.name + '?v=1');
-        assert.equal(response.status, 200, file.name);
-        assert.equal(Number(response.headers.get('content-length')), file.bytes.length);
-        assert.equal(response.headers.get('cache-control'), 'no-cache');
-        assert.equal(Buffer.compare(Buffer.from(await response.arrayBuffer()), Buffer.from(file.bytes)), 0, file.name);
-      }
-      assert.equal(existsSync(p.pub), false);
-      assert.equal(existsSync(p.stamp), false);
-    }
-  });
-
-  it('keeps production files and their stamp intact while serving a changed source in dev', async (t) => {
+  it('serves every configured size in fast mode on first request, without creating public assets', async (t) => {
     const p = await project(t, { manifest: true });
-    await p.build();
-    const before = snapshot(p.pub),
-      stamp = readFileSync(p.stamp);
-    copyFileSync(fixture('general'), join(p.root, 'logo.svg'));
-    await p.dev();
+    p.dev();
+    assert.equal(existsSync(p.cache), false, 'the dev server built before any request');
     const expected = await buildFiles({
       input: join(p.root, 'logo.svg'),
-      sizes: [256],
+      sizes: [48],
+      mode: 'fast',
+      base: '/blog/',
+      manifest: true,
+    });
+    for (const file of expected.files) {
+      const response = await p.request('/blog/' + file.name + '?v=1');
+      assert.equal(response.status, 200, file.name);
+      assert.equal(Number(response.headers.get('content-length')), file.bytes.length);
+      assert.equal(response.headers.get('cache-control'), 'no-cache');
+      assert.equal(Buffer.compare(Buffer.from(await response.arrayBuffer()), Buffer.from(file.bytes)), 0, file.name);
+    }
+    assert.equal(existsSync(p.pub), false);
+  });
+
+  it('leaves public/ intact while serving a changed source in dev', async (t) => {
+    const p = await project(t, { manifest: true });
+    mkdirSync(p.pub);
+    writeFileSync(join(p.pub, 'notes.txt'), 'author file');
+    const before = snapshot(p.pub);
+    p.dev();
+    assert.equal((await p.request('/blog/favicon.ico')).status, 200);
+    copyFileSync(fixture('general'), join(p.root, 'logo.svg'));
+    await p.changed(join(p.root, 'logo.svg'));
+    const expected = await buildFiles({
+      input: join(p.root, 'logo.svg'),
+      sizes: [48],
       mode: 'fast',
       manifest: true,
       base: '/blog/',
@@ -139,20 +148,24 @@ describe('Astro development assets', () => {
     assert.equal(response.status, 200);
     assert.equal(Buffer.compare(Buffer.from(await response.arrayBuffer()), Buffer.from(ico.bytes)), 0);
     assert.deepEqual(snapshot(p.pub), before);
-    assert.deepEqual(readFileSync(p.stamp), stamp);
   });
 
   it('reuses the cached dev set across instances and keeps serving after its disk slot is removed', async (t) => {
     const first = await project(t);
-    await first.dev();
-    const original = Buffer.from(await (await first.request('/blog/icon-256.png')).arrayBuffer());
+    first.dev();
+    const original = Buffer.from(await (await first.request('/blog/icon-48.png')).arrayBuffer());
+    const slots = () => readdirSync(first.cache).filter((n) => /^[a-f0-9]{64}$/.test(n));
+    const [slot] = slots(),
+      index = join(first.cache, slot, 'index.json'),
+      written = statSync(index).mtimeMs;
     const next = await project(t, {}, first.root);
-    await next.dev();
-    assert.ok(next.logs.some(([, message]) => message.startsWith('cache hit')));
-    for (const name of readdirSync(first.cache).filter((n) => /^[a-f0-9]{64}$/.test(n)))
-      rmSync(join(first.cache, name), { recursive: true });
+    next.dev();
+    assert.equal((await next.request('/blog/icon-48.png')).status, 200);
+    assert.deepEqual(slots(), [slot]);
+    assert.equal(statSync(index).mtimeMs, written, 'the second instance rebuilt');
+    for (const name of slots()) rmSync(join(first.cache, name), { recursive: true });
     assert.equal(
-      Buffer.compare(Buffer.from(await (await next.request('/blog/icon-256.png')).arrayBuffer()), original),
+      Buffer.compare(Buffer.from(await (await next.request('/blog/icon-48.png')).arrayBuffer()), original),
       0,
     );
     assert.equal(existsSync(first.pub), false);
@@ -160,11 +173,11 @@ describe('Astro development assets', () => {
 
   it('handles HEAD, MIME and exact base paths without intercepting other requests', async (t) => {
     const p = await project(t, { manifest: true });
-    await p.dev();
+    p.dev();
     for (const [name, type] of [
       ['icon.svg', 'image/svg+xml'],
       ['favicon.ico', 'image/x-icon'],
-      ['icon-256.png', 'image/png'],
+      ['icon-48.png', 'image/png'],
       ['site.webmanifest', 'application/manifest+json'],
     ]) {
       const get = await p.request('/blog/' + name),
@@ -190,29 +203,31 @@ describe('Astro development assets', () => {
 
   it('does not shadow a foreign public icon or change it, even when added after startup', async (t) => {
     const p = await project(t);
-    await p.dev();
+    p.dev();
     mkdirSync(p.pub);
     writeFileSync(join(p.pub, 'favicon.ico'), 'user icon');
     assert.equal((await p.request('/blog/favicon.ico')).status, 404);
     assert.equal(readFileSync(join(p.pub, 'favicon.ico'), 'utf8'), 'user icon');
-    assert.equal(existsSync(p.stamp), false);
-    assert.equal((await p.request('/blog/icon-256.png')).status, 200);
+    assert.equal((await p.request('/blog/icon-48.png')).status, 200);
   });
 
-  it('warns on an initial conflict and leaves dev requests to the host', async (t) => {
+  it('warns on an initial conflict and leaves that file to the host', async (t) => {
     const p = await project(t);
     mkdirSync(p.pub);
     writeFileSync(join(p.pub, 'favicon.ico'), 'foreign icon');
-    await p.dev();
-    assert.ok(p.logs.some(([level, message]) => level === 'warn' && /ownership|differs/.test(message)));
+    p.dev();
     assert.equal((await p.request('/blog/favicon.ico')).status, 404);
-    assert.equal((await p.request('/blog/icon-256.png')).status, 404);
+    assert.ok(
+      p.logs.some(([level, message]) => level === 'warn' && /is not the file favseed builds/.test(message)),
+      JSON.stringify(p.logs),
+    );
+    assert.equal((await p.request('/blog/icon-48.png')).status, 200);
     assert.deepEqual(snapshot(p.pub), [['favicon.ico', Buffer.from('foreign icon')]]);
   });
 
   it('does not shadow a broken public symlink added after startup', async (t) => {
     const p = await project(t);
-    await p.dev();
+    p.dev();
     mkdirSync(p.pub);
     try {
       symlinkSync(join(p.root, 'missing.ico'), join(p.pub, 'favicon.ico'), 'file');
@@ -226,40 +241,20 @@ describe('Astro development assets', () => {
     assert.equal((await p.request('/blog/favicon.ico')).status, 404);
   });
 
-  it('dev:skip builds and serves nothing, and a failed dev build leaves the host usable', async (t) => {
-    for (const options of [{ dev: 'skip' }, { input: 'missing.svg' }]) {
-      const p = await project(t, options);
-      await p.dev();
-      assert.equal((await p.request('/blog/favicon.ico')).status, 404);
-      assert.equal(existsSync(p.pub), false);
-      assert.equal(existsSync(p.stamp), false);
-      assert.equal(existsSync(p.cache), false);
-      if (options.input) assert.ok(p.logs.some(([level]) => level === 'warn'));
-    }
-  });
-
-  it('publishes only the configured production set after dev and still reuses that cache', async (t) => {
-    const p = await project(t, { manifest: true });
-    await p.dev();
-    await p.build();
-    assert.deepEqual(readdirSync(p.pub).sort(), [
-      'apple-touch-icon.png',
-      'favicon.ico',
-      'icon-48.png',
-      'icon.svg',
-      'site.webmanifest',
-    ]);
-    assert.equal(JSON.parse(readFileSync(p.stamp, 'utf8'))['icon-256.png'], undefined);
-    const before = snapshot(p.pub);
-    await p.build();
-    assert.ok(p.logs.some(([, message]) => message.startsWith('cache hit')));
-    assert.deepEqual(snapshot(p.pub), before);
+  it('rejects the removed dev option, and a failed dev build leaves the host usable', async (t) => {
+    assert.throws(() => favseed({ dev: 'skip' }), /unknown option 'dev'/);
+    const p = await project(t, { input: 'missing.svg' });
+    p.dev();
+    assert.equal((await p.request('/blog/favicon.ico')).status, 404);
+    assert.equal(existsSync(p.pub), false);
+    assert.equal(existsSync(p.cache), false);
+    assert.ok(p.logs.some(([level]) => level === 'warn'));
   });
 
   it('warns with configuration advice for an invalid SVG while leaving dev requests to the host', async (t) => {
     const p = await project(t);
     copyFileSync(fixture('unresolved'), join(p.root, 'logo.svg'));
-    await p.dev();
+    p.dev();
     assert.equal((await p.request('/blog/favicon.ico')).status, 404);
     assert.ok(
       p.logs.some(([level, message]) => level === 'warn' && /var\(--brand\)/.test(message) && /vars:/.test(message)),

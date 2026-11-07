@@ -51,7 +51,6 @@ const icons: ManifestIcon[] = favseedIcons({ sizes: [192, 512], bg: null, base: 
 const options: FavseedOptions = {
   input: 'src/logo.svg',
   head: true,
-  dev: 'full',
   quality: 80,
   bg: 'none',
   sizes: [48],

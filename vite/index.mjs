@@ -1,12 +1,12 @@
 // favseed/vite: the favicon set as a Vite plugin. In dev it is built on the first request for
 // an icon and served from memory; in a build it is emitted at the output root. Nothing is
 // written to public/, and a file there with a name favseed emits is never shadowed.
-import { existsSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
-import { normaliseOptions, resolveOptions } from '../lib/config.mjs';
+import { configurationError, normaliseOptions, resolveOptions } from '../lib/config.mjs';
 import { declaresIcon, DEFAULT_BG, manifestIcons, manifestPurpose } from '../lib/core.mjs';
 import { cacheKey, favseedVersion, pruneCache, readSlot, writeSlot } from './cache.mjs';
 
@@ -24,7 +24,9 @@ const VIRTUAL = 'virtual:favseed';
 const RESOLVED = '\0virtual:favseed';
 const PWA = 'vite-plugin-pwa';
 const TYPES = { ico: 'image/x-icon', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json' };
-const message = (e) => (e instanceof FavseedError ? `favseed: ${e.message}` : String(e?.message ?? e));
+// Options are an object here, so an error names `vars`, not the CLI's `--var`.
+const message = (e) =>
+  e instanceof FavseedError ? `favseed: ${configurationError(e).message}` : String(e?.message ?? e);
 
 /**
  * Only a real build's client environment emits. Astro also runs a `client` environment in
@@ -113,19 +115,38 @@ export default function favseed(options = {}) {
         throw new FavseedError(`no such file: ${merged.input}`);
       });
       const key = cacheKey({ version: favseedVersion(), source, options: merged, engine: engineVersions() });
+      // Pruned on a hit too: it marks the slot as used, so the eight kept are the most recently
+      // used rather than the most recently built.
+      const prune = () =>
+        pruneCache(cacheDir, key).catch((e) => warnOnce(`favseed: could not prune the icon cache: ${e.message}`));
       const hit = await readSlot(cacheDir, key);
-      if (hit) return hit;
+      if (hit) {
+        await prune();
+        return hit;
+      }
       const fresh = await buildFiles({ ...merged, onWarn: (m) => warnOnce(`favseed: ${m}`) });
       await writeSlot(cacheDir, key, fresh.files);
-      await pruneCache(cacheDir, key).catch((e) => warnOnce(`favseed: could not prune the icon cache: ${e.message}`));
+      await prune();
       return fresh.files;
     })());
 
-  /** True when public/ holds a different file under a name favseed emits. */
+  /**
+   * True when public/ holds anything but favseed's bytes under a name favseed emits: a
+   * different file, a directory, or a broken symlink, which existsSync reports as absent.
+   */
   const clash = (f) => {
     if (!publicDir) return false;
     const p = join(publicDir, f.name);
-    return existsSync(p) && !Buffer.from(f.bytes).equals(readFileSync(p));
+    try {
+      lstatSync(p);
+    } catch {
+      return false;
+    }
+    try {
+      return !Buffer.from(f.bytes).equals(readFileSync(p));
+    } catch {
+      return true;
+    }
   };
 
   return {

@@ -83,19 +83,36 @@ describe('lazy build dependencies', () => {
     );
   });
 
-  it('loads Astro configuration, sync, preview and dev:skip without the Node build module', async () => {
+  it('loads Astro configuration, sync and preview without the Node build module', async () => {
     await probe(
       guard(true) +
         `
       const { default: favseed } = await import(${JSON.stringify(ASTRO)});
       const root = new URL(${JSON.stringify(new URL('../unused/', import.meta.url).href)});
-      for (const command of ['sync', 'preview', 'dev', 'build']) {
-        const integration = favseed({dev:'skip'});
-        integration.hooks['astro:config:setup']({command,
+      for (const command of ['sync', 'preview']) {
+        const integration = favseed();
+        await integration.hooks['astro:config:setup']({command,
           config:{root,publicDir:new URL('public/',root),base:'/blog'},
           addWatchFile(){},addMiddleware(){},updateConfig(){},logger:{info(){}}
         });
-        await integration.hooks['astro:server:setup']({logger:{warn(){}}});
+      }
+    `,
+    );
+  });
+
+  it('registers the Vite plugin for dev and build without loading build engines', async () => {
+    await probe(
+      guard() +
+        `
+      const { default: favseed } = await import(${JSON.stringify(ASTRO)});
+      const root = new URL(${JSON.stringify(new URL('../unused/', import.meta.url).href)});
+      for (const command of ['dev', 'build']) {
+        const configs = [];
+        await favseed().hooks['astro:config:setup']({command,
+          config:{root,publicDir:new URL('public/',root),base:'/blog'},
+          addWatchFile(){},addMiddleware(){},updateConfig:(c)=>configs.push(c),logger:{info(){}}
+        });
+        assert.ok(configs.flatMap((c) => c.vite?.plugins ?? []).some((p) => p.name === 'favseed'), command);
       }
     `,
     );
@@ -172,12 +189,12 @@ describe('lazy build dependencies', () => {
     `);
   });
 
-  it('validates Astro configuration before sync, preview or skipped dev without loading build engines', async () => {
+  it('validates Astro configuration before sync or preview without loading build engines', async () => {
     await probe(
       guard(true) +
         `
       const {default:favseed} = await import(${JSON.stringify(ASTRO)});
-      for (const options of [{imput:'logo.svg'}, {dev:'fast',sizes:[33]}, {dev:'skip',quality:0}, {mode:'slow'}]) {
+      for (const options of [{imput:'logo.svg'}, {sizes:[33]}, {quality:0}, {dev:'fast'}, {mode:'slow'}]) {
         assert.throws(() => favseed(options), /favseed:/);
       }
       const root = new URL('../', ${JSON.stringify(ASTRO)});
