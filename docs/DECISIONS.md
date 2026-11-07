@@ -394,9 +394,12 @@ gate able to tell the two apart. Sharing the code is the lesser evil by a wide m
 
 **Three seams make it work, and each is a parameter rather than a bundler trick:**
 
-- **svgo is injected.** `createSvgStage({ optimize })` takes Node's svgo from the CLI and
-  `svgo/browser` from the website. Both export `optimize`, so the plugin list is one list. No
-  aliasing, no conditional exports, nothing to misconfigure without an error.
+- **svgo is injected.** `createSvgStage({ optimize })` takes whichever svgo build the caller
+  already has loaded: the synchronous `optimiseSvg` helper on the package root loads Node's
+  `svgo` (`bin/favseed.mjs`:95-97), while `build()` loads the self-contained `svgo/browser`
+  bundle instead, on both the CLI and the website (`bin/favseed.mjs`:181-183), to avoid pulling
+  in svgo's Node dependency tree on a first build. Both export `optimize`, so the plugin list
+  is one list. No aliasing, no conditional exports, nothing to misconfigure without an error.
 - **The engine is injected.** `createEngine({ image, zopfli, inflate })` takes the native
   `@napi-rs/image` and `node:zlib` in Node, and its WASM build and `DecompressionStream` in the
   page. Both get the same `lib/zopfli.wasm`.
@@ -604,8 +607,8 @@ removes that reason, so the question was measured again before any worker pool w
 
 `node bench/bench.mjs parallel`: the five `general.svg` sizes (16, 32, 180, 192 and 512 px),
 encoded at 256 colours, then finished with zopfli at 120 iterations, once in turn and once with
-one worker thread per file. Three interleaved repetitions on a 16-core Ryzen 7 7840U, median
-shown:
+one worker thread per file. Three interleaved repetitions on an 8-core/16-thread Ryzen 7 7840U,
+median shown:
 
 | arm | when decided | `docs/BENCHMARKS.md`, 2026-11-07 |
 |---|---|---|

@@ -422,7 +422,7 @@ helpers for custom hosts; its declaration file describes callbacks and return va
 
 | Export | Contract |
 |---|---|
-| `createSvgStage({ optimize, builtinPlugins })` | Inject an SVGO-compatible implementation; returns `{ optimiseSvg }` with the same options/result as the root helper. |
+| `createSvgStage({ optimize })` | Inject an SVGO-compatible implementation; returns `{ optimiseSvg }` with the same options/result as the root helper. |
 | `normaliseVars(vars?)` | Returns a `Map<string, string>` with `--`-prefixed names and stringified values. |
 | `icoWrap(png, px)` | Returns `Uint8Array` ICO bytes for one square PNG. Checks that its dimensions match `px` in `1–256`. |
 | `maskableFit({ width, height, rgba })` | Measures the mark and returns `{ radius, scale, fullBleed }`; rejects an empty mark. RGBA data has four bytes per pixel. |
@@ -619,8 +619,8 @@ The short version, because these are the parts that look wrong until you know wh
 
 - **One engine, nothing to install.** `@napi-rs/image` bundles the resvg and oxipng versions
   favseed was measured with, and its renders match the resvg CLI pixel for pixel. Against the
-  native resvg, pngquant and oxipng pipeline the earlier engine comparison recorded encodes 9 % smaller on a gradient and
-  0.46 % larger on flat marks (decision 26).
+  native resvg, pngquant and oxipng pipeline, the earlier engine comparison found it 9 % smaller
+  on a gradient and 0.46 % larger across nine flat marks (decision 26).
 - **SVG rounding follows source accuracy.** Full builds keep one decimal when it passes a
   1% pixel-error check at 512px, trying higher precision only when needed. The comparison uses
   the static base appearance over black and white, before PNG quantization. If no candidate

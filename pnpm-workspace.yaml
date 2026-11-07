@@ -11,5 +11,9 @@ packages:
 allowBuilds:
   sharp: false
 
+# `pnpm add -D -E -w` refuses to install a package published more recently than the workspace's
+# minimum release age; knip 6.44.2 was too new for that guard when it was pinned (2026-11-07) and
+# needed this exclusion to install at all. Drop the exclusion once knip 6.44.2 clears the age
+# check on its own — it is the exclusion that is temporary, not the pin.
 minimumReleaseAgeExclude:
   - knip@6.44.2

@@ -165,7 +165,7 @@ export async function icoSizeSweep(out) {
       warmupRepetition: 0,
       arms,
       nonIcoFilesByteIdentical: true,
-      note: 'Alternating native full in-memory builds at quality80, default no Zopfli, manifest enabled. Warmup repetition0 excluded; median of two whole-corpus totals. Includes SVG validation, placement, render and encoding; excludes imports, source reads, independent references, post-build scoring and file writes. ICO source error against unoptimized source at its own resolution; encoding error against raw selected-SVG pixels. All non-ICO files asserted byte-identical across arms; all files deterministic across repetitions. No browser timing, downsampling quality or all-size 1% guarantee.',
+      note: 'Alternating Node (native addon) full in-memory builds at quality 80, default no Zopfli, manifest enabled. Warmup repetition 0 excluded; median of two whole-corpus totals. Includes SVG validation, placement, render and encoding; excludes imports, source reads, independent references, post-build scoring and file writes. ICO source error against unoptimized source at its own resolution; encoding error against raw selected-SVG pixels. All non-ICO files asserted byte-identical across arms; all files deterministic across repetitions. No browser timing, downsampling quality or all-size 1% guarantee.',
     },
     summaries,
     rows,
@@ -175,6 +175,6 @@ export async function icoSizeSweep(out) {
     title: 'Single 48px ICO fallback',
     note: data.metadata.note,
     text: JSON.stringify(summaries, null, 2),
-    summary: 'All non-ICO files unchanged across20 fixtures; raw data and files: bench/out/ico-size/.',
+    summary: 'All non-ICO files unchanged across 20 fixtures; raw data and files: bench/out/ico-size/.',
   };
 }

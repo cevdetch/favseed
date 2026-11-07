@@ -199,7 +199,7 @@ export async function framingSweep(out) {
       icoSizes: { before: 32, current: ICO_SIZE },
       comparisonScope:
         'Whole pipelines: current also includes the subsequent ICO-size change; not an isolated framing effect.',
-      note: 'Rotated native full in-memory builds; warmup excluded. Timed optimization, runtime validation, placement and encoding; excluded imports, input reads, independent grading references, post-build scoring and file writes. Default quality80, no Zopfli. Literal square goldens for non-square sources; independent source placement for PNGs; ICO separately reported. Previous percent-source build fails and is excluded from paired totals. No browser timing or peak-memory claim.',
+      note: 'Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimization, runtime validation, placement and encoding; excluded imports, input reads, independent grading references, post-build scoring and file writes. Default quality 80, no Zopfli. Literal square goldens for non-square sources; independent source placement for PNGs; ICO separately reported. Previous percent-source build fails and is excluded from paired totals. No browser timing or peak-memory claim.',
     },
     summaries,
     rows,

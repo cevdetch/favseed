@@ -16,8 +16,8 @@ that escape those locations are rejected. Replace the illustrative `/saved`, `/f
 `lib/zopfli.wasm` compiles the exact Google Zopfli source used by `@gfx/zopfli` 1.0.15,
 revision `ae43a8b73827577c4b19b005b6eed81f5cf9bbac`. Both hosts instantiate this asset
 through `lib/zopfli.mjs`. The original package is a development-only byte comparator.
-`engineVersions()['@gfx/zopfli']` retains its public key and includes the rebuilt WASM's
-SHA-256, so integration caches distinguish compiler builds. The rebuild retains Zopfli's
+`engineVersions()`'s `zopfli` key includes the rebuilt WASM's SHA-256, so integration
+caches distinguish compiler builds. The rebuild retains Zopfli's
 iteration/block settings; the later lossless palette pass changes PNG bytes separately.
 
 Rebuild with Clang/wasm-ld 23.1.4 on PATH and these archives:

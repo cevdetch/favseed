@@ -88,7 +88,10 @@ pnpm install                   # the whole setup: the root and site/, one worksp
 Two optional tools turn on more checks. `resvg` on PATH runs the render-fidelity test, which
 holds the engine to the resvg CLI pixel for pixel. `icotool` (from `icoutils`) runs the test
 asserting favseed's 22-byte ICO writer is byte-identical to `icotool -c -r`. `bench/` needs
-nothing beyond `pnpm install`.
+nothing beyond `pnpm install` to run its ordinary sweeps, but the precision, framing, ico-size
+and placement sweeps read pinned commits with `git show` and need a checkout with full history,
+and rebuilding `lib/zopfli.wasm` or the browser-compatibility WASM needs clang and rustc
+respectively (see `bench/zopfli/README.md` and `bench/browser-compat/build.mjs`).
 
 ## Definition of done
 
@@ -202,6 +205,6 @@ Set the version in `package.json`, push a `v*` tag, and `release.yml` tests, pac
 the tarball on npm; the maintainer approves it there with 2FA. [RELEASING.md](RELEASING.md) has
 the whole sequence, including the one-time setup and the hand-published first version.
 
-Byte-output changes (a bumped `@napi-rs/image` or `@gfx/zopfli`, or any pipeline change) are
-**minor at minimum, never patch**. Downstream users diff these files into git, and a patch
-release that rewrites six binaries is a nasty surprise in a review.
+Byte-output changes (a bumped `@napi-rs/image` or SVGO, a rebuilt `lib/zopfli.wasm`, or any
+pipeline change) are **minor at minimum, never patch**. Downstream users diff these files into
+git, and a patch release that rewrites six binaries is a nasty surprise in a review.
