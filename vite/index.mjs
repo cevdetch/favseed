@@ -146,7 +146,9 @@ export default function favseed(options = {}) {
       // Registered here, not returned: as a post hook, public/ and a framework's router
       // answer first.
       server.middlewares.use(async (req, res, next) => {
-        const path = (req.url ?? '').split('?')[0];
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        // Astro strips its base from req.url before later middleware; Connect keeps the original.
+        const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
         if (!path.startsWith(base)) return next();
         const name = path.slice(base.length);
         let files;
@@ -165,8 +167,9 @@ export default function favseed(options = {}) {
           return next();
         }
         res.setHeader('Content-Type', TYPES[name.split('.').pop()]);
+        res.setHeader('Content-Length', f.bytes.byteLength);
         res.setHeader('Cache-Control', 'no-cache');
-        res.end(Buffer.from(f.bytes));
+        res.end(req.method === 'HEAD' ? undefined : Buffer.from(f.bytes));
       });
 
       // The mark and the config file can sit outside the module graph, and outside the root.

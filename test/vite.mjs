@@ -451,6 +451,26 @@ describe('favseed/vite in dev', () => {
     }
   });
 
+  it('answers HEAD with the GET length and no body, and passes other methods on', async () => {
+    const root = app();
+    const { server, url } = await serve(root, [favseed({ sizes: [32], bg: '#000000' })], { base: '/blog/' });
+    try {
+      const get = await fetch(url('/blog/favicon.ico'));
+      assert.equal(get.status, 200);
+      const body = Buffer.from(await get.arrayBuffer());
+      const head = await fetch(url('/blog/favicon.ico'), { method: 'HEAD' });
+      assert.equal(head.status, 200);
+      assert.equal(head.headers.get('content-type'), 'image/x-icon');
+      assert.equal(Number(head.headers.get('content-length')), body.length);
+      assert.equal((await head.arrayBuffer()).byteLength, 0);
+      const post = await fetch(url('/blog/favicon.ico'), { method: 'POST' });
+      const posted = Buffer.from(await post.arrayBuffer());
+      assert.ok(post.status !== 200 || !posted.equals(body), `POST answered ${post.status} with the icon`);
+    } finally {
+      await server.close();
+    }
+  });
+
   it('serves the public/ file and warns when it differs', async () => {
     warnings.length = 0;
     const root = app({ 'public/favicon.ico': 'mine' });
