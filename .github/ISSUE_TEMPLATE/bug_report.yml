@@ -15,11 +15,44 @@ body:
         $ npx favseed logo.svg --out public
         ...
     validations: { required: true }
+  - type: dropdown
+    id: failure
+    attributes:
+      label: What kind of problem is this?
+      options:
+        - Build or command failed
+        - Generated files are missing or incorrect
+        - Configuration or integration problem
+        - Browser or site problem
+        - Performance problem
+        - Other
+    validations: { required: true }
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where are you using favseed?
+      options:
+        - CLI
+        - Astro integration
+        - Vite plugin
+        - Browser site
+        - Other
+    validations: { required: true }
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and architecture
+      description: For example, Ubuntu 24.04 x64, macOS 15 arm64, or Windows 11 x64.
+      placeholder: OS and architecture
+    validations: { required: true }
   - type: textarea
     id: versions
     attributes:
       label: Versions
-      description: "Please paste the output of: `favseed -V && node -v` (favseed -V includes the engine versions)"
+      description: >
+        For CLI use, paste `favseed -V && node -v`. For Astro or Vite, include their versions.
+        For the browser site, include browser and version, device, and whether it was live,
+        a preview, or localhost.
       render: shell
     validations: { required: true }
   - type: textarea
