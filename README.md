@@ -564,7 +564,8 @@ favseed({
 
 Options are validated when the integration is created, including for `sync` and `preview`.
 Typos, unsupported options and invalid build values fail before generation. Set paths with
-Astro's `base` and `publicDir`, rather than passing `base` or `out` to Favseed.
+Astro's `base` and build output (`outDir`, `build.client`), rather than passing `base` or `out` to
+Favseed.
 Checks that need the renderer, such as background opacity or unresolved SVG variables, still
 run during generation. They warn in development and fail production builds, with advice using
 `bg`, `vars` and `animation: false` configuration syntax.
@@ -604,8 +605,7 @@ through unchanged; use the component or manual tags for those pages.
 want favseed's icons, and remove their old `<link rel="icon">` tags from your layout or pages.
 Existing icon declarations make automatic injection skip the page. If you keep manual tags,
 update them to favseed's generated URLs and choose `head: 'component'` or `head: false` as
-appropriate. Earlier releases of the integration wrote their icons into `public/`; delete
-those copies too, since a `public/` file with different bytes now fails the build.
+appropriate.
 
 ## How it decides
 
