@@ -134,33 +134,41 @@ display sizes.
 
 `engine.encode` builds both from the same raw render, `pngQuantize` and `losslessCompressPng`,
 and keeps the smaller; a tie keeps the quantised one (`lib/engine.mjs`). The guard is not inert:
-the last native benchmark had the lossless path winning 7 of 50 files at 256 colours, and
-keeping the smaller saved 0.29 % over always quantising (`docs/BENCHMARKS.md` as of
-2026-10-04). Without it, raising `--colors` or lowering `--quality` can produce *larger* files,
-and nothing reports it: quality is not monotonic in size (quality 99 and 95 produced 75 838 and
-74 610 PNG bytes against 73 938 at 100, [bench/zopfli/QUALITY.md](../bench/zopfli/QUALITY.md)).
+the last native benchmark, over 50 files at 256 colours, had the undithered quantisation winning
+42, a Floyd-Steinberg one 1 and the lossless path 7, and keeping the smallest of those three
+candidates saved 0.29 % against always taking the undithered one (`docs/BENCHMARKS.md` as of
+2026-10-04). Without it, raising `--colors` produces *larger* files and nothing reports it:
+measured on `gradient.svg` in that pipeline, the lossless path won at 16 px from 128 colours and
+at 16 and 32 px at 256, because pngquant's palette overhead exceeded what oxipng's own colour
+reduction achieved on a small image.
+
+The guard has a limit, and it is stated rather than papered over: quality is not monotonic in
+size even with it in place. On the production path, quality 99 and 95 produced 75 838 and
+74 610 PNG bytes against 73 938 at 100 ([bench/zopfli/QUALITY.md](../bench/zopfli/QUALITY.md)).
 The guard does not add a second encode to force monotonicity; it only refuses the larger of the
 two it already has.
 
 The hardcoded ICO `wBitCount = 32` (decision 9) is proved right for a truecolour payload by a
-unit test that wraps a synthetic RGBA PNG and, wherever icotool is installed, compares the
-result with `icotool -c -r`: at quality 80 and 100 the gradient fixture's ICO payload is now
-indexed.
+unit test with a synthetic RGBA payload, compared with `icotool -c -r` wherever icotool is
+installed. The gradient fixture can no longer prove it, because its ICO payload is now indexed
+at quality 80 and 100.
 
 ### 8. Zopfli is opt-in, and runs once, on the winner of that comparison
 
 `--zopfli` (`zopfli: true`) re-deflates the encode's winner with Zopfli: 120 iterations in
 `mode: 'release'`, 15 in `mode: 'fast'` (`lib/config.mjs`). Without it, both modes produce the
 same bytes. Finishing only the winner is what decision 7's comparison buys: Zopfli-ing both
-paths tripled the cost for zero extra bytes in the native pipeline. The finish keeps the
-encode's row filters and every other chunk, and is dropped when it is not smaller. The order is
+paths tripled the cost for zero extra bytes in the native pipeline. Apart from the
+palette pass below, the finish keeps the encode's row filters and every other chunk, and it is
+dropped when it is not smaller. The order is
 the one decision 6 measured: the quantiser re-encodes from scratch, so nothing that recompresses
 can run before it.
 
 **Off by default, because the trade is lopsided.** Measured over tiles, general, heavy and
 gradient ([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)): the old default (120
-iterations) took 59.610 s and wrote 39 266 PNG/ICO bytes; the current default takes 0.903 s and
-writes 40 449, **66.0× faster for 1 183 B (3.0 %)**, with every decoded pixel unchanged. Under
+iterations) took 59.610 s and wrote 39 266 PNG/ICO bytes; the Zopfli-off default that replaced
+it, then still at quality 100, took 0.903 s and wrote 40 449, **66.0× faster for 1 183 B
+(3.0 %)**, with every decoded pixel unchanged. Under
 the priority rule that is a byte cost for build time, so it is stated here and kept one flag
 away.
 
@@ -474,10 +482,11 @@ ICO equivalence test runs rather than skips.
 Decision 19 shipped 8 colours as a stated trade: smaller than 16, and outside the 1.0 %
 accuracy bar on anti-aliased marks. Two things made that the wrong trade.
 
-**8 is not a mild miss on every mark.** On a gradient it is a broken one: 27–28 % of pixels
-off by a visible margin at every size, and favseed's own benchmark excluded the gradient from
-its worst-case line as "meant to be bad". A favicon generator that wrecks a common kind of mark
-by default, and says so only in a benchmark, is not making a trade users can see.
+**8 is not a mild miss on every mark.** On a gradient it is a broken one: in the run this
+decision was taken on, 27–28 % of pixels were off by a visible margin at every size, and
+favseed's own benchmark excluded the gradient from its worst-case line as "meant to be bad". A
+favicon generator that wrecks a common kind of mark by default, and says so only in a
+benchmark, is not making a trade users can see.
 
 **Matched against a competitor, 8 colours is where most of favseed's byte lead came from.**
 Measured 2026-10-01 against `@vite-pwa/assets-generator` 2.0.0 (sharp, `quality: 60`): fed the
@@ -659,7 +668,7 @@ into contention, not work. The engine's version of the question is decision 27.
 
 ### 15. External binaries: `resvg` and `oxipng` are documented installs; `pngquant-bin` is an `optionalDependency`
 
-Superseded by decision 26: favseed ships and spawns no binaries. No npm package could deliver
+Superseded by decision 26: favseed spawns no external tools. No npm package could deliver
 resvg or oxipng at the measured versions: `resvg-cli` used `--fit-width`, not `-w`, and pinned
 resvg 0.34; `oxipng` on npm was 1.0.1 from 2021 (oxipng 4.0.3) and `oxipng-bin` wrapped 8.0.0,
 and **neither had `--zi`**, so wiring them up would have produced larger files with no error.
