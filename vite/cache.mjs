@@ -3,7 +3,7 @@
 // a half-populated slot that later reads as a hit.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { resolveQuality } from '../lib/config.mjs';
@@ -103,20 +103,52 @@ export const readCachedSet = async (slot, index) => {
 /** The slot's files, or null on a miss. */
 export const readSlot = (cacheDir, key) => readCachedSet(join(cacheDir, key));
 
-/** Writes the files whole or not at all; Astro supplies hashes for safe cache pruning. */
-export const writeSlot = async (cacheDir, key, files, hashes) => {
+/** Writes the files whole or not at all, with their hashes so pruning can trust the slot. */
+export const writeSlot = async (cacheDir, key, files) => {
   await mkdir(cacheDir, { recursive: true });
   const staging = await mkdtemp(join(cacheDir, '.tmp-'));
   try {
     for (const f of files) await writeFile(join(staging, f.name), f.bytes);
-    await writeFile(
-      join(staging, 'index.json'),
-      JSON.stringify({ files: files.map((f) => f.name), ...(hashes ? { hashes } : {}) }),
-    );
+    const hashes = Object.fromEntries(files.map((f) => [f.name, sha256(f.bytes)]));
+    await writeFile(join(staging, 'index.json'), JSON.stringify({ files: files.map((f) => f.name), hashes }));
     const slot = join(cacheDir, key);
     await rm(slot, { recursive: true, force: true });
     await rename(staging, slot);
   } finally {
     await rm(staging, { recursive: true, force: true });
   }
+};
+
+/**
+ * Keep the current set and the seven most recently used other complete sets. Only slots whose
+ * index names every file with a matching hash are candidates: staging directories, legacy
+ * slots and anything a user put in the cache directory are not cache trash.
+ */
+export const pruneCache = async (cacheDir, currentKey) => {
+  const candidates = [];
+  for (const entry of await readdir(cacheDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
+    const slot = join(cacheDir, entry.name),
+      index = await cacheIndex(slot);
+    if (!index?.managed) continue;
+    const files = await readCachedSet(slot, index);
+    if (!files || !files.every((file) => sha256(file.bytes) === index.hashes[file.name])) continue;
+    let used = index.info.mtimeMs;
+    if (entry.name === currentKey) {
+      const now = new Date();
+      try {
+        await utimes(slot, now, now);
+        used = now.getTime();
+      } catch (error) {
+        if (error.code === 'ENOENT') continue;
+        throw error;
+      }
+    }
+    candidates.push({ key: entry.name, used });
+  }
+  candidates.sort(
+    (a, b) =>
+      Number(b.key === currentKey) - Number(a.key === currentKey) || b.used - a.used || a.key.localeCompare(b.key),
+  );
+  for (const { key } of candidates.slice(8)) await rm(join(cacheDir, key), { recursive: true, force: true });
 };

@@ -20,8 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { FavseedError, linkTags } from '../lib/core.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
-import { cacheKey, favseedVersion, writeSlot } from '../vite/cache.mjs';
-import { generatedAsset, pruneCache, readCachedSet } from './cache.mjs';
+import { cacheKey, favseedVersion, generatedAsset, pruneCache, readCachedSet, writeSlot } from '../vite/cache.mjs';
 import { configurationError, validateOptions } from './options.mjs';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
@@ -163,7 +162,7 @@ export default function favseed(options = {}) {
         throw configurationError(error);
       },
     );
-    await writeSlot(state.cacheDir, key, files, Object.fromEntries(files.map((f) => [f.name, sha256(f.bytes)])));
+    await writeSlot(state.cacheDir, key, files);
     return { files, key };
   };
 

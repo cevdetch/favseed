@@ -1140,7 +1140,6 @@ describe('the published tarball', () => {
         'README.md',
         'package.json',
         'astro/Head.astro',
-        'astro/cache.mjs',
         'astro/index.d.ts',
         'astro/index.mjs',
         'astro/middleware.mjs',

@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
 import { normaliseOptions, resolveOptions } from '../lib/config.mjs';
 import { declaresIcon, DEFAULT_BG, manifestIcons, manifestPurpose } from '../lib/core.mjs';
-import { cacheKey, favseedVersion, readSlot, writeSlot } from './cache.mjs';
+import { cacheKey, favseedVersion, pruneCache, readSlot, writeSlot } from './cache.mjs';
 
 /**
  * The icon entries favseed's manifest would list, for vite-plugin-pwa's `manifest.icons`.
@@ -117,6 +117,7 @@ export default function favseed(options = {}) {
       if (hit) return hit;
       const fresh = await buildFiles({ ...merged, onWarn: (m) => warnOnce(`favseed: ${m}`) });
       await writeSlot(cacheDir, key, fresh.files);
+      await pruneCache(cacheDir, key).catch((e) => warnOnce(`favseed: could not prune the icon cache: ${e.message}`));
       return fresh.files;
     })());
 
