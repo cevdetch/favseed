@@ -609,8 +609,8 @@ appropriate.
 
 ## How it decides
 
-Every step was chosen by measurement. Earlier decisions are in
-**[docs/DECISIONS.md](https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md)** and the native-reference sweeps in
+Every step was chosen by measurement. The decisions in force, and the ones they replaced, are in
+**[docs/DECISIONS.md](https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md)** and the reproducible sweeps in
 **[docs/BENCHMARKS.md](https://github.com/cevdetch/favseed/blob/main/docs/BENCHMARKS.md)**.
 Current raster proportions, byte and timing results are in the [framing report](https://github.com/cevdetch/favseed/blob/main/bench/framing/README.md).
 The [precision report](https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md) records the SVG rounding policy and matched Vite PWA comparison.
