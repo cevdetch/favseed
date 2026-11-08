@@ -197,9 +197,10 @@ export async function buildFiles(options = {}) {
 
 /**
  * Build the set. Throws FavseedError with a finished message; never exits, never writes to
- * stdout. Returns { files, bytes, animated, fit, links }, where `fit` is
+ * stdout. Returns { files, bytes, animated, fit, quality, links }, where `fit` is
  * { apple, icons: { [size]: fit } } (how the mark was placed in each masked icon), and
- * `icons[s]` is null under --bg none, when that size is transparent and unpadded.
+ * `icons[s]` is null under --bg none, when that size is transparent and unpadded. `quality`
+ * holds each raster's chosen setting and its accuracy-bar measurement.
  */
 export async function build(options = {}) {
   const o = normalise(options);
@@ -285,7 +286,15 @@ const publishSet = (set, out) => {
       throw error;
     }
     const bytes = Object.fromEntries(set.files.map((f) => [f.name, f.bytes.length]));
-    result = { files, bytes, animated: set.animated, fit: set.fit, dir: outDir, links: set.links };
+    result = {
+      files,
+      bytes,
+      animated: set.animated,
+      fit: set.fit,
+      quality: set.quality,
+      dir: outDir,
+      links: set.links,
+    };
   } catch (e) {
     failure = e;
   } finally {

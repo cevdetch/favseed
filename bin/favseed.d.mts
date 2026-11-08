@@ -23,6 +23,16 @@ export interface BuildOptions extends FavseedConfig {
   onWarn?: (message: string) => void;
 }
 
+/** How one raster was encoded, and how it scored against the accuracy bar. */
+export interface RasterQuality {
+  setting: { quality: number; colors: number };
+  /** Share of pixels off by more than 8/255, worse of the black and white composites. */
+  pct: number | null;
+  /** Edge-weighted luma error, worse of the two composites. */
+  edge: number | null;
+  pass: boolean | null;
+}
+
 export interface BuildResult {
   /** File names, in the order they were written. */
   files: string[];
@@ -32,6 +42,12 @@ export interface BuildResult {
   animated: boolean;
   /** Placement per padded icon; an icon is `null` under `bg: null`. */
   fit: { apple: Placement; icons: Record<number, Placement | null> };
+  /**
+   * Per raster file (favicon.ico, apple-touch-icon.png, icon-<size>.png): the encode setting
+   * chosen and its accuracy-bar measurement. `pct`, `edge` and `pass` are `null` when the
+   * build had no reason to gate (effort 'fast' with no pinned setting).
+   */
+  quality: Record<string, RasterQuality>;
   /** The output directory, resolved. */
   dir: string;
   /** The `<link>` block, with `base` applied. */
@@ -46,6 +62,7 @@ export interface BuildFilesResult {
   files: { name: string; bytes: Uint8Array }[];
   animated: BuildResult['animated'];
   fit: BuildResult['fit'];
+  quality: BuildResult['quality'];
   links: BuildResult['links'];
 }
 

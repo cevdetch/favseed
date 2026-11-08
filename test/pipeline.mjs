@@ -8,13 +8,18 @@ import { normaliseOptions } from '../lib/config.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
 import { maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
 import { decode, header } from './lib/png.mjs';
-import { score } from './lib/accuracy.mjs';
+import { reference as suiteReference, score } from './lib/accuracy.mjs';
+import { passesBar } from '../lib/quality.mjs';
 import { gridSvg } from './fixtures/small-grid.gen.mjs';
 import { framingCases } from './lib/framing.mjs';
 
 const read = (n) => readFileSync(new URL(`./fixtures/${n}.svg`, import.meta.url), 'utf8');
 const engine = await loadEngine();
-const opts = ({ iterations = 0, ...extra } = {}) => ({ ...normaliseOptions({ sizes: [32], ...extra }), iterations });
+const opts = ({ iterations = 0, effort, ...extra } = {}) => ({
+  ...normaliseOptions({ sizes: [32], ...extra }),
+  iterations,
+  ...(effort === undefined ? {} : { effort }),
+});
 const run = (name, extra) => buildSet(read(name), opts(extra), { engine, optimiseSvg, name: `${name}.svg` });
 const rendered = async (svg) => {
   const { width, height, rgba } = await engine.renderRgba(svg, 512);
@@ -356,5 +361,142 @@ describe('buildSet', () => {
     // The calibrated PR30 build uses59 callbacks, including SVG validation.
     // Wrapping every oversized probe loses shared180/192px work and needs64.
     assert.ok(calls <= 59, `${calls} callbacks: shared placement renders were lost`);
+  });
+});
+
+const rgba = (img) => ({ width: img.width, height: img.height, rgba: img.data });
+const pngOf = (file) => Buffer.from(file.name.endsWith('.ico') ? file.bytes.subarray(22) : file.bytes);
+const rasters = (set) => set.files.filter((f) => /\.(png|ico)$/.test(f.name));
+// Every reference engine.search is handed, by the PNG it chose: finish() returns its input
+// unchanged at zero iterations, so the shipped bytes identify the search that made them.
+const recording = () => {
+  const seen = [];
+  return {
+    seen,
+    engine: {
+      ...engine,
+      search: async (raw, reference, options) => {
+        const result = await engine.search(raw, reference, options);
+        seen.push({ reference, options, png: Buffer.from(result.png) });
+        return result;
+      },
+    },
+  };
+};
+
+describe('raster search', () => {
+  it("renders no reference at effort 'fast' when nothing is pinned", async () => {
+    const { seen, engine: recorder } = recording();
+    let grounded = 0;
+    const counted = {
+      ...recorder,
+      renderRgba: (svg, px, bg) => {
+        if (bg !== undefined) grounded++;
+        return engine.renderRgba(svg, px, bg);
+      },
+    };
+    const set = await buildSet(read('general'), opts({ sizes: [192] }), { engine: counted, optimiseSvg });
+    assert.equal(grounded, 0, 'a reference was rendered for an ungated build');
+    assert.ok(seen.length > 0);
+    for (const { reference, options } of seen) {
+      assert.equal(reference, null);
+      assert.deepEqual(options, { effort: 'fast', pinned: null });
+    }
+    assert.deepEqual(Object.keys(set.quality), ['favicon.ico', 'apple-touch-icon.png', 'icon-192.png']);
+    for (const q of Object.values(set.quality)) {
+      assert.deepEqual(q, { setting: { quality: 80, colors: 256 }, pct: null, edge: null, pass: null });
+    }
+  });
+
+  for (const name of ['general', 'gradient', 'heavy', 'tiles']) {
+    it(`${name}: effort 'default' ships rasters inside the bar against the suite's own reference`, async () => {
+      const { seen, engine: recorder } = recording();
+      const fast = await run(name, { sizes: [192, 512] });
+      const set = await buildSet(read(name), opts({ sizes: [192, 512], effort: 'default' }), {
+        engine: recorder,
+        optimiseSvg,
+        name: `${name}.svg`,
+      });
+      for (const file of rasters(set)) {
+        const png = pngOf(file),
+          image = rgba(decode(png));
+        const searched = seen.find((s) => s.png.equals(png));
+        assert.ok(searched, `${name}/${file.name}: no search produced these bytes`);
+        // The pipeline's reference is a render of the job's own placement: it is the raster's
+        // size, and it scores nothing against itself.
+        const self = passesBar(searched.reference, searched.reference);
+        assert.deepEqual([self.pct, self.edge, self.pass], [0, 0, true], `${name}/${file.name}: reference`);
+        const own = passesBar(image, searched.reference);
+        assert.deepEqual(set.quality[file.name], {
+          setting: set.quality[file.name].setting,
+          pct: own.pct,
+          edge: own.edge,
+          pass: true,
+        });
+
+        const fitted = file.name !== 'favicon.ico';
+        const suite = rgba(
+          await suiteReference({
+            source: `test/fixtures/${name}.svg`,
+            px: image.width,
+            bg: fitted ? '#000000' : undefined,
+            vars: {},
+            fitted,
+          }),
+        );
+        const independent = passesBar(image, suite);
+        assert.ok(
+          independent.pass,
+          `${name}/${file.name}: pct ${independent.pct.toFixed(4)} %, edge ${independent.edge.toFixed(4)}`,
+        );
+        const before = rasters(fast).find((f) => f.name === file.name);
+        if (passesBar(rgba(decode(pngOf(before))), suite).pass) {
+          assert.ok(
+            file.bytes.length <= before.bytes.length,
+            `${name}/${file.name}: ${file.bytes.length} B against fast's ${before.bytes.length} B`,
+          );
+        }
+      }
+    });
+  }
+
+  it('warns once per file when a pinned setting misses the bar, and still builds', async () => {
+    const warnings = [];
+    const set = await buildSet(read('gradient'), opts({ sizes: [48, 192], bg: 'none', colors: 2 }), {
+      engine,
+      optimiseSvg,
+      warn: (message) => warnings.push(message),
+    });
+    const missed = Object.entries(set.quality).filter(([, q]) => q.pass === false);
+    assert.deepEqual(
+      missed.map(([file]) => file),
+      ['favicon.ico', 'apple-touch-icon.png', 'icon-48.png', 'icon-192.png'],
+    );
+    const misses = warnings.filter((w) => w.includes('misses the accuracy bar'));
+    assert.equal(misses.length, missed.length);
+    for (const [file, q] of missed) {
+      assert.deepEqual(q.setting, { quality: 100, colors: 2 });
+      assert.equal(misses.filter((w) => w.startsWith(`${file} `)).length, 1, file);
+      assert.ok(
+        misses.includes(
+          `${file} misses the accuracy bar at colors 2 (${q.pct.toFixed(2)} % of pixels off, edge error ${q.edge.toFixed(3)})`,
+        ),
+        file,
+      );
+    }
+  });
+
+  it('stays quiet when a pinned setting clears the bar', async () => {
+    const warnings = [];
+    const set = await buildSet(read('tiles'), opts({ quality: 90 }), {
+      engine,
+      optimiseSvg,
+      warn: (message) => warnings.push(message),
+    });
+    assert.deepEqual(warnings, []);
+    for (const q of Object.values(set.quality)) {
+      assert.deepEqual(q.setting, { quality: 90, colors: 256 });
+      assert.equal(q.pass, true);
+    }
   });
 });
