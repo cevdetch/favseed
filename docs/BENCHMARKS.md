@@ -25,7 +25,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "before-q80",
       "marks": 11,
-      "ms": 2623.9605360000005,
+      "ms": 7008.191206000016,
       "rasterBytes": 69291,
       "svgBytes": 4650,
       "worstSvgErrorPct": 2.4776458740234375,
@@ -35,7 +35,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "selective-q80",
       "marks": 11,
-      "ms": 3322.24713399999,
+      "ms": 3388.753920000003,
       "rasterBytes": 70800,
       "svgBytes": 4652,
       "worstSvgErrorPct": 0.4306793212890625,
@@ -45,7 +45,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "selective-q100",
       "marks": 11,
-      "ms": 3415.729335999993,
+      "ms": 4405.584253000006,
       "rasterBytes": 75169,
       "svgBytes": 4652,
       "worstSvgErrorPct": 0.4306793212890625,
@@ -57,7 +57,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "before-q80",
       "marks": 14,
-      "ms": 3391.3901705000007,
+      "ms": 7777.754261500018,
       "rasterBytes": 92943,
       "svgBytes": 5253,
       "worstSvgErrorPct": 15.622329711914062,
@@ -67,7 +67,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "selective-q80",
       "marks": 14,
-      "ms": 4282.960727999991,
+      "ms": 4170.346244000004,
       "rasterBytes": 95831,
       "svgBytes": 5334,
       "worstSvgErrorPct": 0.6992340087890625,
@@ -77,7 +77,7 @@ Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median
     {
       "arm": "selective-q100",
       "marks": 14,
-      "ms": 4388.376727999996,
+      "ms": 5383.031346000005,
       "rasterBytes": 100200,
       "svgBytes": 5334,
       "worstSvgErrorPct": 0.6992340087890625,
@@ -100,7 +100,7 @@ Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimi
     {
       "arm": "before",
       "marks": 11,
-      "ms": 2654.377564500006,
+      "ms": 2697.9976495000083,
       "rasterBytes": 70254,
       "svgBytes": 4652,
       "worstPngSourceErrorPct": 8.311728395061728,
@@ -109,7 +109,7 @@ Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimi
     {
       "arm": "preserved",
       "marks": 11,
-      "ms": 2667.1338614999986,
+      "ms": 2727.646098999998,
       "rasterBytes": 70800,
       "svgBytes": 4652,
       "worstPngSourceErrorPct": 0.11393229166666667,
@@ -120,7 +120,7 @@ Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimi
     {
       "arm": "before",
       "marks": 16,
-      "ms": 3793.1357135,
+      "ms": 3863.1712455000015,
       "rasterBytes": 86935,
       "svgBytes": 5359,
       "worstPngSourceErrorPct": 8.311728395061728,
@@ -129,7 +129,7 @@ Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimi
     {
       "arm": "preserved",
       "marks": 16,
-      "ms": 4059.2333440000075,
+      "ms": 4127.6675875,
       "rasterBytes": 86314,
       "svgBytes": 5359,
       "worstPngSourceErrorPct": 0.11393229166666667,
@@ -151,7 +151,7 @@ Alternating Node (native addon) full in-memory builds at quality 80, default no 
     {
       "arm": "before32",
       "marks": 11,
-      "ms": 3206.4088675000166,
+      "ms": 2699.1166560000056,
       "icoBytes": 4394,
       "rasterBytes": 69675,
       "totalBytes": 76747,
@@ -167,7 +167,7 @@ Alternating Node (native addon) full in-memory builds at quality 80, default no 
     {
       "arm": "current48",
       "marks": 11,
-      "ms": 3197.9920389999897,
+      "ms": 2701.559209499974,
       "icoBytes": 5519,
       "rasterBytes": 70800,
       "totalBytes": 77872,
@@ -180,7 +180,7 @@ Alternating Node (native addon) full in-memory builds at quality 80, default no 
     {
       "arm": "before32",
       "marks": 20,
-      "ms": 9564.027510500033,
+      "ms": 4682.0881585000025,
       "icoBytes": 7537,
       "rasterBytes": 116147,
       "totalBytes": 127260,
@@ -208,7 +208,7 @@ Alternating Node (native addon) full in-memory builds at quality 80, default no 
     {
       "arm": "current48",
       "marks": 20,
-      "ms": 5713.699536999979,
+      "ms": 4704.823828999986,
       "icoBytes": 9483,
       "rasterBytes": 118093,
       "totalBytes": 129206,
@@ -241,7 +241,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "before",
       "marks": 11,
-      "ms": 2701.830345000024,
+      "ms": 2668.7601604999945,
       "rasterBytes": 70800,
       "totalBytes": 77872,
       "rgbaCalls": 449,
@@ -253,7 +253,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "bounded",
       "marks": 11,
-      "ms": 2693.958184500021,
+      "ms": 2687.8211880000017,
       "rasterBytes": 70800,
       "totalBytes": 77872,
       "rgbaCalls": 449,
@@ -267,7 +267,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "before",
       "marks": 20,
-      "ms": 4709.10199900002,
+      "ms": 4669.27260799997,
       "rasterBytes": 118093,
       "totalBytes": 129206,
       "rgbaCalls": 815,
@@ -279,7 +279,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "bounded",
       "marks": 20,
-      "ms": 4702.88138950002,
+      "ms": 4689.681447499999,
       "rasterBytes": 118093,
       "totalBytes": 129206,
       "rgbaCalls": 815,
@@ -293,7 +293,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "before",
       "marks": 3,
-      "ms": 34486.416777500024,
+      "ms": 23522.80216599998,
       "rasterBytes": 8323,
       "totalBytes": 9318,
       "rgbaCalls": 522,
@@ -305,7 +305,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "bounded",
       "marks": 3,
-      "ms": 2909.851539500043,
+      "ms": 2375.8480985000497,
       "rasterBytes": 8323,
       "totalBytes": 9318,
       "rgbaCalls": 519,
@@ -319,7 +319,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "before",
       "marks": 23,
-      "ms": 39195.518776500045,
+      "ms": 28192.07477399995,
       "rasterBytes": 126416,
       "totalBytes": 138524,
       "rgbaCalls": 1337,
@@ -331,7 +331,7 @@ Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, mani
     {
       "arm": "bounded",
       "marks": 23,
-      "ms": 7612.732929000063,
+      "ms": 7065.529546000049,
       "rasterBytes": 126416,
       "totalBytes": 138524,
       "rgbaCalls": 1334,
@@ -407,11 +407,11 @@ The engine's finish over the default encode of every 192 and 512 px raw render. 
 
 ```
  iters     bytes    vs 15   seconds
-    15     57159    0.00%      38.8
+    15     57159    0.00%      28.0
     30     57112   -0.08%      42.9
     60     57106   -0.09%      72.9
-   120     57066   -0.16%     133.2
-   240     57046   -0.20%     254.3
+   120     57066   -0.16%     134.0
+   240     57046   -0.20%     255.7
 ```
 
 ## Finishing the jobs in turn against in parallel workers (decision 27)
@@ -419,6 +419,6 @@ The engine's finish over the default encode of every 192 and 512 px raw render. 
 general.svg, 5 files, zopfli at 120 iterations, 3 interleaved repetitions, median shown.
 
 ```
-in turn     19.54 s
-in parallel 16.35 s
+in turn     19.65 s
+in parallel 16.36 s
 ```
