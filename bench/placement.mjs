@@ -204,7 +204,7 @@ export async function placementSweep(out) {
       warmupRepetition: 0,
       arms,
       wholeResultsIdentical: true,
-      note: 'Rotated native full in-memory builds at quality80, no Zopfli, manifest and default sizes. Warmup0 excluded; median averages two whole-corpus totals. Includes SVG validation, placement, rendering and encoding; excludes imports, source reads, independent references, scoring and file writes. Counters include SVG validation plus placement renderRgba callbacks, not output render calls. Estimated working pixels=sum(px*max(1000,px)) reflects the pinned renderer floor; not measured allocations, concurrency peak or process RAM. Per-probe dimensions at most twice target; searches above that threshold render probes at target. Full candidate walk retained. Original20 callback sequences identical. All files, fits, links and animation metadata identical across arms and repetitions. Source error uses independent unoptimized source with matched placement; ICO separately reported. No browser timing, peak-memory or all-size accuracy claim.',
+      note: 'Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, manifest and default sizes. Warmup 0 excluded; median averages two whole-corpus totals. Includes SVG validation, placement, rendering and encoding; excludes imports, source reads, independent references, scoring and file writes. Counters include SVG validation plus placement renderRgba callbacks, not output render calls. Estimated working pixels=sum(px*max(1000,px)) reflects the pinned renderer floor; not measured allocations, concurrency peak or process RAM. Per-probe dimensions at most twice target; searches above that threshold render probes at target. Full candidate walk retained. Original20 callback sequences identical. All files, fits, links and animation metadata identical across arms and repetitions. Source error uses independent unoptimized source with matched placement; ICO separately reported. No browser timing, peak-memory or all-size accuracy claim.',
     },
     summaries,
     byMark: Object.fromEntries(MARKS.map((mark) => [mark, summarize([mark])])),
@@ -215,6 +215,6 @@ export async function placementSweep(out) {
     title: 'Bounded placement probe rendering',
     note: data.metadata.note,
     text: JSON.stringify(summaries, null, 2),
-    summary: 'Whole results unchanged across23 fixtures; data and files: bench/out/placement/.',
+    summary: 'Whole results unchanged across 23 fixtures; data and files: bench/out/placement/.',
   };
 }

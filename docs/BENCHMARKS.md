@@ -17,7 +17,7 @@ to trust: they are the ones you can reproduce.
 
 ## Selective SVG precision: source accuracy, output bytes and full-build overhead
 
-Rotated/reversed full in-memory builds; warmup repetition0 excluded from median totals. Imports, input reads, independent grading references, output writes and post-build grading excluded; runtime reference preparation and SVG validation included. No Zopfli. Original11 is the prior corpus; common14 adds small grids; grid-tiny has no successful old build and is excluded from timing/byte comparisons. PNG source error includes placement/quantization; ICO separately reported. Native-only timing, not a browser runtime claim.
+Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median totals. Imports, input reads, independent grading references, output writes and post-build grading excluded; runtime reference preparation and SVG validation included. No Zopfli. Original11 is the prior corpus; common14 adds small grids; grid-tiny has no successful old build and is excluded from timing/byte comparisons. PNG source error includes placement/quantization; ICO separately reported. Native-only timing, not a browser runtime claim.
 
 ```
 {
@@ -92,7 +92,7 @@ Rotated/reversed full in-memory builds; warmup repetition0 excluded from median 
 
 ## Preserved non-square raster proportions
 
-Rotated native full in-memory builds; warmup excluded. Timed optimization, runtime validation, placement and encoding; excluded imports, input reads, independent grading references, post-build scoring and file writes. Default quality80, no Zopfli. Literal square goldens for non-square sources; independent source placement for PNGs; ICO separately reported. Previous percent-source build fails and is excluded from paired totals. No browser timing or peak-memory claim.
+Rotated Node (native addon) full in-memory builds; warmup excluded. Timed optimization, runtime validation, placement and encoding; excluded imports, input reads, independent grading references, post-build scoring and file writes. Default quality 80, no Zopfli. Literal square goldens for non-square sources; independent source placement for PNGs; ICO separately reported. Previous percent-source build fails and is excluded from paired totals. No browser timing or peak-memory claim.
 
 ```
 {
@@ -143,7 +143,7 @@ Rotated native full in-memory builds; warmup excluded. Timed optimization, runti
 
 ## Single 48px ICO fallback
 
-Alternating native full in-memory builds at quality80, default no Zopfli, manifest enabled. Warmup repetition0 excluded; median of two whole-corpus totals. Includes SVG validation, placement, render and encoding; excludes imports, source reads, independent references, post-build scoring and file writes. ICO source error against unoptimized source at its own resolution; encoding error against raw selected-SVG pixels. All non-ICO files asserted byte-identical across arms; all files deterministic across repetitions. No browser timing, downsampling quality or all-size 1% guarantee.
+Alternating Node (native addon) full in-memory builds at quality 80, default no Zopfli, manifest enabled. Warmup repetition 0 excluded; median of two whole-corpus totals. Includes SVG validation, placement, render and encoding; excludes imports, source reads, independent references, post-build scoring and file writes. ICO source error against unoptimized source at its own resolution; encoding error against raw selected-SVG pixels. All non-ICO files asserted byte-identical across arms; all files deterministic across repetitions. No browser timing, downsampling quality or all-size 1% guarantee.
 
 ```
 {
@@ -229,11 +229,11 @@ Alternating native full in-memory builds at quality80, default no Zopfli, manife
 }
 ```
 
-**All non-ICO files unchanged across20 fixtures; raw data and files: bench/out/ico-size/.**
+**All non-ICO files unchanged across 20 fixtures; raw data and files: bench/out/ico-size/.**
 
 ## Bounded placement probe rendering
 
-Rotated native full in-memory builds at quality80, no Zopfli, manifest and default sizes. Warmup0 excluded; median averages two whole-corpus totals. Includes SVG validation, placement, rendering and encoding; excludes imports, source reads, independent references, scoring and file writes. Counters include SVG validation plus placement renderRgba callbacks, not output render calls. Estimated working pixels=sum(px*max(1000,px)) reflects the pinned renderer floor; not measured allocations, concurrency peak or process RAM. Per-probe dimensions at most twice target; searches above that threshold render probes at target. Full candidate walk retained. Original20 callback sequences identical. All files, fits, links and animation metadata identical across arms and repetitions. Source error uses independent unoptimized source with matched placement; ICO separately reported. No browser timing, peak-memory or all-size accuracy claim.
+Rotated Node (native addon) full in-memory builds at quality 80, no Zopfli, manifest and default sizes. Warmup 0 excluded; median averages two whole-corpus totals. Includes SVG validation, placement, rendering and encoding; excludes imports, source reads, independent references, scoring and file writes. Counters include SVG validation plus placement renderRgba callbacks, not output render calls. Estimated working pixels=sum(px*max(1000,px)) reflects the pinned renderer floor; not measured allocations, concurrency peak or process RAM. Per-probe dimensions at most twice target; searches above that threshold render probes at target. Full candidate walk retained. Original20 callback sequences identical. All files, fits, links and animation metadata identical across arms and repetitions. Source error uses independent unoptimized source with matched placement; ICO separately reported. No browser timing, peak-memory or all-size accuracy claim.
 
 ```
 {
@@ -344,11 +344,11 @@ Rotated native full in-memory builds at quality80, no Zopfli, manifest and defau
 }
 ```
 
-**Whole results unchanged across23 fixtures; data and files: bench/out/placement/.**
+**Whole results unchanged across 23 fixtures; data and files: bench/out/placement/.**
 
 ## Accuracy: pct by mark, size and palette size
 
-pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win, and no palette of 256 or fewer colours holds a four-stop gradient inside the bar, so the size guard (decision 7) is what decides it.
+pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win. Only at 32 colours or fewer does the quantised gradient miss the bar (up to 30.03 % at c8); at c64 and c256 it holds inside it (0.28–0.60 % and 0.00–0.01 %), with the size guard (decision 7) choosing the lossless path whenever it is smaller.
 
 ```
 mark       size       c8      c16      c32      c64     c256
@@ -388,7 +388,7 @@ smil       512m     0.16     0.03     0.00     0.00     0.00
 
 ## Palette size: bytes against accuracy
 
-9 marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. This is the sweep that sets the default.
+9 marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. Passing --colors here selects quality 100, not the quality-80 default that ships when --colors is left unset; this is the sweep that set the default --colors ceiling.
 
 ```
  colors    bytes  vs c256  worst pct  where

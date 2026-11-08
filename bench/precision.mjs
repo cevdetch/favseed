@@ -190,7 +190,7 @@ export async function precisionSweep(out) {
       comparisonScope:
         'Whole pipelines: current also includes subsequent framing and ICO-size changes; not an isolated precision effect.',
       svgErrorBudget: '1% at512px; threshold8/255 on black and white composites',
-      note: 'Rotated/reversed full in-memory builds; warmup repetition0 excluded from median totals. Imports, input reads, independent grading references, output writes and post-build grading excluded; runtime reference preparation and SVG validation included. No Zopfli. Original11 is the prior corpus; common14 adds small grids; grid-tiny has no successful old build and is excluded from timing/byte comparisons. PNG source error includes placement/quantization; ICO separately reported. Native-only timing, not a browser runtime claim.',
+      note: 'Rotated/reversed full in-memory builds; warmup repetition 0 excluded from median totals. Imports, input reads, independent grading references, output writes and post-build grading excluded; runtime reference preparation and SVG validation included. No Zopfli. Original11 is the prior corpus; common14 adds small grids; grid-tiny has no successful old build and is excluded from timing/byte comparisons. PNG source error includes placement/quantization; ICO separately reported. Native-only timing, not a browser runtime claim.',
     },
     summaries,
     rows,

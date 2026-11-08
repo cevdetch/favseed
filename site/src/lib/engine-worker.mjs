@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import { builtinPlugins, optimize } from 'svgo/browser';
+import { optimize } from 'svgo/browser';
 import { createZopfli } from '../../../lib/zopfli.mjs';
 import { createSvgStage } from '../../../lib/core.mjs';
 import { createEngine } from '../../../lib/engine.mjs';
@@ -9,7 +9,7 @@ import { zip } from './zip.mjs';
 import { checkCapabilities } from './capabilities.mjs';
 
 globalThis.Buffer ??= Buffer;
-const { optimiseSvg } = createSvgStage({ optimize, builtinPlugins });
+const { optimiseSvg } = createSvgStage({ optimize });
 const cache = createBuildCache();
 const zopfli = createZopfli({
   loadWasm: async () => {

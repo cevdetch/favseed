@@ -10,8 +10,8 @@ favseed is one package, `favseed`. Registry commands use pnpm, which keeps its o
   the tarball on npm through trusted publishing (OIDC, with provenance). Nothing goes live until
   the maintainer approves it with 2FA.
 
-Byte-output changes (a bumped `@napi-rs/image` or `@gfx/zopfli`, or any pipeline change) are **minor at
-minimum**, never patch: downstream users diff these files into git.
+Byte-output changes (a bumped `@napi-rs/image` or SVGO, a rebuilt `lib/zopfli.wasm`, or any
+pipeline change) are **minor at minimum**, never patch: downstream users diff these files into git.
 
 Before tagging, run `node test/hashes.mjs --release` in a checkout with full history and
 tags (`git fetch --tags --unshallow` if shallow; otherwise `git fetch --tags`). This first

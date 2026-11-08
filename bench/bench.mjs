@@ -102,7 +102,7 @@ sweeps.accuracy = async () => {
   );
   return {
     title: 'Accuracy: pct by mark, size and palette size',
-    note: 'pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win, and no palette of 256 or fewer colours holds a four-stop gradient inside the bar, so the size guard (decision 7) is what decides it.',
+    note: 'pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win. Only at 32 colours or fewer does the quantised gradient miss the bar (up to 30.03 % at c8); at c64 and c256 it holds inside it (0.28–0.60 % and 0.00–0.01 %), with the size guard (decision 7) choosing the lossless path whenever it is smaller.',
     text: [head, ...body].join('\n'),
     summary: `worst non-gradient: ${worst.pct.toFixed(3)} % (${worst.at}, --colors ${worst.colors})`,
   };
@@ -146,7 +146,7 @@ sweeps.colors = async () => {
   ].join('\n');
   return {
     title: 'Palette size: bytes against accuracy',
-    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. This is the sweep that sets the default.`,
+    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. Passing --colors here selects quality 100, not the quality-80 default that ships when --colors is left unset; this is the sweep that set the default --colors ceiling.`,
     text,
   };
 };

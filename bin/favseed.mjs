@@ -565,7 +565,7 @@ export async function cli(argv) {
   }
 
   if (options.bg === undefined) {
-    warn(`--bg not given, using ${DEFAULT_BG} for the padded icons ` + `(iOS composites transparent icons onto black)`);
+    warn(`--bg not given, using ${DEFAULT_BG} for the padded icons (iOS composites transparent icons onto black)`);
   }
 
   // 128 + signal number, the common convention.
