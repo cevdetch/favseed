@@ -454,10 +454,10 @@ The spike behind it (2026-10-04):
 | Render fidelity | `fromSvg` never renders below 1000 px. Wrapping the icon in an outer SVG with `scale(N/vbW N/vbH) translate(-vbX -vbY)` and cropping to N×N is **pixel-identical to `resvg -w N -h N`** on 40/40 files; rendering big and resizing fails the bar (10–38 % at 32 px). The suite asserts it on 24 renders wherever resvg is on PATH. |
 | Zopfli without a native build | napi's prebuilt leaves zopfli out. Re-deflating the winner's image data with `@gfx/zopfli` (WASM, Apache-2.0), keeping napi's row filters, lands within +0.21 % of oxipng's own zopfli, with identical decoded pixels on 80/80. |
 | Browser | `@napi-rs/image-wasm32-wasi` gives SHA-256-identical output to the native module, in a cross-origin-isolated page. |
-| Maintenance | `@napi-rs/image` has one active maintainer and past gaps of 6–14 months; `@gfx/zopfli` was last published in 2020. **Both are pinned to an exact version**, and the native pipeline stays runnable in `bench/native.mjs` as a measured fallback. |
+| Maintenance | `@napi-rs/image` has one active maintainer and past gaps of 6–14 months; `@gfx/zopfli` was last published in 2020. **Both are pinned to an exact version**; the native pipeline was kept runnable in `bench/native.mjs` long enough to take the measurement below, then retired once the comparison was recorded. |
 
-`node bench/bench.mjs engine` encodes the same 50 raw renders (10 fixtures at 16, 32, 180, 192
-and 512 px) both ways, at 256 colours with zopfli at 120 iterations:
+`node bench/bench.mjs engine` (since removed) encoded the same 50 raw renders (10 fixtures at
+16, 32, 180, 192 and 512 px) both ways, at 256 colours with zopfli at 120 iterations:
 
 | pipeline | bytes | worst pct, against the raw render |
 |---|---|---|
@@ -475,8 +475,9 @@ website, and a gradient that is 9 % smaller.
 It removes resvg, pngquant and oxipng as install steps, the PATH resolver of
 decision 16, `pngquant-bin`, the `FAVSEED_RESVG`/`FAVSEED_PNGQUANT`/`FAVSEED_OXIPNG` overrides and
 the `toolPath()`/`toolVersions()` exports. `engineVersions()` takes their place in the Astro
-cache key. The native toolchain stays in `bench/native.mjs`, so every byte claim can still be
-checked against the pipeline the earlier decisions were measured on.
+cache key. The native toolchain was kept in `bench/native.mjs` only long enough to check every
+byte claim against the pipeline the earlier decisions were measured on; the comparison above is
+that record, and the bench now measures the engine alone.
 
 The floor is `@napi-rs/image >= 1.13.0`, and the pin is exact: below 1.13.0 the package links
 GPL code, and any release can change output bytes. CI builds every fixture on Linux, macOS and

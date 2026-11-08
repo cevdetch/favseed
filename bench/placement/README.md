@@ -2,8 +2,9 @@
 
 Measured 1 November 2026 with image 1.15.0, Node 26.12.1 and Ryzen 7 7840U. The control is
 merged PR30 (`2a0eea0cc294d54cb41ed1b85d80d03c93cab4f4`); both arms use default quality 80,
-Zopfli off, a 48px ICO and manifest/default PNG sizes. [Raw results](results.json) retain
-source/code hashes, per-file hashes/errors, fits, callback requests and all repetitions.
+Zopfli off, a 48px ICO and manifest/default PNG sizes. Regenerate with
+`node bench/bench.mjs placement`; raw results retain source/code hashes, per-file
+hashes/errors, fits, callback requests and all repetitions.
 
 | Native full builds | Before | Bounded | Result |
 |---|---:|---:|---|
