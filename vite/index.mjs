@@ -11,6 +11,30 @@ import { declaresIcon, DEFAULT_BG, manifestIcons, manifestPurpose } from '../lib
 import { cacheKey, favseedVersion, pruneCache, readSlot, writeSlot } from './cache.mjs';
 
 /**
+ * Resolve a path the way Vite resolves `config.root` on Windows: through the OS's native
+ * realpath (`fs.realpathSync.native`), not Node's pure-JS `fs.realpathSync`. The two normally
+ * agree, but on a Windows CI runner the temp directory often contains an 8.3 short component
+ * (`RUNNER~1` for a long account name) — only the native call, which asks the OS to resolve
+ * the path, expands that back to its long form; the JS reimplementation just walks symlinks
+ * and leaves it short. `.native` resolves symlinks too, so it is exactly right on Linux/macOS
+ * as well (including macOS's `/var` -> `/private/var`). Falls back to the non-native realpath,
+ * then the path itself, for anything that does not exist yet.
+ * `resolvers` is injectable so the fallback chain can be tested without a real 8.3 path.
+ */
+export const toRealPath = (p, resolvers = {}) => {
+  const { native = realpathSync.native, fallback = realpathSync } = resolvers;
+  try {
+    return native(p);
+  } catch {
+    try {
+      return fallback(p);
+    } catch {
+      return p;
+    }
+  }
+};
+
+/**
  * The icon entries favseed's manifest would list, for vite-plugin-pwa's `manifest.icons`.
  * Synchronous, because vite.config runs before any build; pass the sizes, bg and base the
  * favseed plugin uses. vite-plugin-pwa offers no public API to set them from another plugin.
@@ -152,13 +176,7 @@ export default function favseed(options = {}) {
   // Vite's configResolved realpaths `root` but takes an already-absolute `publicDir` (e.g.
   // Astro's) as given, so a symlinked project directory (macOS puts the temp dir behind
   // /var -> /private/var) makes the two diverge; resolve both the same way before comparing.
-  const toReal = (p) => {
-    try {
-      return realpathSync(p);
-    } catch {
-      return p;
-    }
-  };
+  const toReal = (p) => toRealPath(p);
 
   /** Where the clashing file is, from the root: public/ for Vite, often static/ for Astro. */
   const publicPath = (f) =>

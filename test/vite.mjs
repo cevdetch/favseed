@@ -52,7 +52,7 @@ it('persistent cache distinguishes the default opaque background from transparen
   // The old key stored both default-black and transparent sets under this digest.
   assert.notEqual(key({ bg: null }), '8fa27ca0e0ed0b6113bed4ef3492dc0c658f92614b33306ea730bf25f439fbcc');
 });
-import favseed, { favseedIcons } from '../vite/index.mjs';
+import favseed, { favseedIcons, toRealPath } from '../vite/index.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = (n) => join(ROOT, 'test', 'fixtures', n);
@@ -65,6 +65,39 @@ const dir = () => {
   return d;
 };
 const sha = (b) => createHash('sha256').update(b).digest('hex');
+
+describe('toRealPath', () => {
+  // Can't reproduce an 8.3 short name without a real Windows host, but the fallback chain
+  // itself (native -> non-native -> the path as given) is host-independent and is what makes
+  // `toReal(root)` and `toReal(publicDir)` agree: inject fakes standing in for a native
+  // realpath that expands a short component Node's pure-JS realpath leaves alone.
+  it('prefers the native resolver, which is what expands an 8.3 short name on Windows', () => {
+    const native = (p) => p.replace('RUNNER~1', 'runneradmin');
+    const fallback = () => assert.fail('should not fall back when native succeeds');
+    assert.equal(
+      toRealPath('C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\case\\public', { native, fallback }),
+      'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\case\\public',
+    );
+  });
+
+  it('falls back to the non-native realpath when the native one throws', () => {
+    const native = () => {
+      throw new Error('no native realpath here');
+    };
+    const fallback = (p) => `${p}/fallback`;
+    assert.equal(toRealPath('/some/path', { native, fallback }), '/some/path/fallback');
+  });
+
+  it('returns the path unchanged when neither resolver can resolve it, e.g. it does not exist yet', () => {
+    const native = () => {
+      throw new Error('ENOENT');
+    };
+    const fallback = () => {
+      throw new Error('ENOENT');
+    };
+    assert.equal(toRealPath('/does/not/exist', { native, fallback }), '/does/not/exist');
+  });
+});
 
 describe('buildFiles', () => {
   it('returns the bytes build() writes, and writes nothing', async () => {
