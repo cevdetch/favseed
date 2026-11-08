@@ -11,14 +11,21 @@
 //
 //   node bench/sheet.mjs
 //
-// Writes bench/out/sheet/index.html, bench/out/sheet/metrics.csv and three PNGs per selected
-// job under bench/out/sheet/img/ (all gitignored). Prints the index.html path and, per
-// metric, today's worst value across the selected jobs and how many winners exceed it.
+// Writes bench/out/sheet/index.html, bench/out/sheet/metrics.csv, bench/out/sheet/summary.txt
+// and three PNGs per selected job under bench/out/sheet/img/ (all gitignored). Prints the
+// index.html path and, per metric, a threshold — today's worst value over every eligible job
+// (fixtures and open, every kind and size) where today passes the accuracy bar — with how many
+// sampled winners exceed it and how many are worse than their own job's today.
+//
+// Every eligible mark is captured once, in results.json order, so today's metrics cover the
+// whole population the threshold is drawn from, not just the sampled rows. Today's bytes are
+// the build's own encode (captureJobs' `today`), so only the winners are re-encoded.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEngine } from '../bin/favseed.mjs';
+import { THRESHOLD_PCT } from '../test/lib/accuracy.mjs';
 import { decode, encode } from '../test/lib/png.mjs';
 import { corpusFiles } from './corpus/files.mjs';
 import { captureJobs } from './jobs.mjs';
@@ -98,24 +105,22 @@ function selectJobs(results) {
 
 // --------------------------------------------------------------------- capture --
 
-/** captureJobs, cached per mark: several selected jobs can share one mark. */
-function markCache(pathsByMark) {
-  const cache = new Map();
-  return async (corpus, name) => {
-    const key = `${corpus}/${name}`;
-    if (!cache.has(key)) {
-      const path = pathsByMark.get(key);
-      if (!path) throw new Error(`sheet: no corpus file for ${key}`);
-      cache.set(key, captureJobs(path, { name }));
-    }
-    return cache.get(key);
-  };
-}
-
-async function pathsByMark() {
+/** Every fixture and open mark's corpus file, keyed `${corpus}/${name}`. Never private. */
+async function corpusPaths() {
   const files = await corpusFiles({ private: undefined, open: true, fixtures: true });
   return new Map(files.map((f) => [`${f.corpus}/${f.name}`, f.path]));
 }
+
+const METRICS = ['rmse', 'ssim', 'edgeError'];
+const WORSE_DIRECTION = { rmse: 'higher', ssim: 'lower', edgeError: 'higher' };
+/** True when `a` is worse than `b` on `metric` (ssim: lower is worse; the others: higher). */
+const worse = (metric, a, b) => (metric === 'ssim' ? a < b : a > b);
+
+const metricsOf = (img, reference) => ({
+  rmse: rmse(img, reference),
+  ssim: ssim(img, reference),
+  edgeError: edgeError(img, reference),
+});
 
 // ----------------------------------------------------------------------- html --
 
@@ -157,7 +162,8 @@ function rowHtml(j, m) {
       <div class="mark">${escapeHtml(j.corpus)}/${escapeHtml(j.name)}</div>
       <div class="job">${escapeHtml(j.kind)} · ${j.px}px</div>
       <div class="bytes">${j.today.bytes.toLocaleString()} B &rarr; ${j.exhaustive.bytes.toLocaleString()} B (&minus;${deltaPct}%)</div>
-      <div class="setting">pct ${j.exhaustive.pct.toFixed(3)}% · quality ${setting.quality} · colours ${colours}</div>
+      <div class="setting">pct ${j.today.pct.toFixed(3)}% today &rarr; ${j.exhaustive.pct.toFixed(3)}% · quality ${setting.quality} · colours ${colours}</div>
+      ${m.bytesMatch ? '' : `<div class="mismatch">re-encoded winner is ${m.winnerBytes.toLocaleString()} B, not the sweep's ${j.exhaustive.bytes.toLocaleString()} B</div>`}
       <div class="binary">binary picked ${sameAsBinary ? 'the same setting' : 'a different setting'}</div>
       <table class="metrics">
         <tr><th></th><th>today</th><th>winner</th></tr>
@@ -172,7 +178,23 @@ function rowHtml(j, m) {
   </tr>`;
 }
 
-function writeHtml(rows) {
+function thresholdsHtml(thresholds, population, rowCount) {
+  const body = thresholds
+    .map(
+      (t) =>
+        `<tr><td>${t.metric}</td><td>${t.worse}</td><td>${t.value.toFixed(4)}</td>` +
+        `<td>${t.exceed} of ${rowCount}</td><td>${t.worseThanOwnToday} of ${rowCount}</td></tr>`,
+    )
+    .join('\n');
+  return `<p>Thresholds: today's worst value per metric over the ${population} eligible jobs (fixtures
+  and open, every kind and size) where today passes the bar.</p>
+<table class="thresholds">
+<tr><th>metric</th><th>worse is</th><th>today's worst</th><th>winners beyond it</th><th>winners worse than their own today</th></tr>
+${body}
+</table>`;
+}
+
+function writeHtml(rows, header) {
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -187,6 +209,10 @@ function writeHtml(rows) {
   table.sheet > tbody > tr > td { vertical-align: top; padding: 0.75rem; }
   .mark { font-weight: 600; }
   .job, .bytes, .setting, .binary { font-size: 0.85rem; color: #333; }
+  .mismatch { font-size: 0.85rem; color: #b00020; font-weight: 600; }
+  table.thresholds { border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
+  table.thresholds td, table.thresholds th { padding: 0.15rem 0.6rem; text-align: right; border-bottom: 1px solid #eee; }
+  table.thresholds th:first-child, table.thresholds td:first-child { text-align: left; }
   table.metrics { margin-top: 0.5rem; font-size: 0.8rem; border-collapse: collapse; }
   table.metrics td, table.metrics th { padding: 0.1rem 0.4rem; text-align: right; }
   .figure-label { font-size: 0.75rem; color: #666; text-align: center; margin-bottom: 0.25rem; }
@@ -199,15 +225,19 @@ function writeHtml(rows) {
 <h1>favseed search sweep — winner sheet</h1>
 <div class="intro">
   <p>Each row is one raster job (a mark's ICO payload, apple-touch-icon, or one of the two
-  <code>icon-&lt;size&gt;.png</code>s) where the search sweep (<code>bench/search.mjs</code>)
-  found a smaller passing encode than today's production default. <strong>Today's output is
-  the anchor: the winner setting must never look visibly worse than it</strong>, even though
-  both pass the same <code>pct &lt;= 1.0%</code> accuracy gate.</p>
+  <code>icon-&lt;size&gt;.png</code>s) picked from the search sweep (<code>bench/search.mjs</code>):
+  every colour-mode winner at &le; 8 colours and &ge; 180px, the 20 largest relative savings, and
+  10 seeded controls. Most rows show a smaller passing encode than today's production default; a
+  control can show no saving, a job where today misses the bar can show a winner that costs bytes
+  to pass, and a job with no passing candidate shows today's own setting as its winner.
+  <strong>Today's output is the anchor: the winner setting must never look visibly worse than
+  it</strong>, even where both pass the same <code>pct &lt;= 1.0%</code> accuracy gate.</p>
   <p>Look for banding in a gradient, lost anti-aliasing on a curved edge, and colour shifts —
   the kind of error a low colour count or low quality setting can introduce that the
   pixel-distance gate alone can miss. Each image is shown at 1&times; and 4&times;
   (<code>image-rendering: pixelated</code>), on both a light and a dark tile, since an error
   in the alpha channel can hide against one ground and not the other.</p>
+  ${header}
 </div>
 <table class="sheet">
 <tbody>
@@ -228,94 +258,118 @@ async function main() {
   const resultsPath = benchmarkPath(RESULTS);
   const results = JSON.parse(readFileSync(resultsPath, 'utf8'));
   const selected = selectJobs(results);
+  const selectedIds = new Set(selected.map(jobId));
 
   mkdirSync(IMG_DIR, { recursive: true });
 
   const engine = await loadEngine();
-  const paths = await pathsByMark();
-  const capture = markCache(paths);
+  const paths = await corpusPaths();
 
-  const rows = [];
-  const csvLines = ['job,rmse_today,rmse_winner,ssim_today,ssim_winner,edge_today,edge_winner'];
-  const summary = {
-    rmse: { today: [], winner: [] },
-    ssim: { today: [], winner: [] },
-    edgeError: { today: [], winner: [] },
-  };
+  const rowsById = new Map();
+  const csvById = new Map();
+  const rowMetrics = [];
+  const population = Object.fromEntries(METRICS.map((metric) => [metric, []]));
+  let populationJobs = 0,
+    mismatches = 0;
 
-  for (const j of selected) {
-    process.stderr.write(`sheet: ${jobId(j)}\n`);
-    const captured = await capture(j.corpus, j.name);
+  // One capture per eligible mark, held only while its jobs are measured: every mark's raw
+  // pixels at once would not fit comfortably in memory.
+  for (const mark of results.marks) {
+    if (!mark.ok || mark.corpus === 'private') continue;
+    const key = `${mark.corpus}/${mark.name}`;
+    const path = paths.get(key);
+    if (!path) throw new Error(`sheet: no corpus file for ${key}`);
+    process.stderr.write(`sheet: ${key}\n`);
+    const captured = await captureJobs(path, { name: mark.name });
     if (!captured.ok) {
-      process.stderr.write(`sheet: skipping ${jobId(j)}: ${captured.error}\n`);
-      continue;
-    }
-    const matched = captured.jobs.find((cj) => cj.kind === j.kind && cj.px === j.px);
-    if (!matched) {
-      process.stderr.write(`sheet: skipping ${jobId(j)}: no matching captured job\n`);
+      process.stderr.write(`sheet: skipping ${key}: ${captured.error}\n`);
       continue;
     }
 
-    const reference = await matched.reference;
-    const winnerBytes = await engine.encode(matched.raw, j.exhaustive.setting);
-    const todayBytes = matched.today;
+    for (const job of mark.jobs) {
+      const j = { corpus: mark.corpus, name: mark.name, ...job };
+      const matched = captured.jobs.find((cj) => cj.kind === j.kind && cj.px === j.px);
+      if (!matched) {
+        process.stderr.write(`sheet: skipping ${jobId(j)}: no matching captured job\n`);
+        continue;
+      }
+      const reference = await matched.reference;
+      const todayBytes = matched.today;
+      const today = metricsOf(decode(Buffer.from(todayBytes)), reference);
+      if (j.today.pct <= THRESHOLD_PCT) {
+        populationJobs++;
+        for (const metric of METRICS) population[metric].push(today[metric]);
+      }
+      if (!selectedIds.has(jobId(j))) continue;
 
-    const todayImg = decode(Buffer.from(todayBytes));
-    const winnerImg = decode(Buffer.from(winnerBytes));
+      const winnerBytes = await engine.encode(matched.raw, j.exhaustive.setting);
+      // Determinism guard: the same engine on the same pixels must reproduce the sweep's bytes.
+      const bytesMatch = winnerBytes.length === j.exhaustive.bytes;
+      if (!bytesMatch) {
+        mismatches++;
+        process.stderr.write(
+          `sheet: ${jobId(j)}: re-encoded winner is ${winnerBytes.length} B, the sweep recorded ${j.exhaustive.bytes} B\n`,
+        );
+      }
+      const metrics = { today, winner: metricsOf(decode(Buffer.from(winnerBytes)), reference) };
+      rowMetrics.push(metrics);
 
-    const metrics = {
-      today: {
-        rmse: rmse(todayImg, reference),
-        ssim: ssim(todayImg, reference),
-        edgeError: edgeError(todayImg, reference),
-      },
-      winner: {
-        rmse: rmse(winnerImg, reference),
-        ssim: ssim(winnerImg, reference),
-        edgeError: edgeError(winnerImg, reference),
-      },
-    };
-    for (const metric of ['rmse', 'ssim', 'edgeError']) {
-      summary[metric].today.push(metrics.today[metric]);
-      summary[metric].winner.push(metrics.winner[metric]);
-    }
+      const id = safeId(j);
+      writeFileSync(join(IMG_DIR, `${id}-reference.png`), encode(reference));
+      writeFileSync(join(IMG_DIR, `${id}-today.png`), Buffer.from(todayBytes));
+      writeFileSync(join(IMG_DIR, `${id}-winner.png`), Buffer.from(winnerBytes));
 
-    const id = safeId(j);
-    writeFileSync(join(IMG_DIR, `${id}-reference.png`), encode(reference));
-    writeFileSync(join(IMG_DIR, `${id}-today.png`), Buffer.from(todayBytes));
-    writeFileSync(join(IMG_DIR, `${id}-winner.png`), Buffer.from(winnerBytes));
-
-    csvLines.push(
-      [
+      csvById.set(
         jobId(j),
-        metrics.today.rmse,
-        metrics.winner.rmse,
-        metrics.today.ssim,
-        metrics.winner.ssim,
-        metrics.today.edgeError,
-        metrics.winner.edgeError,
-      ].join(','),
-    );
-
-    rows.push(rowHtml(j, metrics));
+        [
+          jobId(j),
+          j.today.pct <= THRESHOLD_PCT,
+          bytesMatch,
+          metrics.today.rmse,
+          metrics.winner.rmse,
+          metrics.today.ssim,
+          metrics.winner.ssim,
+          metrics.today.edgeError,
+          metrics.winner.edgeError,
+        ].join(','),
+      );
+      rowsById.set(jobId(j), rowHtml(j, { ...metrics, bytesMatch, winnerBytes: winnerBytes.length }));
+    }
   }
 
-  writeFileSync(join(OUT_DIR, 'metrics.csv'), csvLines.join('\n') + '\n');
-  const htmlPath = writeHtml(rows);
+  // Rows in selection order, whatever order the marks were captured in.
+  const order = selected.map(jobId).filter((id) => rowsById.has(id));
+  const rowCount = order.length;
+  const thresholds = (populationJobs ? METRICS : []).map((metric) => {
+    const values = population[metric];
+    const value = metric === 'ssim' ? Math.min(...values) : Math.max(...values);
+    return {
+      metric,
+      worse: WORSE_DIRECTION[metric],
+      value,
+      exceed: rowMetrics.filter((m) => worse(metric, m.winner[metric], value)).length,
+      worseThanOwnToday: rowMetrics.filter((m) => worse(metric, m.winner[metric], m.today[metric])).length,
+    };
+  });
 
-  process.stderr.write(`\nsheet: ${htmlPath} (${rows.length} rows)\n`);
-  const worseDirection = { rmse: 'higher', ssim: 'lower', edgeError: 'higher' };
-  for (const metric of ['rmse', 'ssim', 'edgeError']) {
-    const todayValues = summary[metric].today;
-    const winnerValues = summary[metric].winner;
-    if (!todayValues.length) continue;
-    const worstToday = metric === 'ssim' ? Math.min(...todayValues) : Math.max(...todayValues);
-    const exceed = winnerValues.filter((v) => (metric === 'ssim' ? v < worstToday : v > worstToday)).length;
-    process.stderr.write(
-      `sheet: ${metric} — today's worst ${worstToday.toFixed(4)} (worse is ${worseDirection[metric]}), ` +
-        `${exceed} of ${winnerValues.length} winner(s) exceed it\n`,
-    );
-  }
+  const csvHead = 'job,today_passes,bytes_match,rmse_today,rmse_winner,ssim_today,ssim_winner,edge_today,edge_winner';
+  writeFileSync(join(OUT_DIR, 'metrics.csv'), [csvHead, ...order.map((id) => csvById.get(id))].join('\n') + '\n');
+  const htmlPath = writeHtml(
+    order.map((id) => rowsById.get(id)),
+    thresholdsHtml(thresholds, populationJobs, rowCount),
+  );
+
+  const summary = [
+    `sheet: ${rowCount} rows; thresholds over ${populationJobs} eligible jobs where today passes the bar`,
+    ...thresholds.map(
+      (t) =>
+        `sheet: ${t.metric} — today's worst ${t.value.toFixed(4)} (worse is ${t.worse}), ` +
+        `${t.exceed} of ${rowCount} winner(s) beyond it, ${t.worseThanOwnToday} of ${rowCount} worse than their own today`,
+    ),
+    `sheet: ${mismatches} of ${rowCount} re-encoded winner(s) differ in bytes from the sweep`,
+  ];
+  writeFileSync(join(OUT_DIR, 'summary.txt'), summary.join('\n') + '\n');
+  process.stderr.write(`\nsheet: ${htmlPath}\n${summary.join('\n')}\n`);
 }
 
 main().catch((e) => {
