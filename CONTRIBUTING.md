@@ -46,13 +46,15 @@ Servers and temporary files are cleaned
 up after success or failure. This does not expand the published Astro peer range.
 
 A change that costs bytes to save build time needs explicit approval and measured tradeoffs.
-The current default skips Zopfli; `--zopfli` opts into its additional lossless compression.
+The default effort keeps each raster's smallest encode that passes the accuracy bar and finishes
+it with Zopfli at 15 iterations; `--effort fast` skips both, `--effort max` tries every candidate
+and runs 120 iterations.
 
 CI compares generated files with `test/bytes.json` and compares the same manifest across
 Linux, macOS and Windows. It records filenames, sizes, SHA-256 hashes and installed
-image/SVGO versions plus the bundled Zopfli build identity. The default release profile
-covers the eleven positive SVG fixtures with a manifest; two fixtures also cover opt-in
-release Zopfli. This is sampled coverage, not a guarantee for every input or option.
+image/SVGO versions plus the bundled Zopfli build identity. The default profile covers the
+eleven positive SVG fixtures with a manifest at the default effort; two fixtures also cover
+`effort: 'max'`. This is sampled coverage, not a guarantee for every input or option.
 
 ```sh
 node test/hashes.mjs --check    # fail on changed files, sizes, encoders or profiles
@@ -109,7 +111,7 @@ The root suite, packed-package Astro suite and site browser checks cover these c
 6. A referenced id survives; unreferenced ids are dropped.
 7. `favicon.ico` starts `00 00 01 00`, its payload is a PNG (`89 50 4E 47`), and the container is
    byte-identical to `icotool -c -r` wherever icotool is available.
-8. Default-quality padded PNGs in the accuracy fixtures meet `pct <= 1.0 %`, scored against
+8. Effort-fast padded PNGs in the accuracy fixtures meet `pct <= 1.0 %`, scored against
    **background-matched references, padded the same way**. ICO source error is reported separately:
    the 48px ICO reaches 1.215% on two small-grid fixtures. See the [ICO report](bench/ico-size/README.md).
    The SVG's static 512px budget does not guarantee this threshold at every raster size or quality.
@@ -131,9 +133,13 @@ The root suite, packed-package Astro suite and site browser checks cover these c
 14. The single `icon.svg` retains motion and resolves its custom properties. Rasters use the
     base appearance; explicit `--no-animation` yields the same raster bytes on the fixtures.
     An unresolved motion variable fails the preserved SVG, naming `--no-animation`.
-    PNG quality defaults to 80; explicit colors without quality retain the quality-100 path.
-    Quality 100 uses the higher-fidelity fixed-palette path; SVG accuracy selection remains active.
-    Reject quality outside integer 1–100 and explicit colors combined with quality below 100.
+    Without `--quality` or `--colors`, each raster is chosen by `--effort` (default `default`):
+    the smallest passing encode, or the effort-fast encode when none passes. A given quality
+    and/or palette pins that exact setting: quality alone at 256 colours, colours alone at
+    quality 100, one encode with no search, and a warning (never a failure) when it misses
+    the bar. SVG accuracy selection remains active. Reject quality outside integer 1–100,
+    colours outside 2–256, explicit colours combined with quality below 100, and an effort
+    other than `fast`, `default` or `max`.
 
 15. Long options accept `--opt=value`; a flag that takes no argument rejects one.
 16. `--sizes 48` renders twice when padded: once for `icon-48.png`, once unpadded for

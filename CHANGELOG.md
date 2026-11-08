@@ -21,8 +21,8 @@ contain.
   given as a fixed percentage; and an optional `site.webmanifest` declaring the padded sizes
   `"any maskable"`. `--bg none` keeps the set transparent and unpadded, declared `"any"` only.
   `--html` prints the matching `<link>` tags.
-- A config file, `favseed.config.js`, `.mjs` or `.ts`, setting any option plus `input`, `base`
-  and `mode`; flags win over it, and `defineConfig` is exported with types.
+- A config file, `favseed.config.js`, `.mjs` or `.ts`, setting any option plus `input` and
+  `base`; flags win over it, and `defineConfig` is exported with types.
 - `favseed/vite`, a Vite plugin that serves the set from memory in dev and writes it at build
   time, with `favseedIcons()` for projects that also use vite-plugin-pwa.
 - `favseed/astro`, an Astro integration installed by `astro add favseed`, built on
@@ -42,10 +42,20 @@ contain.
 - One image engine: `@napi-rs/image` renders, quantises and recompresses, and favseed's own
   `lib/zopfli.wasm` (built from Zopfli 1.0.15) finishes the result, both pinned exact, so the
   CLI needs only Node 24 and no external binaries to install.
-- `--colors` defaults to 256, a ceiling rather than a target; `--sizes` defaults to `192 512`,
-  the pair Chrome's install criteria document; and `--bg` defaults to `#000000`, matching how
-  iOS composites a transparent Home Screen icon.
-- `--quality` (default 80) sets a PNG quality target; combining an explicit `--colors` with
-  default quality selects the higher-fidelity fixed-palette path at quality 100.
-- Extra Zopfli compression is opt-in with `--zopfli`.
+- `--sizes` defaults to `192 512`, the pair Chrome's install criteria document; and `--bg`
+  defaults to `#000000`, matching how iOS composites a transparent Home Screen icon.
+- Each PNG and the ICO payload is scored against a render of the source placed like it, and
+  must keep at most 1 % of pixels off by more than 8/255 and an edge-weighted luma error of at
+  most 1.5883, on black and on white.
+- `--effort` (`effort` in config, API, Vite and Astro) sets how hard each raster is worked:
+  `fast` makes one quality-80 encode with no Zopfli; `default` (the default) binary-searches
+  quality 40-99 and then palettes of 2-256 colours for the smallest encode that passes, then
+  runs Zopfli at 15 iterations; `max` tries every candidate and runs Zopfli at 120 iterations.
+  When nothing passes, the `fast` encode is kept. Vite and Astro dev builds use `fast`.
+- `--quality N` and `--colors N` pin an exact setting: one encode, no search. Quality alone
+  uses the full 256-colour palette, colours alone use quality 100, and quality below 100
+  cannot combine with colours. A pinned setting that misses the accuracy bar warns with its
+  measurements and still builds.
+- The CLI summary names the effort and its Zopfli iterations, and the setting each PNG kept or
+  the pinned one.
 - Errors print as `favseed: <message>` on stderr with a non-zero exit, never a stack trace.

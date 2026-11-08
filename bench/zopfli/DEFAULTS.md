@@ -1,6 +1,8 @@
 # Default performance: Zopfli opt-in and one SVG
 
-Current default quality is 80; the quality-100/default figures below describe the earlier policy. See [QUALITY.md](QUALITY.md).
+The effort control (`--effort fast|default|max`) has since replaced the Zopfli opt-in and the
+quality-80 default described here; the figures below describe the builds measured at the time.
+See [QUALITY.md](QUALITY.md) for the quality policy's history.
 
 For the optional native quality control and updated size/error results, see [QUALITY.md](QUALITY.md).
 
