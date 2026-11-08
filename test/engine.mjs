@@ -12,6 +12,7 @@ import referenceZopfli from '@gfx/zopfli';
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { nestForMask, placeInSafeZone, squareIconSvg } from '../lib/core.mjs';
 import { createEngine, wrapForSize } from '../lib/engine.mjs';
+import { passesBar } from '../lib/quality.mjs';
 import { score } from './lib/accuracy.mjs';
 import { decode } from './lib/png.mjs';
 import { framingCases } from './lib/framing.mjs';
@@ -386,5 +387,93 @@ describe('finish', () => {
   it('returns its input untouched at zero iterations', async () => {
     const enc = await engine.encode(await engine.render(icon('flat'), 32), { colors: 256 });
     assert.equal(await engine.finish(enc, { iterations: 0 }), enc);
+  });
+});
+
+describe('decode', () => {
+  it('round-trips width and height through its own encode', async () => {
+    const raw = await engine.render(icon('general'), 192, '#000000');
+    const encoded = await engine.encode(raw, { quality: 100 });
+    const decoded = await engine.decode(encoded);
+    assert.deepEqual([decoded.width, decoded.height], [192, 192]);
+  });
+
+  it("matches the suite's independent decoder on a quantised, paletted PNG", async () => {
+    // No ground: the circle's anti-aliased edge keeps partial alpha, so the quantiser's
+    // palette carries a tRNS entry — the case decode() must resolve (palette + transparency)
+    // the same way test/lib/png.mjs's own decoder does, not just the opaque case render's
+    // typical padded icon hits (see expandToRgba's Rgb8/L8 paths in lib/engine.mjs).
+    const raw = await engine.render(icon('flat'), 32);
+    const encoded = await engine.encode(raw, { colors: 8 });
+    const mine = await engine.decode(encoded);
+    const theirs = decode(Buffer.from(encoded));
+    assert.deepEqual([mine.width, mine.height], [theirs.width, theirs.height]);
+    assert.deepEqual([...mine.rgba], [...theirs.data]);
+  });
+});
+
+const SEARCH_FIXTURES = ['general', 'gradient'];
+const searchCaptures = {};
+for (const name of SEARCH_FIXTURES) {
+  searchCaptures[name] = {
+    raw: await engine.render(icon(name), 192, '#000000'),
+    reference: await engine.renderRgba(icon(name), 192, '#000000'),
+  };
+}
+
+describe('search', () => {
+  for (const name of SEARCH_FIXTURES) {
+    const { raw, reference } = searchCaptures[name];
+
+    it(`${name}: fast is exactly encode's own quality-80 bytes, one probe`, async () => {
+      const fast = await engine.search(raw, reference, { effort: 'fast', pinned: null });
+      const direct = await engine.encode(raw, { quality: 80 });
+      assert.deepEqual([...fast.png], [...direct]);
+      assert.equal(fast.probes, 1);
+    });
+
+    it(`${name}: default passes the bar and is no larger than fast when fast itself passes`, async () => {
+      const fast = await engine.search(raw, reference, { effort: 'fast', pinned: null });
+      const result = await engine.search(raw, reference, { effort: 'default', pinned: null });
+      assert.equal(result.pass, true);
+      if (fast.pass) assert.ok(result.png.length <= fast.png.length, `${result.png.length} > ${fast.png.length}`);
+      assert.ok(result.probes >= 2 && result.probes <= 10, `probes ${result.probes} outside [2, 10]`);
+    });
+
+    it(`${name}: max passes the bar, is no larger than default, and probes every candidate`, async () => {
+      const result = await engine.search(raw, reference, { effort: 'default', pinned: null });
+      const max = await engine.search(raw, reference, { effort: 'max', pinned: null });
+      assert.equal(max.pass, true);
+      assert.ok(max.png.length <= result.png.length, `${max.png.length} > ${result.png.length}`);
+      assert.equal(max.probes, 26);
+    });
+
+    it(`${name}: a pinned setting skips the search entirely`, async () => {
+      const pinned = { quality: 100, colors: 4 };
+      const result = await engine.search(raw, reference, { effort: 'default', pinned });
+      const direct = await engine.encode(raw, pinned);
+      assert.deepEqual([...result.png], [...direct]);
+      assert.equal(result.probes, 1);
+      assert.deepEqual(result.setting, pinned);
+      const decoded = decode(Buffer.from(direct));
+      const gate = passesBar({ width: decoded.width, height: decoded.height, rgba: decoded.data }, reference);
+      assert.equal(result.pass, gate.pass);
+    });
+
+    it(`${name}: two default searches agree byte for byte`, async () => {
+      const a = await engine.search(raw, reference, { effort: 'default', pinned: null });
+      const b = await engine.search(raw, reference, { effort: 'default', pinned: null });
+      assert.deepEqual([...a.png], [...b.png]);
+      assert.deepEqual(a.setting, b.setting);
+    });
+  }
+
+  it('keeps the fast encode, failing gate and all, when nothing on either list passes', async () => {
+    const raw = await engine.render(icon('general'), 192, '#000000');
+    const mismatched = await engine.renderRgba(icon('gradient'), 192, '#000000');
+    const result = await engine.search(raw, mismatched, { effort: 'default', pinned: null });
+    const direct = await engine.encode(raw, { quality: 80 });
+    assert.deepEqual([...result.png], [...direct]);
+    assert.equal(result.pass, false);
   });
 });

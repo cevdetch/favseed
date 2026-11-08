@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildFiles } from '../bin/favseed.mjs';
 import { ACCURACY_PCT, EDGE_GATE, SEARCH_COLORS, SEARCH_QUALITIES } from '../lib/core.mjs';
-import { edgeError, passesBar, pctOff } from '../lib/quality.mjs';
+import { edgeError, passesBar, pctOff, prepareReference } from '../lib/quality.mjs';
 import { edgeError as edgeErrorBench } from '../bench/lib/metrics.mjs';
 import { reference, score } from './lib/accuracy.mjs';
 import { decode } from './lib/png.mjs';
@@ -40,6 +40,17 @@ describe('lib/quality: pinned to the independent implementations', () => {
       assert.ok(
         Math.abs(gotEdge - expectedEdge) < 1e-9,
         `${name}: edgeError ${gotEdge} vs bench edgeError ${expectedEdge}`,
+      );
+
+      // prepareReference precomputes the reference side once; engine.search relies on it giving
+      // the exact same numbers a fresh (raw-reference) call would, not an approximation.
+      const prepared = prepareReference(refRgba);
+      assert.equal(pctOff(candidateRgba, prepared), gotPct, `${name}: prepared pctOff disagrees with raw`);
+      assert.equal(edgeError(candidateRgba, prepared), gotEdge, `${name}: prepared edgeError disagrees with raw`);
+      assert.deepEqual(
+        passesBar(candidateRgba, prepared),
+        passesBar(candidateRgba, refRgba),
+        `${name}: passesBar disagrees between prepared and raw`,
       );
     });
   }
