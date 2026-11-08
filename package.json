@@ -75,7 +75,7 @@
     "test": "node --test test/run.mjs test/engine.mjs test/pipeline.mjs test/config.mjs test/vite.mjs test/security.mjs test/zopfli.mjs test/svg-precision.mjs test/astro-middleware.mjs test/lazy-loading.mjs test/astro-dev.mjs test/bytes.mjs test/write-failures.mjs",
     "test:astro": "node --test test/astro.mjs",
     "bench": "node bench/bench.mjs",
-    "lint": "oxlint . && knip --include exports,files,dependencies --no-exit-code",
+    "lint": "oxlint . && knip --include exports,files,dependencies",
     "format": "oxfmt .",
     "format:check": "oxfmt --check ."
   },

@@ -17,9 +17,7 @@ export function validateManifest(value) {
   if (!record(value) || value.schema !== 1) throw new Error('Unsupported byte manifest schema (expected 1)');
   if (
     !record(value.engines) ||
-    ['@napi-rs/image', 'svgo', '@gfx/zopfli'].some(
-      (key) => typeof value.engines[key] !== 'string' || !value.engines[key],
-    )
+    ['@napi-rs/image', 'svgo', 'zopfli'].some((key) => typeof value.engines[key] !== 'string' || !value.engines[key])
   )
     throw new Error('Byte manifest is missing encoder identity');
   if (!record(value.profiles) || Object.keys(value.profiles).length === 0)

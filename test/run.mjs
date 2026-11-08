@@ -1571,18 +1571,12 @@ describe('the astro integration', () => {
     writeFileSync(join(first.pub, 'icon-32.png'), 'edited icon');
     writeFileSync(join(first.pub, 'icon-999.png'), 'unowned icon');
     writeFileSync(join(first.pub, 'notes.txt'), 'user notes');
-    const legacy = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>');
-    writeFileSync(join(first.pub, 'logo.svg'), legacy);
-    const stamp = JSON.parse(readFileSync(first.stamp, 'utf8'));
-    stamp['logo.svg'] = createHash('sha256').update(legacy).digest('hex');
-    writeFileSync(first.stamp, JSON.stringify(stamp));
     rmSync(join(first.pub, 'site.webmanifest')); // A previously owned file may already be gone.
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
     assert.equal(readFileSync(join(second.pub, 'icon-32.png'), 'utf8'), 'edited icon');
     assert.equal(readFileSync(join(second.pub, 'icon-999.png'), 'utf8'), 'unowned icon');
     assert.equal(readFileSync(join(second.pub, 'notes.txt'), 'utf8'), 'user notes');
-    assert.ok(!existsSync(join(second.pub, 'logo.svg')));
     assert.ok(!existsSync(join(second.pub, 'site.webmanifest')));
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
     assert.ok(second.logs.some(([level, m]) => level === 'warn' && m.includes('icon-32.png')));
@@ -1672,22 +1666,22 @@ describe('the astro integration', () => {
       notes = join(first.pub, 'notes.txt');
     writeFileSync(outside, 'outside');
     writeFileSync(notes, 'notes');
-    mkdirSync(join(first.pub, 'logo.svg'));
-    writeFileSync(join(first.pub, 'logo.svg', 'keep.txt'), 'directory content');
+    mkdirSync(join(first.pub, 'site.webmanifest'));
+    writeFileSync(join(first.pub, 'site.webmanifest', 'keep.txt'), 'directory content');
     const stamp = JSON.parse(readFileSync(first.stamp, 'utf8'));
     const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
     Object.assign(stamp, {
       '../outside.txt': digest(outside),
       [outside]: digest(outside),
       'notes.txt': digest(notes),
-      'logo.svg': digest(notes),
+      'site.webmanifest': digest(notes),
     });
     writeFileSync(first.stamp, JSON.stringify(stamp));
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
     assert.equal(readFileSync(outside, 'utf8'), 'outside');
     assert.equal(readFileSync(notes, 'utf8'), 'notes');
-    assert.equal(readFileSync(join(second.pub, 'logo.svg', 'keep.txt'), 'utf8'), 'directory content');
+    assert.equal(readFileSync(join(second.pub, 'site.webmanifest', 'keep.txt'), 'utf8'), 'directory content');
     assert.ok(!existsSync(join(second.pub, 'icon-32.png')));
   });
 

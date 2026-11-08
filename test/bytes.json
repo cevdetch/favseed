@@ -2,7 +2,7 @@
   "schema": 1,
   "engines": {
     "@napi-rs/image": "1.15.0",
-    "@gfx/zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a",
+    "zopfli": "1.0.15+wasm.856c441f051284b2ae0d7ee5384cced1730768e551bdf2fdce0dbb2fbfcd5e2a",
     "svgo": "4.1.0"
   },
   "profiles": {

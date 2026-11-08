@@ -1,22 +1,22 @@
 {
+  // Astro is an optional peerDependency (package.json's peerDependenciesMeta) so a CLI-only
+  // install is not nagged about it; knip's own reference to it in astro/index.mjs is then
+  // correctly "referenced", not unused, and must not fail the build the way an unused
+  // dependency does.
+  "rules": { "optionalPeerDependencies": "warn" },
   "workspaces": {
     ".": {
-      "entry": [
-        "bin/favseed.mjs",
-        "bin/index.mjs",
-        "lib/core.mjs",
-        "vite/index.mjs",
-        "astro/index.mjs",
-        "astro/middleware.mjs",
-        "test/*.mjs",
-        "bench/**/*.mjs"
-      ],
-      "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"],
-      "ignore": ["lib/zopfli-build.mjs"]
+      "entry": ["test/*.mjs", "bench/**/*.mjs"],
+      "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"]
     },
     "site": {
-      "entry": ["src/pages/**/*.astro", "src/lib/engine-worker.mjs", "test/*.mjs", "astro.config.mjs", "headers.mjs"],
-      "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"]
+      "entry": ["src/pages/**/*.astro", "src/lib/engine-worker.mjs", "test/*.mjs", "headers.mjs"],
+      "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"],
+      // Loaded only from vendor/image-wasm32-wasip1/image.wasip1-browser.js (the single-threaded
+      // fallback build) and its dependency @napi-rs/wasm-runtime's own entry point, both outside
+      // knip's project glob, so static analysis never sees the import. buffer is the polyfill
+      // engine-worker.mjs installs as globalThis.Buffer for that same vendored build.
+      "ignoreDependencies": ["buffer", "@emnapi/core", "@emnapi/runtime", "@napi-rs/wasm-runtime"]
     }
   }
 }

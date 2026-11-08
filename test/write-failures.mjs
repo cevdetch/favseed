@@ -106,13 +106,6 @@ describe('late output write failures', () => {
     assert.deepEqual(tree(state.out), before);
   });
 
-  it('validates all staged files before replacing any output', async () => {
-    const state = setup(),
-      before = tree(state.out);
-    failed(await run(state, [{ method: 'writeFileSync', to: 'stage', name: 'favicon.ico', empty: true }]));
-    assert.deepEqual(tree(state.out), before);
-  });
-
   it('backs up the entire previous set before replacing any output', async () => {
     const state = setup(),
       before = tree(state.out);

@@ -15,7 +15,7 @@ import {
 
 const manifest = () => ({
   schema: 1,
-  engines: { '@napi-rs/image': '1.15.0', svgo: '4.1.0', '@gfx/zopfli': '1.0.15+wasm.example' },
+  engines: { '@napi-rs/image': '1.15.0', svgo: '4.1.0', zopfli: '1.0.15+wasm.example' },
   profiles: { default: { marks: ['general'], options: { bg: '#000000', manifest: true } } },
   files: {
     'default/general/icon.svg': { bytes: 100, sha256: '1'.repeat(64) },
