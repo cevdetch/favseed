@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 // The search sweep: for every raster a default build produces, measure the smallest encode
 // that still passes the accuracy bar, two ways — an exhaustive sweep of every candidate
-// setting, and the binary search a lower-effort search would actually run. Results land in
+// setting, and the binary search a lower-effort search would actually run.
+//
+// The gate is the shipped one, lib/quality.mjs's passesBar: pct <= ACCURACY_PCT (the
+// pixel-distance share test/lib/accuracy.mjs's score() also reports) AND edge <= EDGE_GATE (an
+// edge-weighted luma error; see lib/quality.mjs for why a second metric joins the first one).
+// Every candidate also keeps a bar-only verdict (pct alone, the gate before the edge metric
+// shipped), so the README can report what the edge gate costs over the bar-only winner rather
+// than only what ships today.
+//
+// Results land in
 // bench/out/search/results.json (gitignored); --write regenerates the committed
 // bench/search/README.md from them.
 //
@@ -23,18 +32,27 @@
 // printed to stderr. A build or measurement failure is caught per mark (never left to crash the
 // whole sweep) and its message is scrubbed of the real path before it is recorded.
 //
-// Candidates per job: quality in [40, 50, 60, 70, 80, 90, 95, 98, 99] at the default colour
+// Candidates per job: quality in SEARCH_QUALITIES (lib/core.mjs) at the default colour
 // ceiling (encode ignores colours below quality 100), and quality 100 with colours in
-// [2..256]. Both lists ascend in the direction a pass gets more likely, which the binary
+// SEARCH_COLORS. Both lists ascend in the direction a pass gets more likely, which the binary
 // searches below assume (monotone pass/fail) rather than verify — see the binary winner rule
-// just below for why that assumption alone is not enough to pick the winner.
+// just below for why that assumption alone is not enough to pick the winner. These are the
+// exact lists lib/engine.mjs's search() walks — not a private copy — so the sweep's candidate
+// space can never drift from the shipped one.
 
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engineVersions, loadEngine } from '../bin/favseed.mjs';
-import { DEFAULT_COLORS, DEFAULT_QUALITY } from '../lib/core.mjs';
-import { score, THRESHOLD_PCT } from '../test/lib/accuracy.mjs';
+import {
+  ACCURACY_PCT,
+  DEFAULT_COLORS,
+  DEFAULT_QUALITY,
+  EDGE_GATE,
+  SEARCH_COLORS,
+  SEARCH_QUALITIES,
+} from '../lib/core.mjs';
+import { passesBar, prepareReference } from '../lib/quality.mjs';
 import { decode } from '../test/lib/png.mjs';
 import { corpusFiles } from './corpus/files.mjs';
 import { captureJobs } from './jobs.mjs';
@@ -43,20 +61,32 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, 'bench/out/search');
 const README = join(ROOT, 'bench/search/README.md');
 
-const QUALITY_LIST = [40, 50, 60, 70, 80, 90, 95, 98, 99];
-const COLORS_LIST = [2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256];
+const QUALITY_LIST = SEARCH_QUALITIES;
+const COLORS_LIST = SEARCH_COLORS;
+
+// test/lib/png.mjs's decode() returns { width, height, data }; lib/quality.mjs's passesBar
+// takes { width, height, rgba } (the engine's renderRgba shape). One adapter at the call site,
+// rather than teaching lib/quality.mjs a second shape it would carry forever.
+const asQualityImage = ({ width, height, data }) => ({ width, height, rgba: data });
 
 // ------------------------------------------------------------------ winners --
 
-const passes = (c) => c.pct <= THRESHOLD_PCT;
+// The gate before the edge metric shipped: pct alone. Kept so the README can show what the
+// edge gate costs over it, never used to decide what the sweep itself reports as "the" winner.
+const barOnlyPasses = (c) => c.pct <= ACCURACY_PCT;
+// The shipped gate, lib/quality.mjs's passesBar, recomputed from the same pct/edge numbers
+// every candidate already carries rather than re-run per lookup.
+const passes = (c) => c.pct <= ACCURACY_PCT && c.edge <= EDGE_GATE;
 
 /** True if `a` is the less-lossy of a tie: the exhaustive/binary tie rule. */
 const lessLossy = (a, b) =>
   a.setting.quality !== b.setting.quality ? a.setting.quality > b.setting.quality : a.setting.colors > b.setting.colors;
 
-/** Smallest bytes with pct <= THRESHOLD_PCT; ties go to the less-lossy setting. */
-function exhaustiveWinner(candidates, fallback) {
-  const passing = candidates.filter(passes);
+/** Smallest bytes passing `passFn`; ties go to the less-lossy setting. `passFn` is `passes`
+ * (the shipped gate) or `barOnlyPasses` (the gate before the edge metric), so every winner
+ * below is computed identically both ways. */
+function exhaustiveWinner(candidates, fallback, passFn) {
+  const passing = candidates.filter(passFn);
   if (!passing.length) return fallback;
   return passing.reduce((best, c) => {
     if (c.bytes !== best.bytes) return c.bytes < best.bytes ? c : best;
@@ -66,16 +96,18 @@ function exhaustiveWinner(candidates, fallback) {
 
 /**
  * Every candidate a leftmost-pass binary search actually visits on a monotone-assumed
- * (ascending-pass-likelihood) list, in probe order.
+ * (ascending-pass-likelihood) list, in probe order. `passFn` decides each probe's pass/fail,
+ * so the bar-only walk and the gated walk can visit different candidates on the same list —
+ * exactly as a bar-only search and the shipped search would.
  */
-function binaryProbe(list) {
+function binaryProbe(list, passFn) {
   let lo = 0,
     hi = list.length - 1;
   const probed = [];
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     probed.push(list[mid]);
-    if (passes(list[mid])) hi = mid - 1;
+    if (passFn(list[mid])) hi = mid - 1;
     else lo = mid + 1;
   }
   return probed;
@@ -95,28 +127,32 @@ function binaryProbe(list) {
  * exactly like the exhaustive winner. Both searches still run to find the probes; this only
  * changes which of those already-measured candidates gets reported as the pick.
  */
-function binaryWinner(qualityCandidates, colourCandidates, fallback) {
-  const probed = [...binaryProbe(qualityCandidates), ...binaryProbe(colourCandidates)];
-  const passing = probed.filter(passes);
+function binaryWinner(qualityCandidates, colourCandidates, fallback, passFn) {
+  const probed = [...binaryProbe(qualityCandidates, passFn), ...binaryProbe(colourCandidates, passFn)];
+  const passing = probed.filter(passFn);
   const winner = passing.length
     ? passing.reduce((best, c) => {
         if (c.bytes !== best.bytes) return c.bytes < best.bytes ? c : best;
         return lessLossy(c, best) ? c : best;
       })
     : fallback;
-  return { setting: winner.setting, bytes: winner.bytes, pct: winner.pct, probes: probed.length };
+  return { setting: winner.setting, bytes: winner.bytes, pct: winner.pct, edge: winner.edge, probes: probed.length };
 }
 
 // -------------------------------------------------------------------- jobs --
 
 /**
- * Both winners from one job's full candidate list (quality group first, colour group second —
- * the same split `measureJob` builds and the same one `candidates` is stored in). Shared with
- * `--summarise`, which recomputes only this from already-measured candidates.
+ * Both gates' winners from one job's full candidate list (quality group first, colour group
+ * second — the same split `measureJob` builds and the same one `candidates` is stored in).
+ * Shared with `--summarise`, which recomputes only this from already-measured candidates.
  *
- * When nothing on either list passes, both winners are today's own encode — the default
- * setting, today's bytes and today's pct — since a search that finds no passing candidate
- * would ship what the default build already ships, not some other failing file.
+ * `exhaustive`/`binary` are the shipped gate (pct and edge, lib/quality.mjs's passesBar);
+ * `exhaustiveBarOnly`/`binaryBarOnly` are the same two searches run against pct alone, kept so
+ * the README can report what the edge gate costs over them.
+ *
+ * When nothing on a gate's list passes, that gate's winners are today's own encode — the
+ * default setting, today's bytes, pct and edge — since a search that finds no passing
+ * candidate would ship what the default build already ships, not some other failing file.
  */
 function winnersFor(candidates, today) {
   const qualityCandidates = candidates.slice(0, QUALITY_LIST.length);
@@ -125,18 +161,20 @@ function winnersFor(candidates, today) {
     setting: { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS },
     bytes: today.bytes,
     pct: today.pct,
+    edge: today.edge,
   };
-  const { setting, bytes, pct } = exhaustiveWinner(candidates, fallback);
   return {
-    exhaustive: { setting, bytes, pct },
-    binary: binaryWinner(qualityCandidates, colourCandidates, fallback),
+    exhaustive: exhaustiveWinner(candidates, fallback, passes),
+    exhaustiveBarOnly: exhaustiveWinner(candidates, fallback, barOnlyPasses),
+    binary: binaryWinner(qualityCandidates, colourCandidates, fallback, passes),
+    binaryBarOnly: binaryWinner(qualityCandidates, colourCandidates, fallback, barOnlyPasses),
   };
 }
 
-/** One job: today's bytes, every candidate, and both winners. */
+/** One job: today's bytes, every candidate (pct and edge both), and all four winners. */
 async function measureJob(job, engine) {
-  const ref = await job.reference;
-  const todayPct = score(decode(Buffer.from(job.today)), ref).pct;
+  const ref = prepareReference(asQualityImage(await job.reference));
+  const todayBar = passesBar(asQualityImage(decode(Buffer.from(job.today))), ref);
 
   const candidates = [];
   let quantiseMs = 0,
@@ -146,14 +184,14 @@ async function measureJob(job, engine) {
     const bytes = await engine.encode(job.raw, setting);
     quantiseMs += performance.now() - t0;
     const t1 = performance.now();
-    const pct = score(decode(Buffer.from(bytes)), ref).pct;
+    const { pct, edge } = passesBar(asQualityImage(decode(Buffer.from(bytes))), ref);
     scoreMs += performance.now() - t1;
-    candidates.push({ setting, bytes: bytes.length, pct });
+    candidates.push({ setting, bytes: bytes.length, pct, edge });
   };
   for (const quality of QUALITY_LIST) await measure({ quality, colors: DEFAULT_COLORS });
   for (const colors of COLORS_LIST) await measure({ quality: 100, colors });
 
-  const today = { bytes: job.today.length, pct: todayPct };
+  const today = { bytes: job.today.length, pct: todayBar.pct, edge: todayBar.edge };
   return {
     kind: job.kind,
     px: job.px,
@@ -271,10 +309,12 @@ const jobsOf = (marks) => okMarks(marks).flatMap((m) => m.jobs.map((j) => ({ ...
 const jobLabel = (j) => `${j.corpus}/${j.name} ${j.kind}-${j.px}`;
 const CANDIDATES = QUALITY_LIST.length + COLORS_LIST.length;
 
-function totalsTable(jobs) {
+// `exhaustiveKey`/`binaryKey` default to the shipped gate (pct and edge); pass the BarOnly
+// pair to total the gate that shipped before the edge metric, for the edge-gate-cost section.
+function totalsTable(jobs, { exhaustiveKey = 'exhaustive', binaryKey = 'binary' } = {}) {
   const today = jobs.reduce((n, j) => n + j.today.bytes, 0);
-  const exhaustive = jobs.reduce((n, j) => n + j.exhaustive.bytes, 0);
-  const binary = jobs.reduce((n, j) => n + j.binary.bytes, 0);
+  const exhaustive = jobs.reduce((n, j) => n + j[exhaustiveKey].bytes, 0);
+  const binary = jobs.reduce((n, j) => n + j[binaryKey].bytes, 0);
   const delta = (bytes) => (today ? pct1(((today - bytes) / today) * 100) : '0.0');
   return { n: jobs.length, today, exhaustive, binary, exhaustiveDelta: delta(exhaustive), binaryDelta: delta(binary) };
 }
@@ -322,15 +362,26 @@ function writeReadme(results) {
   // today's bytes, unchanged and still over the bar.
   const todayIsCandidate = allJobs.filter((j) =>
     j.candidates.some(
-      (c) => c.setting.quality === DEFAULT_QUALITY && c.bytes === j.today.bytes && c.pct === j.today.pct,
+      (c) =>
+        c.setting.quality === DEFAULT_QUALITY &&
+        c.bytes === j.today.bytes &&
+        c.pct === j.today.pct &&
+        c.edge === j.today.edge,
     ),
   ).length;
+  // "Passes" is the shipped gate throughout this file: pct <= ACCURACY_PCT AND
+  // edge <= EDGE_GATE. See "The edge gate's cost" below for what it costs over pct alone.
   const todayPasses = allJobs.filter((j) => passes(j.today));
   const todayMisses = allJobs.filter((j) => !passes(j.today));
   const fixed = todayMisses.filter((j) => passes(j.exhaustive));
   const unfixed = todayMisses.filter((j) => !passes(j.exhaustive));
   const binaryFixed = todayMisses.filter((j) => passes(j.binary));
   const fixedTotals = totalsTable(fixed);
+
+  // Today misses the gated bar for one of two reasons: pct alone already failed, or pct passed
+  // and only the edge metric failed it. The second group is new work the edge gate did that a
+  // bar-only build would have shipped unnoticed.
+  const todayEdgeOnlyMisses = todayMisses.filter((j) => barOnlyPasses(j.today));
 
   const kinds = ['ico', 'apple', 'icon'].filter((k) => allJobs.some((j) => j.kind === k));
   const perKind = kinds.map((kind) => [kind, totalsTable(allJobs.filter((j) => j.kind === kind))]);
@@ -406,6 +457,19 @@ function writeReadme(results) {
   const fixtureMissesAccepted =
     fixtureMisses.length > 0 && fixtureMisses.every((j) => j.kind === 'ico' && acceptedIco.has(j.name));
 
+  // The edge gate's own cost: totals under the shipped gate (pct and edge) against the same
+  // two searches run with pct alone, and how many jobs the extra metric actually moved — a
+  // winner that costs bytes, not just a different number on an unmoved one.
+  const barOnlyTotals = totalsTable(allJobs, { exhaustiveKey: 'exhaustiveBarOnly', binaryKey: 'binaryBarOnly' });
+  const gatedTotals = totalsTable(allJobs);
+  const edgeMoved = (gatedKey, barKey) => allJobs.filter((j) => j[gatedKey].bytes !== j[barKey].bytes);
+  const exhaustiveMoved = edgeMoved('exhaustive', 'exhaustiveBarOnly');
+  const binaryMoved = edgeMoved('binary', 'binaryBarOnly');
+  const movedCost = (moved, gatedKey, barKey) => moved.reduce((n, j) => n + (j[gatedKey].bytes - j[barKey].bytes), 0);
+  const exhaustiveMovedCost = movedCost(exhaustiveMoved, 'exhaustive', 'exhaustiveBarOnly');
+  const binaryMovedCost = movedCost(binaryMoved, 'binary', 'binaryBarOnly');
+  const edgeDelta = (gated, bar) => (bar ? pct1(((gated - bar) / bar) * 100) : '0.0');
+
   const lines = [];
   lines.push('# Search sweep', '');
   lines.push(
@@ -421,8 +485,9 @@ function writeReadme(results) {
   lines.push(
     'For every raster a default build produces (ICO payload, apple-touch-icon, and the two ' +
       '`icon-<size>.png` sizes), this sweep tries every candidate in the search space and ' +
-      'records the smallest one that passes the accuracy bar ' +
-      `(\`pct <= ${THRESHOLD_PCT}%\`, test/lib/accuracy.mjs) two ways:`,
+      'records the smallest one that passes the shipped accuracy bar — ' +
+      `\`pct <= ${ACCURACY_PCT}%\` AND \`edge <= ${EDGE_GATE}\` (lib/quality.mjs's \`passesBar\`, ` +
+      "the same gate `lib/engine.mjs`'s `search()` runs) — two ways:",
     '',
     '- **Exhaustive** — every candidate is tried; the smallest passing one wins, ties going to ' +
       'the less lossy setting (higher quality, then more colours).',
@@ -437,11 +502,14 @@ function writeReadme(results) {
     '',
     `The candidate space: quality in \`[${QUALITY_LIST.join(', ')}]\` at the default colour ` +
       'ceiling (encode ignores colours below quality 100), and quality 100 with colours in ' +
-      `\`[${COLORS_LIST.join(', ')}]\`. Every candidate is \`engine.encode\`'s own output, the ` +
-      'smaller of a quantised and a lossless encode, exactly as a build would make it. If ' +
-      "nothing on either list passes, both winners are today's own encode: the default setting " +
-      `(quality ${DEFAULT_QUALITY}, colours ${DEFAULT_COLORS}), today's bytes and today's \`pct\`, ` +
-      'which is then above the bar.',
+      `\`[${COLORS_LIST.join(', ')}]\` — lib/core.mjs's \`SEARCH_QUALITIES\`/\`SEARCH_COLORS\`, the ` +
+      'exact lists the shipped search walks, not a private copy. Every candidate is ' +
+      "`engine.encode`'s own output, the smaller of a quantised and a lossless encode, exactly " +
+      "as a build would make it. If nothing on either list passes, both winners are today's own " +
+      `encode: the default setting (quality ${DEFAULT_QUALITY}, colours ${DEFAULT_COLORS}), ` +
+      "today's bytes, pct and edge, which are then above the bar. Each candidate also keeps a " +
+      'bar-only verdict (`pct` alone, the gate before `edge` shipped); "the edge gate\'s cost" ' +
+      'below reports what the second metric changes.',
     '',
     `Today is the production default build's own encode (quality ${DEFAULT_QUALITY}), from the ` +
       'same in-memory run the candidates are measured against, so the comparison needs no ' +
@@ -498,9 +566,28 @@ function writeReadme(results) {
     ),
   );
 
+  lines.push("## The edge gate's cost", '');
+  lines.push(
+    'The totals above are the shipped gate — `pct` AND `edge`. Run the same two searches with ' +
+      '`pct` alone (the gate before `edge` shipped) and the exhaustive winner totals ' +
+      `${barOnlyTotals.exhaustive.toLocaleString()} B against ${gatedTotals.exhaustive.toLocaleString()} B ` +
+      `gated (+${edgeDelta(gatedTotals.exhaustive, barOnlyTotals.exhaustive)}%); the binary winner totals ` +
+      `${barOnlyTotals.binary.toLocaleString()} B against ${gatedTotals.binary.toLocaleString()} B gated ` +
+      `(+${edgeDelta(gatedTotals.binary, barOnlyTotals.binary)}%).`,
+    '',
+    `\`edge\` changes the exhaustive winner on ${exhaustiveMoved.length} of ${allJobs.length} jobs ` +
+      `(${byCorpus(
+        corpora,
+        exhaustiveMoved,
+      )}; private by count only), costing ${exhaustiveMovedCost.toLocaleString()} B over the bar-only ` +
+      'winner on exactly those jobs. It changes the binary winner on ' +
+      `${binaryMoved.length} of ${allJobs.length} jobs, costing ${binaryMovedCost.toLocaleString()} B.`,
+    '',
+  );
+
   lines.push('## Jobs where today misses the bar', '');
   lines.push(
-    `Today's default misses the bar on ${todayMisses.length} of ${allJobs.length} jobs ` +
+    `Today's default misses the gated bar on ${todayMisses.length} of ${allJobs.length} jobs ` +
       `(${byCorpus(corpora, todayMisses)}; private by count only).`,
     '',
     `- **${fixed.length} of those ${todayMisses.length}** have a passing candidate ` +
@@ -511,10 +598,15 @@ function writeReadme(results) {
       `The binary search finds a pass on ${binaryFixed.length} of them.`,
     `- **${unfixed.length} of those ${todayMisses.length}** have no passing candidate on either ` +
       `list (${byCorpus(corpora, unfixed)}) and keep today's bytes.`,
+    `- **${todayEdgeOnlyMisses.length} of those ${todayMisses.length}** pass \`pct\` on their own ` +
+      'but miss on `edge` alone — a miss the bar-only gate would never have reported ' +
+      `(${byCorpus(corpora, todayEdgeOnlyMisses)}; private by count only).`,
     '',
   );
   if (fixtureMisses.length) {
-    const described = fixtureMisses.map((j) => `${j.name} ${j.kind} ${j.px}px at ${j.today.pct.toFixed(4)}%`);
+    const described = fixtureMisses.map(
+      (j) => `${j.name} ${j.kind} ${j.px}px at ${j.today.pct.toFixed(4)}% / edge ${j.today.edge.toFixed(4)}`,
+    );
     lines.push(
       `The ${fixtureMisses.length} fixture miss(es): ${joinAnd(described)}.` +
         (fixtureMissesAccepted
