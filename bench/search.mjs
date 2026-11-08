@@ -200,7 +200,10 @@ async function sweep({ privateDir, open }) {
     try {
       const captured = await captureJobs(file.path, { name: file.name });
       if (!captured.ok) {
-        marks.push({ corpus: file.corpus, name: file.name, ok: false, error: captured.error });
+        // captureJobs already scrubs its own error (fix round 2); sanitise again here as a
+        // second line of defence, since nothing about results.json or the README should ever
+        // have to trust a single call site to have gotten that right.
+        marks.push({ corpus: file.corpus, name: file.name, ok: false, error: sanitiseError(captured.error, file) });
         continue;
       }
       const jobs = [];

@@ -51,7 +51,12 @@ export const captureJobs = async (path, { name = basename(path) } = {}) => {
       name,
     });
   } catch (error) {
-    return { ok: false, error: String(error?.message ?? error).split('\n')[0] };
+    // buildSet's own errors already say `name` (it was passed the override above), but
+    // readFileSync's ENOENT (and any other fs error) fires before buildSet ever runs, and
+    // embeds the real `path` Node was asked to open. Scrub both the full path and its bare
+    // basename — never trust the caller's error message to already be safe.
+    const message = String(error?.message ?? error).split('\n')[0];
+    return { ok: false, error: message.split(path).join(name).split(basename(path)).join(name) };
   }
   for (const job of jobs) {
     job.kind = job.bg === null && job.px === ICO_SIZE ? 'ico' : job.px === APPLE_SIZE ? 'apple' : 'icon';

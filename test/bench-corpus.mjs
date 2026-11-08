@@ -74,4 +74,20 @@ describe('bench capture jobs', () => {
     assert.ok(!result.error.includes('Brand'));
     assert.ok(result.error.includes('private-0'));
   });
+
+  it("never leaks a private mark's real path when the file cannot even be read", async () => {
+    // No writeFileSync: the file genuinely does not exist, so readFileSync's own ENOENT
+    // throws with the full path embedded in its message, before buildSet (and its `name`
+    // override) ever runs. Fix round 2: captureJobs must scrub that path itself, not rely on
+    // buildSet's error message to already say `name`.
+    const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
+    const path = join(dir, 'Secret Brand Missing.svg');
+    const result = await captureJobs(path, { name: 'private-99' });
+    assert.equal(result.ok, false);
+    assert.ok(!result.error.includes('Secret'));
+    assert.ok(!result.error.includes('Brand'));
+    assert.ok(!result.error.includes(path));
+    assert.ok(!result.error.includes(dir));
+    assert.ok(result.error.includes('private-99'));
+  });
 });
