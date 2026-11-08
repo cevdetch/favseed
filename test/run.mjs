@@ -1450,8 +1450,14 @@ describe('the astro integration', () => {
       [{ sizes: [] }, /sizes is empty/],
       [{ effort: 'slow' }, /effort must be 'fast', 'default' or 'max', got 'slow'/],
       [{ padding: 46 }, /padding must be 'auto' or a percentage 0-45/],
-      [{ zopfli: true }, /unknown option 'zopfli'.*\beffort\b/],
-      [{ mode: 'fast' }, /unknown option 'mode'.*\beffort\b/],
+      [
+        { zopfli: true },
+        /unknown option 'zopfli'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      ],
+      [
+        { mode: 'fast' },
+        /unknown option 'mode'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      ],
       [{ animation: 'no' }, /animation must be true or false/],
       [{ manifest: [] }, /manifest must be true, false or an object/],
       [{ vars: { 'bad name': 'red' } }, /vars name must be a CSS custom property/],

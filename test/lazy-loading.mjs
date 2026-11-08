@@ -79,6 +79,11 @@ describe('lazy build dependencies', () => {
       const api = await import(${JSON.stringify(CLI)});
       await assert.rejects(api.buildFiles({input:'test/fixtures/flat.svg', colors:1}), /--colors/);
       await assert.rejects(api.buildFiles({input:'test/fixtures/notsvg.txt'}), /not an SVG/);
+      for (const options of [{zopfli:true}, {mode:'release'}]) {
+        for (const fn of [api.build, api.buildFiles]) {
+          await assert.rejects(fn({input:'test/fixtures/flat.svg', ...options}), /^FavseedError: zopfli and mode were replaced by effort \\('fast', 'default' or 'max'\\)$/);
+        }
+      }
     `,
     );
   });

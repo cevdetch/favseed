@@ -52,16 +52,27 @@ describe('normaliseOptions', () => {
   });
 
   it('pins exactly what was given, and nothing when neither control was', () => {
-    assert.deepEqual(normaliseOptions({ colors: 16 }).pinned, { quality: 100, colors: 16 });
-    assert.deepEqual(normaliseOptions({ colors: '16' }).pinned, { quality: 100, colors: 16 });
-    assert.deepEqual(normaliseOptions({ quality: 70 }).pinned, { quality: 70, colors: 256 });
+    assert.deepEqual(normaliseOptions({ colors: 16 }).pinned, { quality: 100, colors: 16, by: 'colors' });
+    assert.deepEqual(normaliseOptions({ colors: '16' }).pinned, { quality: 100, colors: 16, by: 'colors' });
+    assert.deepEqual(normaliseOptions({ quality: 70 }).pinned, { quality: 70, colors: 256, by: 'quality' });
     // An explicit quality 80 is a pin too: one encode at 80, no search.
-    assert.deepEqual(normaliseOptions({ quality: 80 }).pinned, { quality: 80, colors: 256 });
-    assert.deepEqual(normaliseOptions({ quality: 100 }).pinned, { quality: 100, colors: 256 });
-    assert.deepEqual(normaliseOptions({ quality: 100, colors: 32 }).pinned, { quality: 100, colors: 32 });
+    assert.deepEqual(normaliseOptions({ quality: 80 }).pinned, { quality: 80, colors: 256, by: 'quality' });
+    assert.deepEqual(normaliseOptions({ quality: 100 }).pinned, { quality: 100, colors: 256, by: 'quality' });
+    assert.deepEqual(normaliseOptions({ quality: 100, colors: 32 }).pinned, { quality: 100, colors: 32, by: 'colors' });
     assert.equal(normaliseOptions({ quality: undefined, colors: undefined }).pinned, null);
     // A pin skips the search, not the effort's Zopfli pass.
     assert.equal(normaliseOptions({ colors: 16, effort: 'max' }).iterations, 120);
+  });
+
+  it('refuses zopfli and mode passed at runtime, naming effort', () => {
+    for (const options of [{ zopfli: true }, { zopfli: false }, { mode: 'release' }, { mode: 'fast', effort: 'max' }]) {
+      fails(
+        () => normaliseOptions(options),
+        /^zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)$/,
+      );
+    }
+    // undefined is "not given" everywhere else, and here too.
+    assert.equal(normaliseOptions({ zopfli: undefined, mode: undefined }).effort, 'default');
   });
 
   it('validates PNG quality and refuses a palette that would override it', () => {
@@ -209,9 +220,17 @@ describe('checkConfig', () => {
     for (const key of ['zopfli', 'mode']) {
       fails(
         () => checkConfig({ [key]: true }, 'favseed.config.mjs'),
-        new RegExp(`^favseed\\.config\\.mjs: unknown option '${key}'; the options are .*\\beffort\\b`),
+        new RegExp(
+          `^favseed\\.config\\.mjs: unknown option '${key}'; the options are .*\\beffort\\b.*; ` +
+            `zopfli and mode were replaced by effort \\('fast', 'default' or 'max'\\)$`,
+        ),
       );
     }
+    // Any other unknown key keeps the plain message.
+    fails(
+      () => checkConfig({ dev: 'fast' }, 'favseed.config.mjs'),
+      /^favseed\.config\.mjs: unknown option 'dev'; the options are [^;]*$/,
+    );
   });
 
   it('defineConfig returns what it was given', () => {
@@ -542,6 +561,15 @@ describe('the CLI with a config file', () => {
     const r = await run(unpinned);
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /^effort fast: one encode at quality 80, no search; no Zopfli$/m);
+    // The same encode, echoed by the control that pinned it.
+    for (const [flag, value, named] of [
+      ['--colors', '256', 'colors 256'],
+      ['--quality', '100', 'quality 100'],
+    ]) {
+      const pin = await run(unpinned, [flag, value]);
+      assert.equal(pin.code, 0, pin.stderr);
+      assert.match(pin.stdout, new RegExp(`^effort fast: pinned at ${named}, no search; no Zopfli$`, 'm'));
+    }
   });
 
   it('refuses an unknown effort and the removed Zopfli flags', async () => {
@@ -554,7 +582,7 @@ describe('the CLI with a config file', () => {
     for (const flag of ['--zopfli', '--no-zopfli']) {
       const r = await run(dir, [flag, 'logo.svg']);
       assert.equal(r.code, 1, flag);
-      assert.match(r.stderr, new RegExp(`^favseed: unknown option: ${flag}$`, 'm'));
+      assert.match(r.stderr, new RegExp(`^favseed: unknown option: ${flag}; use --effort$`, 'm'));
     }
   });
 });

@@ -429,6 +429,16 @@ describe('favseed/vite in a build', () => {
     await assert.rejects(vbuild(root, [favseed({ ...FAST, input: 'nope.svg' })]), /favseed: no such file: .*nope\.svg/);
   });
 
+  it('refuses zopfli and mode, naming effort', async () => {
+    const root = app();
+    for (const options of [{ zopfli: true }, { mode: 'release' }]) {
+      await assert.rejects(
+        vbuild(root, [favseed(options)]),
+        /favseed: zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      );
+    }
+  });
+
   it('serves the second build from the cache', async () => {
     const root = app();
     await vbuild(root, [favseed(FAST)]);

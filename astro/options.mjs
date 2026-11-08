@@ -1,7 +1,7 @@
 // Host-specific validation and wording; the shared validator remains the authority
 // for build values, without loading SVG/native engines during Astro configuration.
 import { FavseedError } from '../lib/core.mjs';
-import { CONFIG_KEYS, configurationError, normaliseOptions } from '../lib/config.mjs';
+import { CONFIG_KEYS, configurationError, normaliseOptions, REPLACED_BY_EFFORT } from '../lib/config.mjs';
 
 const keys = [...CONFIG_KEYS.filter((key) => key !== 'out' && key !== 'base'), 'head'];
 
@@ -16,6 +16,7 @@ export const validateOptions = (options) => {
     const hints = [];
     if (unknown.includes('out')) hints.push("out is controlled by Astro's build output (outDir, build.client)");
     if (unknown.includes('base')) hints.push('base is controlled by Astro config.base');
+    if (unknown.includes('zopfli') || unknown.includes('mode')) hints.push(REPLACED_BY_EFFORT);
     fail(
       `unknown option${unknown.length > 1 ? 's' : ''} ${unknown.map((key) => `'${key}'`).join(', ')}; ` +
         `the options are ${keys.join(', ')}` +

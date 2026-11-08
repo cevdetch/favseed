@@ -534,7 +534,8 @@ export async function cli(argv) {
         const a = argv[i];
         if (a.startsWith('-') && a !== '-') {
           process.stderr.write(USAGE + '\n');
-          die(`unknown option: ${flag}`);
+          // The two flags effort replaced get pointed at it, not just refused.
+          die(`unknown option: ${flag}${flag === '--zopfli' || flag === '--no-zopfli' ? '; use --effort' : ''}`);
         }
         if (input !== null) die('only one input file may be given');
         input = a;

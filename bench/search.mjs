@@ -25,7 +25,7 @@
 // rereads bench/out/search/results.json, recomputes `exhaustive` and `binary` from each job's
 // already-stored `candidates` (the costly part — encoding and scoring every candidate — is not
 // repeated), and rewrites results.json and the README. Useful after a change to the winner
-// rule alone, so a 15-minute sweep does not have to run again for it.
+// rule alone, so a ~42-minute sweep does not have to run again for it.
 //
 // A private mark's real name never appears anywhere here: corpusFiles() already hands back
 // `private-N` labels, and that label — never the path — is what gets passed to captureJobs and
@@ -257,7 +257,7 @@ async function sweep({ privateDir, open }) {
       marks.push({ corpus: file.corpus, name: file.name, ok: true, jobs });
     } catch (error) {
       // A rejected reference render or an encode failure is a per-mark problem (one bad SVG
-      // in a 142-mark corpus), never a reason to lose the rest of a 15-minute sweep.
+      // in a 142-mark corpus), never a reason to lose the rest of a ~42-minute sweep.
       marks.push({ corpus: file.corpus, name: file.name, ok: false, error: sanitiseError(error, file) });
     }
   }
