@@ -1,18 +1,22 @@
 export const cases = [
-  { name: 'small-mark/placement', mark: 'small-mark', options: {} },
+  { name: 'small-mark/placement', mark: 'small-mark', options: { effort: 'fast' } },
   ...['aspect-wide', 'aspect-tall', 'aspect-offset', 'aspect-percent'].map((mark) => ({
     name: `${mark}/proportions`,
     mark,
-    options: {},
+    options: { effort: 'fast' },
   })),
-  { name: 'aspect-percent/transparent', mark: 'aspect-percent', options: { bg: 'none', padding: 0, sizes: [32, 128] } },
+  {
+    name: 'aspect-percent/transparent',
+    mark: 'aspect-percent',
+    options: { bg: 'none', padding: 0, sizes: [32, 128], effort: 'fast' },
+  },
   ...['grid-1', 'grid-16', 'grid-24', 'grid-tiny', 'grid-fallback'].map((mark) => ({
     name: `${mark}/precision`,
     mark,
-    options: {},
+    options: { effort: 'fast' },
   })),
-  { name: 'gradient/quality100', mark: 'gradient', options: { quality: 100 } },
-  { name: 'gradient/quality80', mark: 'gradient', options: { quality: 80 } },
+  { name: 'gradient/quality100', mark: 'gradient', options: { quality: 100, effort: 'fast' } },
+  { name: 'gradient/quality80', mark: 'gradient', options: { quality: 80, effort: 'fast' } },
   { name: 'gradient/quality60-default', mark: 'gradient', options: { quality: 60, effort: 'default', sizes: [32] } },
   ...['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'].map(
     (mark) => ({ name: `${mark}/fast`, mark, options: { effort: 'fast' } }),
