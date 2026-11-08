@@ -647,8 +647,14 @@ The short version, because these are the parts that look wrong until you know wh
   optimised after packing. favseed writes that header itself, byte-identical to
   `icotool -c -r`, which removes the only dependency with no npm package and no Windows build.
   The BMP payload `icotool` writes by default is 8.8× larger on the fixtures.
-- **Zopfli runs once**, on the encode the effort chose. Running it on every candidate costs
-  many times as much for the same choice.
+- **Each raster is the smallest candidate that passes.** At the default effort a binary
+  search tries 7 to 9 of 26 quality and palette settings per raster and keeps the smallest that
+  passes the accuracy bar; a raster that fails at quality 80 takes a passing candidate even when
+  it is larger. Over 568 rasters that came to 20.4 % fewer bytes than quality 80, within 0.2 %
+  of trying all 26 (decision 29).
+- **Zopfli runs at most once per raster**, after the choice, on the winning encode: 15
+  iterations at the default effort, 120 at `max`, none at `fast`. Candidates are compared
+  before it, because finishing every one would multiply its cost by the number tried.
 - **Bounded concurrency overlaps raster jobs and complete alignment searches.** The shared
   scheduler limits active canvas work, keeps large custom sizes serial, and drains failures
   before a retry. Candidate selection and output order remain deterministic.

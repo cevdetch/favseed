@@ -111,10 +111,13 @@ The root suite, packed-package Astro suite and site browser checks cover these c
 6. A referenced id survives; unreferenced ids are dropped.
 7. `favicon.ico` starts `00 00 01 00`, its payload is a PNG (`89 50 4E 47`), and the container is
    byte-identical to `icotool -c -r` wherever icotool is available.
-8. Effort-fast padded PNGs in the accuracy fixtures meet `pct <= 1.0 %`, scored against
-   **background-matched references, padded the same way**. ICO source error is reported separately:
-   the 48px ICO reaches 1.215% on two small-grid fixtures. See the [ICO report](bench/ico-size/README.md).
-   The SVG's static 512px budget does not guarantee this threshold at every raster size or quality.
+8. At the default effort every raster passes the accuracy bar, `pct <= 1.0 %` and edge error
+   `<= 1.5883`, scored against **background-matched references, padded the same way**, unless no
+   candidate does; such a raster keeps the effort-fast encode. Effort-fast padded PNGs in the
+   accuracy fixtures meet `pct <= 1.0 %`. ICO source error is reported separately: the 48px ICO
+   reaches 1.215% on two small-grid fixtures, where no candidate passes. See the
+   [ICO report](bench/ico-size/README.md). The SVG's static 512px budget does not guarantee
+   this threshold at every raster size or quality.
 9. `apple-touch-icon.png` has no alpha channel when `--bg` is set (the default).
 10. `--manifest` writes valid JSON: the size icons as `"any maskable"` when `--bg` is opaque
     and `"any"` alone when it is `none`, and never `icon.svg`; `--html` emits the `<link>` set with
@@ -134,12 +137,13 @@ The root suite, packed-package Astro suite and site browser checks cover these c
     base appearance; explicit `--no-animation` yields the same raster bytes on the fixtures.
     An unresolved motion variable fails the preserved SVG, naming `--no-animation`.
     Without `--quality` or `--colors`, each raster is chosen by `--effort` (default `default`):
-    the smallest passing encode, or the effort-fast encode when none passes. A given quality
+    the smallest encode that passes item 8's bar, or the effort-fast encode when none passes;
+    `--effort fast` is that encode alone, unscored. A given quality
     and/or palette pins that exact setting: quality alone at 256 colours, colours alone at
     quality 100, one encode with no search, and a warning (never a failure) when it misses
     the bar. SVG accuracy selection remains active. Reject quality outside integer 1–100,
-    colours outside 2–256, explicit colours combined with quality below 100, and an effort
-    other than `fast`, `default` or `max`.
+    colours outside 2–256, explicit colours combined with quality below 100, an effort
+    other than `fast`, `default` or `max`, and the removed `zopfli` and `mode` options.
 
 15. Long options accept `--opt=value`; a flag that takes no argument rejects one.
 16. `--sizes 48` renders twice when padded: once for `icon-48.png`, once unpadded for

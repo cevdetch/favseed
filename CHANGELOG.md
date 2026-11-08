@@ -44,18 +44,25 @@ contain.
   CLI needs only Node 24 and no external binaries to install.
 - `--sizes` defaults to `192 512`, the pair Chrome's install criteria document; and `--bg`
   defaults to `#000000`, matching how iOS composites a transparent Home Screen icon.
-- Each PNG and the ICO payload is scored against a render of the source placed like it, and
-  must keep at most 1 % of pixels off by more than 8/255 and an edge-weighted luma error of at
-  most 1.5883, on black and on white.
-- `--effort` (`effort` in config, API, Vite and Astro) sets how hard each raster is worked:
-  `fast` makes one quality-80 encode with no Zopfli; `default` (the default) binary-searches
-  quality 40-99 and then palettes of 2-256 colours for the smallest encode that passes, then
-  runs Zopfli at 15 iterations; `max` tries every candidate and runs Zopfli at 120 iterations.
-  When nothing passes, the `fast` encode is kept. Vite and Astro dev builds use `fast`.
+- Each PNG and the ICO payload is the smallest encode favseed finds that passes its accuracy
+  bar. Each raster is scored against a render of the source placed like it, and passes when at
+  most 1 % of pixels are off by more than 8/255 and its edge-weighted luma error is at most
+  1.5883, on black and on white. `--effort` (`effort` in config, API, Vite and Astro) sets how
+  hard it looks: `fast` makes one quality-80 encode, unscored, with no Zopfli; `default` (the
+  default) binary-searches quality 40-99 and palettes of 2-256 colours at quality 100, keeps
+  the smallest passing candidate it tried, and runs Zopfli at 15 iterations; `max` tries all 26
+  candidates and runs Zopfli at 120 iterations. A raster that fails at quality 80 takes a
+  passing candidate even when it is larger; one with no passing candidate keeps the `fast`
+  encode. Vite and Astro dev builds use `fast`. On the fixtures the byte manifest covers, the
+  default set's PNG/ICO bytes are 40.8 % smaller than quality 80's (41 904 B against 70 800);
+  `docs/DECISIONS.md` (decision 29) has the measurements and build times.
 - `--quality N` and `--colors N` pin an exact setting: one encode, no search. Quality alone
   uses the full 256-colour palette, colours alone use quality 100, and quality below 100
   cannot combine with colours. A pinned setting that misses the accuracy bar warns with its
-  measurements and still builds.
+  measurements and still builds. To leave a control to the search, omit it: `colors: null`
+  and `quality: null` are errors, not the default.
+- `zopfli` and `mode` are not options; passing either to `build()`, `buildFiles()`, a config
+  file or an integration fails with a message naming `effort`.
 - The CLI summary names the effort and its Zopfli iterations, and the setting each PNG kept or
   the pinned one.
 - Errors print as `favseed: <message>` on stderr with a non-zero exit, never a stack trace.

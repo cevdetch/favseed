@@ -123,6 +123,9 @@ sweeps.colors = async () => {
         sizes: [192, 512],
         colors: c,
         bg: '#000000',
+        // A pin keeps its effort's Zopfli pass; 'fast' keeps this sweep's bytes unfinished, as
+        // its note says, so they stay comparable with the table decision 24 cites.
+        effort: 'fast',
       });
       for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) bytes += r.bytes[f];
       for (const [label, px, file, bg, fitted] of CHECKS) {
@@ -146,7 +149,7 @@ sweeps.colors = async () => {
   ].join('\n');
   return {
     title: 'Palette size: bytes against accuracy',
-    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. Passing --colors here selects quality 100, not the quality-80 default that ships when --colors is left unset; this is the sweep that set the default --colors ceiling.`,
+    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, effort fast (no Zopfli). Passing --colors here pins that palette at quality 100; left unset, the default effort searches qualities and palettes per raster instead. This is the sweep that set the 256-colour palette ceiling.`,
     text,
   };
 };

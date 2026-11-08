@@ -22,39 +22,37 @@
       ],
       "options": {
         "bg": "#000000",
-        "mode": "release",
         "manifest": true
       }
     },
-    "zopfli": {
+    "max": {
       "marks": [
         "general",
         "gradient"
       ],
       "options": {
         "bg": "#000000",
-        "mode": "release",
         "manifest": true,
-        "zopfli": true
+        "effort": "max"
       }
     }
   },
   "files": {
     "default/general/apple-touch-icon.png": {
-      "bytes": 1095,
-      "sha256": "77ca734964a89c51008a4eed20cc3aea29ab0e342a4839c7f79d8ff1a9c7b6b2"
+      "bytes": 778,
+      "sha256": "3fb21cf67679a81bf30812981a3206b6c5d8be0c5bfb9b893ebb15c720008b40"
     },
     "default/general/favicon.ico": {
-      "bytes": 564,
-      "sha256": "ce1653f3f35672c4c470e53bb8d476699ee19344d79827091f3d7d57e1c02520"
+      "bytes": 464,
+      "sha256": "ff0e4750850db084c7a14b3ce77910962d15f9898d66761b62ea7a0e74bd0de8"
     },
     "default/general/icon-192.png": {
-      "bytes": 1163,
-      "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+      "bytes": 816,
+      "sha256": "ef8ab605ff7a164efd8e7796cc086f7015076cf9ed512f94538dd90fedbb9127"
     },
     "default/general/icon-512.png": {
-      "bytes": 3029,
-      "sha256": "05b60ac4a67e451646a3a5579ee0c7def3ddd140153eecfa257b4a2651cd86ec"
+      "bytes": 1279,
+      "sha256": "d2c6d205f9d3c5570a8ced8ddb73e57f23c76d14eae4961595e6d4d2e5e4f6bd"
     },
     "default/general/icon.svg": {
       "bytes": 392,
@@ -65,20 +63,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/flat/apple-touch-icon.png": {
-      "bytes": 1124,
-      "sha256": "0338dbe9f815cffda8c727350676faed724b334f3137d96b52a4ee9425f7386b"
+      "bytes": 727,
+      "sha256": "d32333b39d5f8352f3a91b13dee5ba4205c218ac52fe76aa5603e5036aa6663f"
     },
     "default/flat/favicon.ico": {
-      "bytes": 396,
-      "sha256": "2192a9ccdcd54f03176eaa1d93aac3f23bc66b8d666657eb9032980581acfb84"
+      "bytes": 297,
+      "sha256": "acafb15ff2015d8b094e152b99b6f245f24227fd7e5e87c8ce460b732f2dd69a"
     },
     "default/flat/icon-192.png": {
-      "bytes": 1223,
-      "sha256": "7ba017f48d1da94d2b05dace5af3df3c5d70bf9659679983c8775b7857a51e8a"
+      "bytes": 801,
+      "sha256": "0bead7fee445696389caf0c3fb2e876b6b69e96101999278e825a2e9b7cdc328"
     },
     "default/flat/icon-512.png": {
-      "bytes": 3358,
-      "sha256": "4f1be562dd255e51c1f61e76aaca99fc55ba6435dc29dc072002704ad8b12654"
+      "bytes": 1338,
+      "sha256": "b223a698cab4d510bf873aa474c37fbfa097d1dd62a4f6af4a5cfeb019460bce"
     },
     "default/flat/icon.svg": {
       "bytes": 159,
@@ -89,20 +87,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/second/apple-touch-icon.png": {
-      "bytes": 596,
-      "sha256": "b61a9aecf9778d68d3f62a659daa8781cbde978b7fa54b7c4e48c4fcbe43dbee"
+      "bytes": 333,
+      "sha256": "50527132ec968f4af64f46e1afcb22f43602fb25e5e6fa8891ab446083ba61db"
     },
     "default/second/favicon.ico": {
-      "bytes": 326,
-      "sha256": "9494090de096bc0095c2e102eb8519c7c4bb3e0058e78ee214615a5d53f359f4"
+      "bytes": 273,
+      "sha256": "b7eccdf30c39a01905523ba696518185d663727c5cd80e45d30a371837f3b3cb"
     },
     "default/second/icon-192.png": {
-      "bytes": 603,
-      "sha256": "71b3911aa84a17a96f29abf84260019d6c9bd7579ba2a1f3c1161a253471fd0d"
+      "bytes": 344,
+      "sha256": "9ef96e1914e480d04a39a7023e7cd403ce52af48898ab5be6cfdaa579eed6b32"
     },
     "default/second/icon-512.png": {
-      "bytes": 1863,
-      "sha256": "867e76e6529690547f53ccd11df467adab74f4a73293c6fa9e94b5bae19083e3"
+      "bytes": 788,
+      "sha256": "d9e1fb8375f794d4a7269a9f74a0710c408404a65c99e54b143f9f44f67a1648"
     },
     "default/second/icon.svg": {
       "bytes": 182,
@@ -113,20 +111,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/mask/apple-touch-icon.png": {
-      "bytes": 930,
-      "sha256": "4ca2cd9c8161ecdc5d07860f0cac97cf82357fc99087a7d9b5979f5ad2339236"
+      "bytes": 458,
+      "sha256": "647dac726e25c2b53644ef69121b5d9cb429792855c4764f13b81965a2927fe3"
     },
     "default/mask/favicon.ico": {
-      "bytes": 502,
-      "sha256": "cfa339af21dc2746233548b6a14e87242319f9dfbb35a00f82412fc520b9bff3"
+      "bytes": 435,
+      "sha256": "437ef783a7c3ecb08a97635278b41d821082b095a1286dda0b2e16cf61e010cf"
     },
     "default/mask/icon-192.png": {
-      "bytes": 1055,
-      "sha256": "e4db7b003739fd06848a16c2694f3c1af9d99cf5c4e3b01187db963c175acea4"
+      "bytes": 699,
+      "sha256": "c321c97a7088f389669bc1c5c16bfe3c035851018b1339af45deb0089b241a54"
     },
     "default/mask/icon-512.png": {
-      "bytes": 2707,
-      "sha256": "ea90e302f381bfbb989a59d55482ebf9c5da1eea997207cbd63ff2fc62eb34f7"
+      "bytes": 1034,
+      "sha256": "07847f4fcc94db199aae0d9e3ec159abad58d6a349aef7738c70800d0ea5e9c8"
     },
     "default/mask/icon.svg": {
       "bytes": 281,
@@ -137,20 +135,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/heavy/apple-touch-icon.png": {
-      "bytes": 1079,
-      "sha256": "b3957b46161ac2989f8ad3e0cddf5635aa7869289f285c34f9554926b838ecfa"
+      "bytes": 726,
+      "sha256": "8269c0118b78843da668c9471e2f23885c42e51b5c885e0f2c1567a1b625306f"
     },
     "default/heavy/favicon.ico": {
-      "bytes": 632,
-      "sha256": "3e6e4cc3651d98bc0112386da4ffab88400e8e52953667a3e7f0835d300d4487"
+      "bytes": 484,
+      "sha256": "5724e991fa5fed4e4a8e07af8e4837f6a54d96691a2131f824917b4ef099b816"
     },
     "default/heavy/icon-192.png": {
-      "bytes": 1108,
-      "sha256": "c7d009d9ab56146d0e89811adbf25b4a383f96430efb9c610a7e9766743f5ad3"
+      "bytes": 709,
+      "sha256": "a6a6f0ab21c582f55a64bcb5d326b8632a31e45432a9b86d2bc4fb596cc6fac2"
     },
     "default/heavy/icon-512.png": {
-      "bytes": 3432,
-      "sha256": "cd99c42025d23fae96d22fd8b452c997baa5256200f61ce395ac9d5410934b43"
+      "bytes": 1383,
+      "sha256": "3b7069b8fdb2ac9fa202428abd69259e88f087030fd3b4e0d9332a801fee3144"
     },
     "default/heavy/icon.svg": {
       "bytes": 1527,
@@ -161,20 +159,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/animated/apple-touch-icon.png": {
-      "bytes": 1535,
-      "sha256": "4388f804838dbaa5250fdd4c3d507b0f34c859c00befb01e56235dc280243f38"
+      "bytes": 1206,
+      "sha256": "150d14ef26eef0fce15abc688edcf917c56e986546f36618b598eb47bb12ab0a"
     },
     "default/animated/favicon.ico": {
-      "bytes": 590,
-      "sha256": "e84fe73594a54487862e46aa4ac8bef4855fb07a3bf1cf83eb2481ab498613e4"
+      "bytes": 407,
+      "sha256": "aaedb847f4cc38d12bbb878e87d53e40d267463f32afe82ab503bae40b49033a"
     },
     "default/animated/icon-192.png": {
-      "bytes": 1602,
-      "sha256": "1a3a79144bf283a2e1197dc1c377a4d7debdbe4f87c74edbc2212c72ef65e25b"
+      "bytes": 1265,
+      "sha256": "272e200be387a37378b1edc34fcdc54d65bf06136d7e954a88718e3020c0c23d"
     },
     "default/animated/icon-512.png": {
-      "bytes": 4795,
-      "sha256": "e3ddc4023f40066b54ac41fdfe45c8c2003030ac18dc12d478b35f9c669728ea"
+      "bytes": 3293,
+      "sha256": "81e6e9a419d2b871f31b26aeceb20f2c86e5087e9128d2edd4267283a925acd0"
     },
     "default/animated/icon.svg": {
       "bytes": 514,
@@ -185,20 +183,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/tiles/apple-touch-icon.png": {
-      "bytes": 152,
-      "sha256": "c7370e3a4a26d65be1764c6f44275fa3db9cdce22d4e66389b79a3a4f4730aaa"
+      "bytes": 151,
+      "sha256": "92fef6c57392979981e79e82742976f4065dc4a1141a52040f144300856dc884"
     },
     "default/tiles/favicon.ico": {
-      "bytes": 156,
-      "sha256": "5875bd1e9c8138414cc2be6abcebafeafff44b60c5185bbe378412596e7b512a"
+      "bytes": 155,
+      "sha256": "94f6bfd3d4eb5725b68f8d279a6ba5400b2ca63a4bc88de5e4b7919295520fe5"
     },
     "default/tiles/icon-192.png": {
-      "bytes": 164,
-      "sha256": "16596d45457b6551f47b736941620cd5e06f81c587eb70c11be694e49f9ff1fa"
+      "bytes": 161,
+      "sha256": "bdf3961b13745f11c5d3d8fc4f07adfc051975f283c5f253fef9adb124b96d2e"
     },
     "default/tiles/icon-512.png": {
-      "bytes": 294,
-      "sha256": "0539ea4cce8444a8c1be1b1021c630cefaec66ea27dd758ae0aff11084043a7b"
+      "bytes": 290,
+      "sha256": "85c4c25fd81ed7e36e711f9a5848faa9e204be6ae1672ebb1f73a90d273f3e6f"
     },
     "default/tiles/icon.svg": {
       "bytes": 510,
@@ -209,20 +207,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/wide/apple-touch-icon.png": {
-      "bytes": 395,
-      "sha256": "7f448d088f2e2f94f76ed7c79b366e930446cdc50fa03951c39ab4d144eb7838"
+      "bytes": 229,
+      "sha256": "6fdc9f1a916c35543827928033f9d674b6006cb50debcb27bd74d33423f03ec4"
     },
     "default/wide/favicon.ico": {
-      "bytes": 242,
-      "sha256": "8b76d5f3e265ffc1048efb97b49d27cdb82561dedf5ad3502a42e19ef38d9e41"
+      "bytes": 207,
+      "sha256": "312cc3d8e433c58d100d9854c82122ce44ce6a085b19085c73959fd008ba4a7c"
     },
     "default/wide/icon-192.png": {
-      "bytes": 349,
-      "sha256": "8b6a1e255e28357a81fa59e43806206bbbab5855a4587ab4cc5d771e89f278f9"
+      "bytes": 233,
+      "sha256": "da03cd6552026bd24c44d1cdc6b52f43b14904e30c75fe4f1dc0ac295f012643"
     },
     "default/wide/icon-512.png": {
-      "bytes": 811,
-      "sha256": "91755a655fb462171cec685f43ee2887b763d6dfa5a70cce89bd728951de5531"
+      "bytes": 494,
+      "sha256": "518f4f419fbff538c4e134e8e1b8081bf92683820c79e89e8abc2df080c3a6a6"
     },
     "default/wide/icon.svg": {
       "bytes": 128,
@@ -233,20 +231,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/gradient/apple-touch-icon.png": {
-      "bytes": 3960,
-      "sha256": "c07c5cdb9b4f3d43a69a1a795210104a4fab5482addc0a5aaa6af37aa2a3f75e"
+      "bytes": 2390,
+      "sha256": "9b3cc57a77617017dd7010bae9d07ff075e0f2b32d7e3c8e3274301741d2b974"
     },
     "default/gradient/favicon.ico": {
-      "bytes": 1409,
-      "sha256": "8c798b2d642260e9bee5471aa516c4141890992bc21de96760d6d4cde0678bd5"
+      "bytes": 1036,
+      "sha256": "07543ddfb36a9446c1c9bb6d94d40b766b6d6c7cc4d95105f200bd87a1bd53e6"
     },
     "default/gradient/icon-192.png": {
-      "bytes": 3937,
-      "sha256": "0817242ac57f40d93900527f8e8b0c4d2079894b833546739936d64b2dabf2f9"
+      "bytes": 2610,
+      "sha256": "5fb38ebcacfbd0d9902a44962a19bda4019b8595e3fc7dbf47820d786a8e568a"
     },
     "default/gradient/icon-512.png": {
-      "bytes": 14908,
-      "sha256": "8c2b18be3ed483031313f85a5d7610b71b0f53f5ce2be0251625a6993f4c77af"
+      "bytes": 9407,
+      "sha256": "24d777433c131eec3599a042728fc6a7fcc7fdc199847107b31a0605a94a3856"
     },
     "default/gradient/icon.svg": {
       "bytes": 339,
@@ -257,20 +255,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/smil/apple-touch-icon.png": {
-      "bytes": 724,
-      "sha256": "b08ec1c0cd4918be0c670f7f89cd83ba8d8137f50582126359fb7a57fd62ca5c"
+      "bytes": 388,
+      "sha256": "ab376a61688f6950a0dda82a881a6a3b9d974391f4008bf3f59c841e4cd560b5"
     },
     "default/smil/favicon.ico": {
-      "bytes": 305,
-      "sha256": "8b3f0776c75ddbb1256a7099a546ebe16878467f630682a2ff143f4c63012b44"
+      "bytes": 244,
+      "sha256": "9ed4280bbcb8e4aed30db463459b4b8c2963d93675ab41d4fb990fe7a1a71b00"
     },
     "default/smil/icon-192.png": {
-      "bytes": 749,
-      "sha256": "dc1571cec455de69637caa9a89de2c9c5b583cb80e9ea43fbd9f7d5eb8ec6ee1"
+      "bytes": 436,
+      "sha256": "fa9903a28274afedf65ce732d214535b596efb75152379b43db0335c08821fa1"
     },
     "default/smil/icon-512.png": {
-      "bytes": 2260,
-      "sha256": "3bbf2739590a813c3a79bb6b27ce5b156bb524e3bc3acff70cc30394a79057a6"
+      "bytes": 815,
+      "sha256": "7a74a2dc1d65e4e7f7933e3e800969a905dbaaf0e7664d8310a40e714185a2d4"
     },
     "default/smil/icon.svg": {
       "bytes": 375,
@@ -281,20 +279,20 @@
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
     "default/dark/apple-touch-icon.png": {
-      "bytes": 855,
-      "sha256": "17b728336f8ccffd7656447699737ec91f71088fc62dd1f08f1125bc1cdb67fe"
+      "bytes": 504,
+      "sha256": "d50dde41f10abae78a176bfd1cf7f4a90f7781fd5b0754c3ff3d27cd2b264b81"
     },
     "default/dark/favicon.ico": {
-      "bytes": 397,
-      "sha256": "f33c3939d474b169085beaaf9d702f2414d6863a163afdb4880f109d0cf48217"
+      "bytes": 309,
+      "sha256": "b7c808c856c3df054c5a3bee3a85e4af2c2e7bc9c3e8afa052513ef9e2072eaf"
     },
     "default/dark/icon-192.png": {
-      "bytes": 920,
-      "sha256": "6b3e0aae3955ae39eea8dc8295a1a6cf9558974ba11f700bd8b64c84596d1801"
+      "bytes": 426,
+      "sha256": "7c36639630ec3eac1e8be657bf63abbe4688cd8b4971205ffa2befb8e687ebfa"
     },
     "default/dark/icon-512.png": {
-      "bytes": 2506,
-      "sha256": "6c3869ce3000704d2f8852e5aef57b9b5e54c9575dd93b8099c5576841f66ce8"
+      "bytes": 1082,
+      "sha256": "0ae1e008e1650229103931758fae862e1c649a06bae104324a65f0a1d610ae83"
     },
     "default/dark/icon.svg": {
       "bytes": 245,
@@ -304,51 +302,51 @@
       "bytes": 220,
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
-    "zopfli/general/apple-touch-icon.png": {
-      "bytes": 1092,
-      "sha256": "4e67ca6038d4897d29e7e7227d6dac69fa4ecac7c128a6613b0cbf443144e2f5"
+    "max/general/apple-touch-icon.png": {
+      "bytes": 771,
+      "sha256": "1df969af5b8e525a2c68b0365007477846318561908c2480832afecb737db098"
     },
-    "zopfli/general/favicon.ico": {
-      "bytes": 561,
-      "sha256": "578ba1cb7d2785f121b5b26e042bb1d6315f02fcf64dae4af55cc8228f2b9cc6"
+    "max/general/favicon.ico": {
+      "bytes": 462,
+      "sha256": "93b6272f85cb47b695dddda7534c0b87411cb2175ec8661bd082ea5b0b2b97eb"
     },
-    "zopfli/general/icon-192.png": {
-      "bytes": 1163,
-      "sha256": "9d3910782fb9cdf06656a01f7436d93162dbe497a239d47912e61632cc1010a6"
+    "max/general/icon-192.png": {
+      "bytes": 809,
+      "sha256": "99c54da88054f8259811e0d3671f5937f3daf629566a8f61ec0831128d6864e5"
     },
-    "zopfli/general/icon-512.png": {
-      "bytes": 2704,
-      "sha256": "73d579257629665d7fea5f86221f40cb3b12fa941ddf0237ce30f7a2f863d07d"
+    "max/general/icon-512.png": {
+      "bytes": 1278,
+      "sha256": "6fe15234d4805da64616f594974c7cf2e970cc2247371b8c7670838cc91394d3"
     },
-    "zopfli/general/icon.svg": {
+    "max/general/icon.svg": {
       "bytes": 392,
       "sha256": "5710cf18d9fc547a212bac54109b1bafa0b419aad3311e3e105bb0bd29e227e7"
     },
-    "zopfli/general/site.webmanifest": {
+    "max/general/site.webmanifest": {
       "bytes": 220,
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     },
-    "zopfli/gradient/apple-touch-icon.png": {
-      "bytes": 3933,
-      "sha256": "58adad4d1e315b4e1b0ba00236a89b4ad91ce42a0bf825eee9a797b4ca884e17"
+    "max/gradient/apple-touch-icon.png": {
+      "bytes": 2385,
+      "sha256": "03f6f4a6aa7f1c221e9faa752596ce083d71a8584ff5a032241d1b471859e02e"
     },
-    "zopfli/gradient/favicon.ico": {
-      "bytes": 1383,
-      "sha256": "8bf7fb7c5b6e29302d0c79cb3d3883d4465c03a87e045a61fd50a1cfd89867ee"
+    "max/gradient/favicon.ico": {
+      "bytes": 1032,
+      "sha256": "d9cfced70182a1bfe1eb16f0143411d411e17c6b5e2d6be6ca5f862718073289"
     },
-    "zopfli/gradient/icon-192.png": {
-      "bytes": 3897,
-      "sha256": "0903db7a201f6ab1cb76c02e3b839c44bc49a663b29a06a6893b4be7a1aca3e1"
+    "max/gradient/icon-192.png": {
+      "bytes": 2601,
+      "sha256": "8e635f66476e5ab225dc06182d5b51a6b024e3cbbfc5b891837484899caa2a57"
     },
-    "zopfli/gradient/icon-512.png": {
-      "bytes": 14626,
-      "sha256": "fe7f554cb36e4b01f4f1b2b0e0661347d15cd6c6456c63b688dc77e3f66bf960"
+    "max/gradient/icon-512.png": {
+      "bytes": 9332,
+      "sha256": "d382839287d2032e3f9a8621e716ba2639856578022bdeafebf3ac347a5f4a44"
     },
-    "zopfli/gradient/icon.svg": {
+    "max/gradient/icon.svg": {
       "bytes": 339,
       "sha256": "9d38bfc945247d49f7c1cf177f5a27fcc3c899f1906d503e923def40be7136f4"
     },
-    "zopfli/gradient/site.webmanifest": {
+    "max/gradient/site.webmanifest": {
       "bytes": 220,
       "sha256": "fbac0cff3d8acea365b96b6c235096e8525596e53cf181839a536bd02022e22f"
     }
