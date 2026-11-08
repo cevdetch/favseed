@@ -14,6 +14,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1755,5 +1756,26 @@ describe('the astro integration', () => {
     assert.deepEqual(readFileSync(join(pub, 'favicon.ico')), ico);
     assert.deepEqual(readFileSync(join(pub, 'favicon.svg')), svg);
     assert.deepEqual(readdirSync(pub).sort(), ['favicon.ico', 'favicon.svg']);
+  });
+
+  it('names the public directory correctly when the project sits behind a symlink', async () => {
+    // macOS CI, PR #75: the system temp dir is behind /var -> /private/var. Vite's
+    // configResolved realpaths `root` but takes an already-absolute `publicDir` (Astro's) as
+    // given, so the two diverge unless publicPath resolves both the same way first.
+    const base = freshDir();
+    mkdirSync(join(base, 'real', 'static'), { recursive: true });
+    symlinkSync(join(base, 'real'), join(base, 'link'));
+    const root = join(base, 'link'),
+      pub = join(root, 'static');
+    copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
+    const ico = Buffer.from('starter ICO');
+    writeFileSync(join(pub, 'favicon.ico'), ico);
+    const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
+    await assert.rejects(astroBuild(integration, root, { publicDir: pub }), (error) => {
+      assert.match(error.message, /favseed: static\/favicon\.ico exists and is not the file favseed builds/);
+      assert.match(error.message, /Delete it to use favseed's/);
+      return true;
+    });
+    assert.deepEqual(readFileSync(join(pub, 'favicon.ico')), ico);
   });
 });

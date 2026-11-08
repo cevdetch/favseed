@@ -1,7 +1,7 @@
 // favseed/vite: the favicon set as a Vite plugin. In dev it is built on the first request for
 // an icon and served from memory; in a build it is emitted at the output root. Nothing is
 // written to public/, and a file there with a name favseed emits is never shadowed.
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 
@@ -149,8 +149,22 @@ export default function favseed(options = {}) {
     }
   };
 
+  // Vite's configResolved realpaths `root` but takes an already-absolute `publicDir` (e.g.
+  // Astro's) as given, so a symlinked project directory (macOS puts the temp dir behind
+  // /var -> /private/var) makes the two diverge; resolve both the same way before comparing.
+  const toReal = (p) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+
   /** Where the clashing file is, from the root: public/ for Vite, often static/ for Astro. */
-  const publicPath = (f) => relative(root, join(publicDir, f.name)).split(sep).join('/');
+  const publicPath = (f) =>
+    relative(toReal(root), join(toReal(publicDir), f.name))
+      .split(sep)
+      .join('/');
 
   return {
     name: 'favseed',
