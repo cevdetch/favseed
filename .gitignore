@@ -1,5 +1,6 @@
 node_modules/
 bench/out/
+bench/corpus/.cache/
 *.tgz
 .DS_Store
 site/dist/

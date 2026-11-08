@@ -1,0 +1,427 @@
+{
+  "schema": 1,
+  "sets": {
+    "flat-color-icons": {
+      "package": "@iconify-json/flat-color-icons",
+      "version": "1.2.3",
+      "license": "MIT"
+    },
+    "fluent-emoji": {
+      "package": "@iconify-json/fluent-emoji",
+      "version": "1.2.7",
+      "license": "MIT"
+    },
+    "logos": {
+      "package": "@iconify-json/logos",
+      "version": "1.2.19",
+      "license": "CC0-1.0"
+    },
+    "simple-icons": {
+      "package": "@iconify-json/simple-icons",
+      "version": "1.2.101",
+      "license": "CC0-1.0"
+    }
+  },
+  "icons": [
+    {
+      "set": "flat-color-icons",
+      "name": "about",
+      "sha256": "df5cf2cc9dfddfd44865b618298612bfefbcdef3c6079961d62782c0594b7a17"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "bullish",
+      "sha256": "42f8047aa0ff3e6567c473b94285482dde8a87da519099cfbebae0f5336bbf77"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "command-line",
+      "sha256": "7e5180a435b29708a0daaf03cd545e5ba54d27ba46043c67966895604040f766"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "do-not-inhale",
+      "sha256": "85d56493385e7cdf3572e3157e613b76b73dc32ac0584a2390e25e461219d341"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "file",
+      "sha256": "dcf8adccdd22ffb460654cec67cf840809346ad75fac77e28b1094ff442b1e4a"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "info",
+      "sha256": "e8829c58121a081759360e3dddebcd788a8a3a19903de466f9a900f9f23370a9"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "middle-battery",
+      "sha256": "4d9b07c34913d77e4f7553cf9cd8c30537dc1ab02f6980e2291d904706947357"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "panorama",
+      "sha256": "8bc103346aa4796ae5b6dadb80ae7104ab2c5bc2b12cdf51ff55c8c21c28d081"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "right-down2",
+      "sha256": "46eccb2679d2820a7191a4f96d0feb105086c39e5c15e3fbc4313ad98c2cf18f"
+    },
+    {
+      "set": "flat-color-icons",
+      "name": "steam",
+      "sha256": "0f5c7881d4cc9a04efac243daaadab2f630e215ca6584b1cef89728207c94d18"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "1st-place-medal",
+      "sha256": "9c63bc0c65a00ca777ea6e0ca885d02abdc7c3a81a523e4623e3bcdfa4ccf0a9"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "bouquet",
+      "sha256": "058a1b7a4732d78f1166ab6c16c4e5e080a7eb2a5867e1dff8e152b8109fb320"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "cook",
+      "sha256": "e530c8299e424bb971ff2580b9966c17a26ded58900e85a73f7232b66701bb90"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "face-with-open-mouth",
+      "sha256": "4111549c22eb171a1ee33618e4502b1ab46df230d2f9de471138fe19216c7cab"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "grinning-face-with-smiling-eyes",
+      "sha256": "8297db4dfac893d863c316b7cee8fb103e7c666d8b9ab94e0ccbaa2f8ec3bb3f"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "judge-medium-light",
+      "sha256": "d35491621975a745b91a714439f86da8fd978b26550356416c6306e47e808ba2"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "man-bouncing-ball",
+      "sha256": "8df83d3d73d09edc2814f42971b64932d3b81eb03343baaa2751545227adf783"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "man-in-manual-wheelchair",
+      "sha256": "7fd7ccf4d263a0aba592f7725a19d702f51900c7e369e8c8868908aa5f13554d"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "man-running-medium-light",
+      "sha256": "25899ca09eab5b6c0c705e02c7fcfba5989344e13769d74880385df1093b8429"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "mens-room",
+      "sha256": "06a82d26212848bdfdc3cc70a9ad9ad20c6a1c751f6d86a390e6d5681636cd3c"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "oncoming-fist-medium",
+      "sha256": "04cb8f584a77ffd7ef321da124552a893ea418c16202e55746146e730a7a9f86"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "person-fairy-light",
+      "sha256": "61a4998d9d76780819520027da0c0b94bf86fa507897d7af66f5661c2cd17df6"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "person-playing-water-polo-medium-light",
+      "sha256": "af7eb5a55f0a4a2901f86784ff0d13de7420e858b2fbca34933418d17d13e672"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "phoenix-bird",
+      "sha256": "183fc6e68c76d4e553231eb69a196ce3bcb8e548c3eee9ae9ca3e9e8cfc89020"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "registered",
+      "sha256": "bebbda96a4a8684d5f254fd1498b3454d4919db17f87abfb32f7c97cee931cf2"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "smiling-face-with-hearts",
+      "sha256": "925b06688ff51c0c7de8258be0271769baba8d8e254f03032f7faa4c6057f21b"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "tractor",
+      "sha256": "d3545c71eb6c8520de86ffd3cadb55a5ba968b9bf5e15466161980975c302a0f"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "woman-bowing-medium-light",
+      "sha256": "2730d5ef5a04ceca6d2792b1a5aa1340c71b44eefa3b9d8b6e6cc15472724767"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "woman-in-motorized-wheelchair",
+      "sha256": "2498e6ec3f769efed7694978f44d0503fda2e523109df87648a6edea79e805d7"
+    },
+    {
+      "set": "fluent-emoji",
+      "name": "woman-shrugging-medium-light",
+      "sha256": "d27e4a7939f3ffc7b0bf348f4ce1a627f2f62bd2a559a441ac990d7baa812336"
+    },
+    {
+      "set": "logos",
+      "name": "100tb",
+      "sha256": "4f70120d94dd5418b1f82c322f06b9cc9998e8539edf08b428fa1957ade61d6b"
+    },
+    {
+      "set": "logos",
+      "name": "apache-software-foundation",
+      "sha256": "bd553f826ede2780b1e5888ccdb7e2931b96b385a96e1843e9dd0a2eea728a9b"
+    },
+    {
+      "set": "logos",
+      "name": "autoit",
+      "sha256": "8ff640616e1f8c4831a125d9d2525990fd3494fcd2761f30b110701845858243"
+    },
+    {
+      "set": "logos",
+      "name": "balena",
+      "sha256": "a54180cca4b75cf572c216f0c5637c32528245d12b6cc253d7ca000ac709e93f"
+    },
+    {
+      "set": "logos",
+      "name": "bugherd",
+      "sha256": "5c5aa11bcc5de182b00be7a28ed2ab8f29f4ac6e9ad335e5c6a9894702711772"
+    },
+    {
+      "set": "logos",
+      "name": "cloudacademy",
+      "sha256": "134c7af0addd6d13cad64c7ee1945e1113eee19c2827c2cab7295f68480f129d"
+    },
+    {
+      "set": "logos",
+      "name": "convox-icon",
+      "sha256": "1bf9e50b90ac3db84e495247efcdf6e45893f9ce8e1409f5d462b5f2c746b45b"
+    },
+    {
+      "set": "logos",
+      "name": "deepgram-dark",
+      "sha256": "e88757947699a6bf654bc069d2096069cf7d8c11e6508ba7769b9bb8abb218b7"
+    },
+    {
+      "set": "logos",
+      "name": "dropmark",
+      "sha256": "ab91218a56c58155a28b431779547cb3862cdeab5f5436d6e51ca0e645c4fae9"
+    },
+    {
+      "set": "logos",
+      "name": "expo",
+      "sha256": "a5110f8746e2520c73daa275b17ffcb6ef353817c061aa8f500c3481f220afc6"
+    },
+    {
+      "set": "logos",
+      "name": "freedomdefined",
+      "sha256": "37515e23fd5821d21314034b623aacaf05fe6e5688b390fb84ffd21ca4388ea9"
+    },
+    {
+      "set": "logos",
+      "name": "google-drive",
+      "sha256": "86f9582da343db8bbd902836af5325efb96f472be8661f5980ab06610af74c2a"
+    },
+    {
+      "set": "logos",
+      "name": "gwt",
+      "sha256": "3ad47ae90b5edf02564bbdadcf764ceda51f54e273f9ce1e0e2e4f9f8f4add77"
+    },
+    {
+      "set": "logos",
+      "name": "humongous",
+      "sha256": "26eaca85add880823acd90a4469e0e18292c053fb989e9259470a18b531385cc"
+    },
+    {
+      "set": "logos",
+      "name": "jsdom",
+      "sha256": "1c7394ee41238c59faba460cc39933daa580cc17bbd343318575f1a634794360"
+    },
+    {
+      "set": "logos",
+      "name": "launchdarkly",
+      "sha256": "75a4f0851579d626b1d573f8341bc3f15494c6393d6f0871e26df3c363d2d49d"
+    },
+    {
+      "set": "logos",
+      "name": "mandrill-shield",
+      "sha256": "c317ab5cfa36c9fefc0a9aee3de3fe14333cd617b7612142d7ae89bd4698068e"
+    },
+    {
+      "set": "logos",
+      "name": "microsoft-power-bi",
+      "sha256": "4255eba3a1c7800d899d43103d6c4408166ddb78131e7c05524a70243a34336f"
+    },
+    {
+      "set": "logos",
+      "name": "neon",
+      "sha256": "c9f998182eae2d613d241773b4a656dc4074ee9e7cac87436a9e2dc3302585af"
+    },
+    {
+      "set": "logos",
+      "name": "open-zeppelin-icon",
+      "sha256": "78778d66bc2b2a91d2a1b90f0b01c40d04377319ca5d05b87d2f2a04b8065a27"
+    },
+    {
+      "set": "logos",
+      "name": "peer5",
+      "sha256": "aea46c5387096d2e901fc1035b2e755b9be926b28ab689ae75e634cd2ec1fd2e"
+    },
+    {
+      "set": "logos",
+      "name": "processwire",
+      "sha256": "6ae114f42af5eec4020790782b2b4bb239514865beda1ceb9885b0454fc06e7f"
+    },
+    {
+      "set": "logos",
+      "name": "reactivex",
+      "sha256": "e1afbe48ed2c715e624ba521cb6e96962a641a5c9b477aef06388f322ecd745a"
+    },
+    {
+      "set": "logos",
+      "name": "run-above",
+      "sha256": "4bf74db79e09369cd3d7dbdae9092426682e07061de5569d2b2e6821b696892e"
+    },
+    {
+      "set": "logos",
+      "name": "sketchapp",
+      "sha256": "75c0e894e6dfd2695d8f9ae7bd9016f4be8c0aa7794e65c6e0fb68aceb0467e4"
+    },
+    {
+      "set": "logos",
+      "name": "stepsize-icon",
+      "sha256": "e43dc50307b0984858c1dfc10c9d489fb07939d32ef44e873124f202e8f08bb9"
+    },
+    {
+      "set": "logos",
+      "name": "taskade-icon",
+      "sha256": "b93a181d849fee684c925e1f7a10e123bc6494c77ace5e041246da2d3c601752"
+    },
+    {
+      "set": "logos",
+      "name": "tutsplus",
+      "sha256": "c31c4e47c1bf1034e66ba063fdb18c0394854f88f9b72e1faa64343812575ac8"
+    },
+    {
+      "set": "logos",
+      "name": "vite-dark",
+      "sha256": "0bbe1e626a3de6249a503dfd1da7636e1f8ba4e0592c26849b5ac7cd75027d60"
+    },
+    {
+      "set": "logos",
+      "name": "windi-css",
+      "sha256": "39bb8736dc87760790b5ec7314ff091e12e9eb4017e2ed9d604a7c7972d90e9b"
+    },
+    {
+      "set": "simple-icons",
+      "name": "1001tracklists",
+      "sha256": "ed7f93eddfcd456453b8628dd4a01f8684a30d8f7ee2da86968644d5a6349dfa"
+    },
+    {
+      "set": "simple-icons",
+      "name": "angularuniversal",
+      "sha256": "f5f798b5d2ff1c367a36fd8563dce27d3b3275239a2da52ac41be1c37b6cfc24"
+    },
+    {
+      "set": "simple-icons",
+      "name": "bandlab",
+      "sha256": "523747cc2152d4f33f8c4b30b2ce7e11bfb27276f69f81ad06874fdae2144690"
+    },
+    {
+      "set": "simple-icons",
+      "name": "centos",
+      "sha256": "4e18fd713e3d43b3b0d7668b04cbc8f7e84fb55aba9300d16b9e911d65ace7e8"
+    },
+    {
+      "set": "simple-icons",
+      "name": "createreactapp",
+      "sha256": "29c0e0326e67d96bf793923ab932bb990ba6f42cc3d41bd55ead3333b99b0279"
+    },
+    {
+      "set": "simple-icons",
+      "name": "dwm",
+      "sha256": "c9d2a5fb37662b41a4f2bfc716beca9369faf78293f353c4d781db2a91008600"
+    },
+    {
+      "set": "simple-icons",
+      "name": "flower",
+      "sha256": "51006e288284e6d541abb72cbd9353ebc8b56a52eb208034c53ec7d7f17beed4"
+    },
+    {
+      "set": "simple-icons",
+      "name": "googledatastudio",
+      "sha256": "bce398c7da6a1dbf0dd3e749ff18c0492cd1a68cef40a80475f134cc1639e8bd"
+    },
+    {
+      "set": "simple-icons",
+      "name": "hulu",
+      "sha256": "3518da6b81a7ab09fbe7c99a4a9d6c4808d492014d7a31d29689ff94158e42a1"
+    },
+    {
+      "set": "simple-icons",
+      "name": "kaniko",
+      "sha256": "b6eb90fe1d940639a1541cfdf1b9be85847ff8c14e18d283a9b7520503178456"
+    },
+    {
+      "set": "simple-icons",
+      "name": "localsend",
+      "sha256": "54ebd15abfec56089570fccf42156f894019558bea92278da89a7155315b931b"
+    },
+    {
+      "set": "simple-icons",
+      "name": "misskey",
+      "sha256": "1d1bf3ad4f12542e4daef6ecfda17ce14b1e10dca38610c73f0ad6b85e9f1de4"
+    },
+    {
+      "set": "simple-icons",
+      "name": "nuxt",
+      "sha256": "462d8ef82bdc8728e28c293ecf642a0ace9554838c8bc6bd68ed8249ac9d6333"
+    },
+    {
+      "set": "simple-icons",
+      "name": "phoenixframework",
+      "sha256": "b43ddfe68a82955be5d3e0e4a60aceb884e6ff35fb146007249e64f5f5778a41"
+    },
+    {
+      "set": "simple-icons",
+      "name": "qantas",
+      "sha256": "31fde6b6e97a18b7304b89f253a606dae640863145af617aa9df75e794129379"
+    },
+    {
+      "set": "simple-icons",
+      "name": "rstudioide",
+      "sha256": "ed678f079b3a51cc51d3a6880b85cdf5e5c0e9ce2f5fe3073e383e0a9a88bb1c"
+    },
+    {
+      "set": "simple-icons",
+      "name": "softpedia",
+      "sha256": "e3311beaaa16ba037c2c722591bc76018fb1ffe2a67760050fa2059d319e76e2"
+    },
+    {
+      "set": "simple-icons",
+      "name": "talenthouse",
+      "sha256": "5f82f2b1943c325407af618612c21775fc8e047356a4eae97c3c6c08e781b19c"
+    },
+    {
+      "set": "simple-icons",
+      "name": "twitch",
+      "sha256": "359a88b4456eaff662eb742dad92d34f1154f7f6947130f412dbf66d6976cc4f"
+    },
+    {
+      "set": "simple-icons",
+      "name": "webdotde",
+      "sha256": "afd198f41e0259d2ec111dbc271f629de2f89119c83078a1a563d82e29572a55"
+    }
+  ]
+}
