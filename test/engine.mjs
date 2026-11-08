@@ -8,9 +8,10 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { crc32, inflateSync } from 'node:zlib';
 import referenceZopfli from '@gfx/zopfli';
+import { Transformer } from '@napi-rs/image';
 
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
-import { nestForMask, placeInSafeZone, squareIconSvg } from '../lib/core.mjs';
+import { DEFAULT_COLORS, DEFAULT_QUALITY, nestForMask, placeInSafeZone, squareIconSvg } from '../lib/core.mjs';
 import { createEngine, wrapForSize } from '../lib/engine.mjs';
 import { passesBar } from '../lib/quality.mjs';
 import { score } from './lib/accuracy.mjs';
@@ -398,6 +399,52 @@ describe('decode', () => {
     assert.deepEqual([decoded.width, decoded.height], [192, 192]);
   });
 
+  // Pixel-exact against test/lib/png.mjs's independent decoder, one case per channel count
+  // engine.decode's expandToRgba actually handles. `metadata().colorType` is asserted directly
+  // (0 = L8, 1 = La8, 2 = Rgb8, 3 = Rgba8), so each case is proven to exercise the path its name
+  // claims, not just happen to produce the right pixels some other way.
+  const pixelExact = async (name, png, expectedColorType) => {
+    const meta = await new Transformer(png).metadata();
+    assert.equal(
+      meta.colorType,
+      expectedColorType,
+      `${name}: expected colour type ${expectedColorType}, got ${meta.colorType}`,
+    );
+    const mine = await engine.decode(png);
+    const theirs = decode(Buffer.from(png));
+    assert.deepEqual([mine.width, mine.height], [theirs.width, theirs.height], `${name}: size`);
+    assert.deepEqual([...mine.rgba], [...theirs.data], `${name}: pixels`);
+  };
+
+  it("matches the suite's decoder on an opaque truecolour (Rgb8) candidate", async () => {
+    // general@192 on an opaque ground, at quality 80: every pixel's alpha is 255, so the
+    // quantiser/lossless pick drops the alpha channel entirely rather than carry a constant one.
+    const raw = await engine.render(icon('general'), 192, '#000000');
+    const png = await engine.encode(raw, { quality: 80 });
+    await pixelExact('general@192 q80', png, 2);
+  });
+
+  it("matches the suite's decoder on an opaque greyscale (L8) candidate", async () => {
+    // A pixel-grid black-and-white mark on a ground: no colour and no alpha to carry, so
+    // losslessCompressPng's grayscaleReduction (on by default) drops both.
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+      '<rect width="32" height="16"/><rect y="16" width="32" height="16" fill="#fff"/></svg>';
+    const raw = await engine.render(svg, 32, '#ffffff');
+    const png = await engine.encode(raw, { colors: 256 });
+    await pixelExact('black-and-white on white', png, 0);
+  });
+
+  it("matches the suite's decoder on a translucent greyscale (La8) candidate", async () => {
+    // A flat grey circle with no ground: one colour, but a real anti-aliased alpha edge, so
+    // colour is dropped and alpha is kept.
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#808080"/></svg>';
+    const raw = await engine.render(svg, 32);
+    const png = await engine.encode(raw, { colors: 256 });
+    await pixelExact('grey circle, no ground', png, 1);
+  });
+
   it("matches the suite's independent decoder on a quantised, paletted PNG", async () => {
     // No ground: the circle's anti-aliased edge keeps partial alpha, so the quantiser's
     // palette carries a tRNS entry — the case decode() must resolve (palette + transparency)
@@ -430,6 +477,16 @@ describe('search', () => {
       const direct = await engine.encode(raw, { quality: 80 });
       assert.deepEqual([...fast.png], [...direct]);
       assert.equal(fast.probes, 1);
+      assert.deepEqual(fast.setting, { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS });
+    });
+
+    it(`${name}: fast accepts a null reference and skips the gate entirely (ruling R3)`, async () => {
+      const fast = await engine.search(raw, null, { effort: 'fast', pinned: null });
+      const direct = await engine.encode(raw, { quality: 80 });
+      assert.deepEqual([...fast.png], [...direct]);
+      assert.equal(fast.probes, 1);
+      assert.deepEqual(fast.setting, { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS });
+      assert.deepEqual([fast.pct, fast.edge, fast.pass], [null, null, null]);
     });
 
     it(`${name}: default passes the bar and is no larger than fast when fast itself passes`, async () => {
@@ -471,9 +528,24 @@ describe('search', () => {
   it('keeps the fast encode, failing gate and all, when nothing on either list passes', async () => {
     const raw = await engine.render(icon('general'), 192, '#000000');
     const mismatched = await engine.renderRgba(icon('gradient'), 192, '#000000');
-    const result = await engine.search(raw, mismatched, { effort: 'default', pinned: null });
     const direct = await engine.encode(raw, { quality: 80 });
+    const expectedSetting = { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS };
+
+    const result = await engine.search(raw, mismatched, { effort: 'default', pinned: null });
     assert.deepEqual([...result.png], [...direct]);
     assert.equal(result.pass, false);
+    assert.equal(result.probes, 9);
+    assert.deepEqual(result.setting, expectedSetting);
+
+    const max = await engine.search(raw, mismatched, { effort: 'max', pinned: null });
+    assert.deepEqual([...max.png], [...direct]);
+    assert.equal(max.pass, false);
+    assert.equal(max.probes, 26);
+    assert.deepEqual(max.setting, expectedSetting);
+  });
+
+  it('rejects an unknown effort', async () => {
+    const raw = await engine.render(icon('general'), 32, '#000000');
+    await assert.rejects(engine.search(raw, null, { effort: 'bogus', pinned: null }), /unknown effort/);
   });
 });
