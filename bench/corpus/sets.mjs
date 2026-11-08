@@ -18,7 +18,7 @@ export const iconSvg = (set, name) => {
 
 /** `count` names spread evenly over the sorted list: the same input always picks the same icons. */
 export const selectIcons = (names, count) => {
-  const sorted = [...names].sort();
+  const sorted = names.toSorted();
   if (sorted.length <= count) return sorted;
   return Array.from({ length: count }, (_, i) => sorted[Math.floor((i * sorted.length) / count)]);
 };

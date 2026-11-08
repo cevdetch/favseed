@@ -15,7 +15,7 @@ export const corpusFiles = async ({ private: privateDir, open = true, fixtures =
   if (fixtures) {
     for (const f of readdirSync(join(ROOT, 'test/fixtures'))
       .filter((entry) => entry.endsWith('.svg'))
-      .sort()) {
+      .toSorted()) {
       const name = f.slice(0, -4);
       if (!NEGATIVE.has(name)) out.push({ corpus: 'fixtures', name, path: join(ROOT, 'test/fixtures', f) });
     }
@@ -33,7 +33,7 @@ export const corpusFiles = async ({ private: privateDir, open = true, fixtures =
     const dir = benchmarkPath(privateDir);
     readdirSync(dir)
       .filter((entry) => entry.endsWith('.svg'))
-      .sort()
+      .toSorted()
       .forEach((entry, i) => out.push({ corpus: 'private', name: `private-${i}`, path: join(dir, entry) }));
   }
   return out;

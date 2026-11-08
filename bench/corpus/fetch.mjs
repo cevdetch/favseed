@@ -45,6 +45,10 @@ function die(message) {
   process.exit(1);
 }
 
+// Plain code-unit comparison, not localeCompare: the manifest's order must not depend on the
+// maintainer's locale.
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 
 /** `npm pack` one pinned set into its own scratch subdir and return its parsed icons.json. */
@@ -107,8 +111,10 @@ async function main() {
   }
 
   if (update) {
-    next.icons.sort((a, b) => (a.set === b.set ? a.name.localeCompare(b.name) : a.set.localeCompare(b.set)));
-    next.sets = Object.fromEntries(Object.entries(next.sets).sort(([a], [b]) => a.localeCompare(b)));
+    next.icons = next.icons.toSorted((a, b) =>
+      a.set === b.set ? byCodeUnit(a.name, b.name) : byCodeUnit(a.set, b.set),
+    );
+    next.sets = Object.fromEntries(Object.entries(next.sets).toSorted(([a], [b]) => byCodeUnit(a, b)));
     writeFileSync(manifestPath, JSON.stringify(next, null, 2) + '\n');
   }
 
