@@ -17,11 +17,12 @@ icon-192.png               (192×192, safe-zone placement)
 icon-512.png               (512×512, safe-zone placement)
 ```
 
-Sizes depend on your mark. Standard builds skip Zopfli; add `--zopfli` for extra lossless
-compression at the cost of generation time.
+Sizes depend on your mark. Each PNG is the smallest encode favseed finds that still passes its
+accuracy bar, finished with Zopfli. `--effort fast` makes one quick encode instead, and
+`--effort max` tries every candidate.
 
 No install at all: **[favseed.cevdet.ch](https://favseed.cevdet.ch)** runs the same engine and
-build pipeline in your browser, with nothing uploaded. Matching input, options, and build mode
+build pipeline in your browser, with nothing uploaded. Matching input and options
 produce identical files for self-contained SVGs. Outline text and embed external images for
 consistent raster output. The page includes a manifest; use `--manifest` for the matching CLI
 set. Builds run in a worker with progress and cancellation; see [browser requirements and
@@ -44,7 +45,7 @@ x64 and arm64, and FreeBSD on x64. The bundled Zopfli WASM uses the same Google 
 `@gfx/zopfli` 1.0.15, rebuilt with modern LLVM for both the CLI and browser. Its source,
 toolchain checksums and build recipe are in
 [bench/zopfli](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/README.md).
-Opt-in final compression also tries a guarded lossless palette pass; the
+Zopfli finishing also tries a guarded lossless palette pass; the
 [Vite PWA comparison](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/COMPETITOR.md)
 records its byte savings and the speed, size and accuracy tradeoffs.
 
@@ -74,9 +75,9 @@ may change.
 ## Why not one of the others
 
 There are several favicon generators on npm. Most write whatever sharp's encoder produced; the
-quantizing generators commonly use Sharp. Favseed measures safe-zone placement, compares
-quantized and lossless PNGs, caches integration output, and offers optional Zopfli compression
-through the same browser and CLI engine.
+quantizing generators commonly use Sharp. Favseed measures safe-zone placement, keeps the
+smallest PNG encode that passes a measured accuracy bar, finishes it with Zopfli, and caches
+integration output, through the same browser and CLI engine.
 
 | | weekly | dependencies |
 |---|---|---|
@@ -91,21 +92,26 @@ files for platforms that stopped existing), and its PNGs are whatever sharp's en
 sharp's `quality: 60` and `favgen` at `colors: 64`: one quantised encode, no comparison, no
 zopfli.
 
-Favseed generates a small set with measured safe-zone placement and compares quantized and
-lossless PNG candidates. Extra Zopfli compression is opt-in. Its browser and CLI share the
+Favseed generates a small set with measured safe-zone placement and searches quantized and
+lossless PNG candidates for the smallest one that passes its accuracy bar. Its browser and CLI share the
 same engine and options, with matching output bytes for self-contained SVGs. Full builds select
 SVG precision against the source's static appearance before PNG encoding; PNG quality and
 tiny-ICO error are measured separately.
 
-In our four-logo benchmark with matching raster inputs, the default quality-80 set used **0.5%
-more PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default**, with lower measured PNG pixel error.
+In our four-logo benchmark with matching raster inputs, the quality-80 set that `--effort fast`
+builds used **0.5% more PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default**, with lower measured PNG pixel error.
+The default effort was not part of that comparison; on the byte-manifest fixtures it writes
+40.8 % fewer PNG/ICO bytes than the quality-80 set (decision 29).
 See [the measurements and method](https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md); results depend on the input.
 
 ## Flags
 
 ```
 -o, --out DIR     Output directory (default: current)
-    --colors N    Explicit palette ceiling, 2-256; selects quality 100 when given alone
+    --effort LEVEL  fast, default or max (default: default). See "Effort and pinned settings".
+    --quality N   Pin PNG quality 1-100 at the full palette: one encode, no search.
+    --colors N    Pin a palette of 2-256 colours at quality 100: one encode, no search.
+                  Quality below 100 cannot combine with --colors.
     --sizes LIST  Padded "any maskable" PNG sizes (default: "192 512")
     --bg COLOR    Ground of the padded icons (default: #000000). "none" keeps the set
                   transparent and unpadded, declared "any" only.
@@ -114,9 +120,6 @@ See [the measurements and method](https://github.com/cevdetch/favseed/blob/main/
                   give a number to override it.
     --var N=V     Set a CSS custom property, e.g. --var brand=#0E7C68. Repeatable.
     --no-animation  Explicitly remove motion from icon.svg.
-    --quality N     PNG quality target, 1-100 (default: 80). Use 100 with --colors.
-    --zopfli        Extra lossless PNG compression; slower, off by default.
-    --no-zopfli     Override a config that enables Zopfli.
     --manifest    Also write site.webmanifest.
     --html        Print the <link> tags.
 -q, --quiet   -V, --version   -h, --help
@@ -132,8 +135,8 @@ CSS assignments such as `--var --brand=#0E7C68` remain valid.
 
 Every option can live in `favseed.config.js`, `favseed.config.mjs` or `favseed.config.ts` in the
 working directory, the first one found. Flags win over it, and `--var` merges with its `vars`
-by name. Three keys have no flag: `input`, so a bare `favseed` builds the project's mark;
-`base`, the path the site is served under; and `mode`.
+by name. Two keys have no flag: `input`, so a bare `favseed` builds the project's mark, and
+`base`, the path the site is served under.
 
 ```js
 // favseed.config.mjs
@@ -150,8 +153,8 @@ export default defineConfig({
 
 `base` prefixes every `href` that `--html` prints and every icon `src` in the manifest.
 `manifest` as an object writes `site.webmanifest` with those members ahead of the icons.
-With `zopfli: true`, `mode: 'fast'` uses 15 iterations instead of 120. The summary reports
-whether extra compression ran. Without opt-in, both modes use standard PNG output.
+`effort`, `quality` and `colors` take the same values as their flags. The summary names the
+effort and its Zopfli iterations, the setting each PNG kept, or the pinned setting once.
 
 A `.ts` config loads through Node's type stripping, which erases annotations and transforms
 nothing: an `enum` or a `namespace` fails with a message pointing at `favseed.config.mjs`.
@@ -278,32 +281,41 @@ do not fetch resources or convert fonts. They do not prove that every dependency
 API callers receive guidance through `onWarn`; the browser shows it separately from build
 progress, including on cached builds and before a later rendering error.
 
-## PNG quality
+## Effort and pinned settings
 
-`favseed logo.svg --quality 80 --out public` trades some PNG/ICO accuracy for smaller files.
-The same `quality: 80` option works in config/API, Vite and Astro; the browser has a numeric control.
-Default `80` balances file size and fidelity. Set `--quality 100` to use the
-higher-fidelity output. An explicit `colors` option without quality selects the fixed-palette
-quality-100 path for compatibility. Explicit quality below 100 cannot combine with `colors`. The browser disables that
-field and restores its value when returning to 100.
+Every PNG and the ICO payload is scored against a render of your source placed exactly like it:
+an encode passes when at most 1 % of pixels are off by more than 8/255 in any channel and the
+edge-weighted luma error stays at or below 1.5883, on both a black and a white composite. One
+`effort` option (`--effort`) decides how hard favseed looks for the smallest passing encode:
 
-Quality is the native encoder's target, not an error percentage or Sharp's quality scale. Lower
-values do not always make smaller files. SVG optimization and safe-zone placement stay unchanged.
-Zopfli is independent: add `--zopfli` for extra lossless compression at any quality.
-SVG precision selection stays active at every PNG quality. See [current measurements](https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md)
+| Effort | Encode | Zopfli |
+|---|---|---|
+| `fast` | One encode at quality 80 with the full 256-colour palette. No search, no scoring. | none |
+| `default` | A binary search over quality 40-99 at the full palette, then over palettes of 2-256 colours at quality 100. The smallest candidate that passes wins. | 15 iterations |
+| `max` | Every one of those candidates; the smallest that passes wins. | 120 iterations |
+
+When no candidate passes (a mark too fine for its pixel grid, such as a 48 px ICO of a dense
+grid), favseed keeps the `fast` encode. When the quality-80 encode fails but a candidate
+passes, the passing candidate wins even if it is larger. Builds are deterministic at every
+effort. The Vite plugin and the Astro integration use `fast` in dev and the configured effort
+in a build.
+
+`--quality N` or `--colors N` (`quality` and `colors` in config/API, Vite and Astro) pins that
+exact setting instead: one encode, no search, at the effort's Zopfli iterations. Quality alone
+pins that quality at the full palette; colours alone pin that palette at quality 100; both are
+allowed only at quality 100. A pinned setting that misses the accuracy bar builds anyway and
+warns, naming the file, the setting and both measurements. Quality is the native encoder's
+target, not an error percentage or Sharp's quality scale, and lower values do not always make
+smaller files.
+
+SVG optimization, SVG precision selection and safe-zone placement are the same at every effort
+and pin. See [current measurements](https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md)
 for size, source accuracy and Vite PWA comparisons; [earlier quality measurements](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/QUALITY.md) record the quality-policy choice.
-
-## Compression
-
-Standard builds compare the quantized and lossless PNG candidates and stop there. `--zopfli`
-(or `zopfli: true` in config/API options) opts into additional lossless compression. With it,
-`mode: 'release'` uses 120 iterations and `mode: 'fast'` uses 15. Mode does not change bytes
-when Zopfli is disabled. The browser exposes the same opt-in.
 
 Output jobs and complete alignment searches run in bounded batches. Large custom output sizes
 retain serial scheduling; failures drain active work before returning. Both hosts use the
 same placement and encoding rules.
-Measured speed, byte tradeoffs and the current Vite PWA comparison are recorded in
+Measured speed and byte tradeoffs of Zopfli are recorded in
 [the default-performance report](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/DEFAULTS.md).
 
 ## Node API
@@ -403,8 +415,8 @@ are also available as named imports from `favseed`:
 `optimiseSvg()` performs one configured optimization operation. It does **not** run
 the full build's measured SVG precision selection, raster encoding or output publishing.
 Use the build APIs for those guarantees. Engine `encode()` defaults to quality `100`
-when omitted; full builds supply their configured quality (default `80`). `finish()`
-uses the supplied iteration count; `0` skips Zopfli.
+when omitted; full builds choose each raster's setting by effort, or use the pinned one.
+`finish()` uses the supplied iteration count; `0` skips Zopfli.
 
 ```js
 import { optimiseSvg } from 'favseed'
@@ -439,8 +451,9 @@ slash, such as `/blog/`. Full builds normalize `base` for you. Low-level helpers
 apply the complete build-option validation.
 
 Core also exports `ICO_SIZE`, `APPLE_SIZE`, `DEFAULT_QUALITY`, `DEFAULT_COLORS`,
-`DEFAULT_SIZES`, `DEFAULT_BG`, `ZOPFLI_ITERATIONS`, `FAST_ZOPFLI_ITERATIONS`,
-`MASK_SAFE_RADIUS` and `SNAP_WINDOW`. Treat `DEFAULT_SIZES` as read-only.
+`DEFAULT_SIZES`, `DEFAULT_BG`, `DEFAULT_EFFORT`, `EFFORT_ITERATIONS`, `ACCURACY_PCT`,
+`EDGE_GATE`, `SEARCH_QUALITIES`, `SEARCH_COLORS`, `MASK_SAFE_RADIUS` and `SNAP_WINDOW`.
+Treat `DEFAULT_SIZES` as read-only.
 Current values describe the engine; output policy can change in a release that allows
 byte changes. Import through `favseed/core`; other `lib/` paths are package internals.
 
@@ -462,7 +475,7 @@ export default defineConfig({
 
 **`vite dev`** builds the icons the first time a page asks for one, then serves them from
 memory. Edit the logo or `favseed.config.*` and the icons rebuild and the page reloads. Dev
-builds use fast effort only when Zopfli is enabled; otherwise their bytes match the build.
+builds use `effort: 'fast'`, so their PNG and ICO bytes differ from the build's.
 
 **`vite build`** writes the release icons to the output directory, next to `index.html`.
 favseed never writes to `public/`.
@@ -539,16 +552,15 @@ project root is read too; options passed here win over it.
 | Option | Default | Notes |
 |---|---|---|
 | `input` | `src/logo.svg` | Path to the mark, relative to the project root. |
-| `colors` | `256` | Palette ceiling, from 2 to 256. If set without `quality`, quality becomes 100. |
-| `quality` | `80` | PNG quality from 1 to 100. Values below 100 cannot be combined with `colors`. |
+| `effort` | `'default'` | `'fast'`, `'default'` or `'max'`; see [Effort and pinned settings](#effort-and-pinned-settings). Dev always uses `'fast'`. |
+| `quality` | none | Pins a PNG quality from 1 to 100 at the full palette: one encode, no search. Below 100 cannot be combined with `colors`. |
+| `colors` | none | Pins a palette of 2 to 256 colours at quality 100: one encode, no search. |
 | `sizes` | `[192, 512]` | Even pixel sizes for padded maskable PNGs. |
 | `bg` | `'#000000'` | Ground for padded icons. `null` or `'none'` makes the set transparent and unpadded. |
 | `padding` | `'auto'` | Measured per mark, or a fixed 0–45% per side. |
 | `vars` | none | CSS custom properties as an object or `Map`. |
 | `animation` | `true` | Preserve animation; `false` removes it from `icon.svg`. |
 | `manifest` | `false` | `true` writes icons-only; an object merges app metadata. |
-| `zopfli` | `false` | Enables extra lossless PNG compression. |
-| `mode` | `'release'` | Zopfli effort when enabled: 120 iterations for `'release'`, 15 for `'fast'`. |
 | `head` | `'inject'` | Automatic injection (`true` is an alias), `Head.astro`, or manual links (`false` logs them). |
 
 ```js
@@ -571,11 +583,11 @@ run during generation. They warn in development and fail production builds, with
 `bg`, `vars` and `animation: false` configuration syntax.
 
 **It does not rebuild on every dev-server restart.** The icons are built on the first request
-for one, in fast mode at every configured size, and kept in a content-addressed cache whose key
+for one, at `effort: 'fast'` and every configured size, and kept in a content-addressed cache whose key
 includes favseed's version, input bytes, canonicalised options, and the identities of
 `@napi-rs/image`, SVGO and the Zopfli build (including its WASM hash). These can change generated
-bytes, so a cache keyed only on the SVG could return stale files after an upgrade. With Zopfli
-off, fast mode builds the release bytes, so a dev set also serves the next build. The cache keeps
+bytes, so a cache keyed only on the SVG could return stale files after an upgrade. The effort and
+any pinned setting are part of the key, so a dev set never stands in for a build's. The cache keeps
 eight recently used complete sets with verified integrity metadata, including the current one;
 staging directories, symlinks, modified or unrecognized entries, and older slots without
 integrity metadata are left alone. An evicted set is rebuilt when needed.
@@ -638,8 +650,14 @@ The short version, because these are the parts that look wrong until you know wh
   optimised after packing. favseed writes that header itself, byte-identical to
   `icotool -c -r`, which removes the only dependency with no npm package and no Windows build.
   The BMP payload `icotool` writes by default is 8.8× larger on the fixtures.
-- **Opt-in Zopfli runs once**, on the file that already won the lossy/lossless comparison. Running it
-  on both sides costs three times as much for identical bytes.
+- **Each raster is the smallest candidate that passes.** At the default effort a binary
+  search tries 7 to 9 of 26 quality and palette settings per raster and keeps the smallest that
+  passes the accuracy bar; a raster that fails at quality 80 takes a passing candidate even when
+  it is larger. Over 568 rasters that came to 20.4 % fewer bytes than quality 80, within 0.2 %
+  of trying all 26 (decision 29).
+- **Zopfli runs at most once per raster**, after the choice, on the winning encode: 15
+  iterations at the default effort, 120 at `max`, none at `fast`. Candidates are compared
+  before it, because finishing every one would multiply its cost by the number tried.
 - **Bounded concurrency overlaps raster jobs and complete alignment searches.** The shared
   scheduler limits active canvas work, keeps large custom sizes serial, and drains failures
   before a retry. Candidate selection and output order remain deterministic.
@@ -672,7 +690,8 @@ fixtures; it is not a guarantee for every SVG or across versions.
 | Missing or invalid SVG dimensions | Give the root SVG a valid `viewBox` or positive numeric `width` and `height`. Percentage-only dimensions need a `viewBox`. See [SVG input requirements](#svg-input-requirements). |
 | Text or images look different or disappear | Outline fonts and embed images as data URLs. Favseed warns about these dependencies but does not fetch resources or convert fonts. |
 | An unresolved `var()` stops generation | Supply a fallback in the SVG or a value through [`--var`](#--var) / the API's `vars` option. |
-| `colors` conflicts with `quality` | Choose one control, or use `quality: 100` with an explicit palette ceiling. See [PNG quality](#png-quality). |
+| `colors` conflicts with `quality` | Pin one control, or use `quality: 100` with an explicit palette. Usually pin neither: the default effort chooses per raster. See [Effort and pinned settings](#effort-and-pinned-settings). |
+| A warning says a file misses the accuracy bar | A pinned `quality` or `colors` is too low for that raster. Raise it, or remove the pin so the effort searches. |
 | API options appear to be ignored | Pass your config object explicitly; `build()` and `buildFiles()` do not load it automatically. Use `base` for URL prefixes and `out` for disk paths. |
 | Browser generation is unavailable | Use HTTPS or localhost and a browser with WebAssembly and `DecompressionStream`, or use the Node CLI. Disabled shared memory automatically selects the compatibility engine; changing privacy settings is unnecessary. |
 | A self-hosted site cannot load its worker or WASM | Check failed requests and response headers against the [site hosting guidance](site/README.md). Document and worker isolation headers enable the faster threaded engine. |

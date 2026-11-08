@@ -23,13 +23,13 @@ try {
   if (extra.length || (mode !== undefined && !['--check', '--write', '--release'].includes(mode))) {
     throw new Error('Usage: node test/hashes.mjs [--check|--write|--release]');
   }
-  const options = { bg: '#000000', mode: 'release', manifest: true };
+  const options = { bg: '#000000', manifest: true };
   const current = {
     schema: 1,
     engines: engineVersions(),
     profiles: {
       default: { marks: MARKS, options },
-      zopfli: { marks: ['general', 'gradient'], options: { ...options, zopfli: true } },
+      max: { marks: ['general', 'gradient'], options: { ...options, effort: 'max' } },
     },
     files: {},
   };

@@ -20,6 +20,13 @@ stage introduces before a rasteriser is ever involved.
 RMSE is reported alongside but does not gate: error is driven by *size*, not by the mark, so
 one RMSE threshold is the wrong shape. At 16 px almost every pixel is an anti-aliasing edge.
 
+**The rasters carry a second clause: edge error `<= 1.5883`** (decision 29). It is the mean
+absolute luma error, in levels of 255, weighted by the reference's own Sobel edge magnitude, on
+the same two composites, worse of the two. pct alone passed visibly serrated edges, because a
+channel off by more than 8/255 counts the same on a flat fill as astride an edge. A raster
+passes when both clauses hold (`passesBar` in `lib/quality.mjs`); the SVG stage's budget below
+stays on pct alone.
+
 **The bar is a statement about the sizes favseed ships by default**: 180, 192 and 512, the
 padded PNGs. It is not reachable at every size a user can ask for, and pretending otherwise
 would make it meaningless: a small icon is almost all edges, and no palette reproduces an
@@ -40,11 +47,13 @@ than a drift.
 
 **Smaller output beats faster build.** The bytes ship to every visitor forever; the build
 happens once. A change that costs bytes to save build time needs explicit approval and
-measured tradeoffs. The current default is one such trade, taken on those terms: it skips
-Zopfli, and `--zopfli` opts back in (decision 8).
+measured tradeoffs. The default effort is one such trade, taken on those terms: a binary
+search and 15 Zopfli iterations write 0.6 % more raster bytes than `--effort max` in 26–29 %
+of the time, and `--effort max` is one flag away (decisions 8 and 29).
 
 The accuracy bar is a *constraint*, not one side of that trade. Where bytes and the bar
-conflict, the bar wins, and decision 24 turns on that.
+conflict, the bar wins: a raster that misses it at quality 80 takes a larger candidate that
+passes (decision 29), and decision 24 turned on the same rule.
 
 ---
 
@@ -153,38 +162,50 @@ unit test with a synthetic RGBA payload, compared with `icotool -c -r` wherever 
 installed. The gradient fixture can no longer prove it, because its ICO payload is now indexed
 at quality 80 and 100.
 
-### 8. Zopfli is opt-in, and runs once, on the winner of that comparison
+### 8. Zopfli runs once, on the encode the effort chose, at the effort's iteration count
 
-`--zopfli` (`zopfli: true`) re-deflates the encode's winner with Zopfli: 120 iterations in
-`mode: 'release'`, 15 in `mode: 'fast'` (`lib/config.mjs`). Without it, both modes produce the
-same bytes. Finishing only the winner is what decision 7's comparison buys: Zopfli-ing both
-paths tripled the cost for zero extra bytes in the native pipeline. Apart from the
-palette pass below, the finish keeps the encode's row filters and every other chunk, and it is
-dropped when it is not smaller. The order is
-the one decision 6 measured: the quantiser re-encodes from scratch, so nothing that recompresses
-can run before it.
+`engine.finish` re-deflates each raster's chosen encode with Zopfli, at a count set by the
+effort (`EFFORT_ITERATIONS` in `lib/core.mjs`); a pinned `--quality` or `--colors` keeps its
+effort's count:
 
-**Off by default, because the trade is lopsided.** Measured over tiles, general, heavy and
-gradient ([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)): the old default (120
-iterations) took 59.610 s and wrote 39 266 PNG/ICO bytes; the Zopfli-off default that replaced
-it, then still at quality 100, took 0.903 s and wrote 40 449, **66.0× faster for 1 183 B
-(3.0 %)**, with every decoded pixel unchanged. Under
-the priority rule that is a byte cost for build time, so it is stated here and kept one flag
-away.
+| effort | Zopfli iterations |
+|---|---|
+| `fast` | 0: skipped |
+| `default` | 15 |
+| `max` | 120 |
 
-**120 iterations when it runs.** From `docs/BENCHMARKS.md`, the finish over the 192 and 512 px
-encodes of ten marks:
+Finishing only the winner is what decision 7's comparison buys, and decision 29's search more
+so: Zopfli-ing both paths tripled the cost for zero extra bytes in the native pipeline, and the
+search compares 7 to 9 encodes per raster at the default effort and 26 at `max` before one
+finish. Apart from the palette pass below, the finish keeps the encode's row filters and every
+other chunk, and it is dropped when it is not smaller. The order is the one decision 6
+measured: the quantiser re-encodes from scratch, so nothing that recompresses can run before it.
+
+**None at `fast`, because there a build is waited on.** Measured over tiles, general, heavy and
+gradient ([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)): 120 iterations took
+59.610 s and wrote 39 266 PNG/ICO bytes; Zopfli off, then still at quality 100, took 0.903 s
+and wrote 40 449, **66.0× faster for 1 183 B (3.0 %)**, with every decoded pixel unchanged.
+That trade was the default build until decision 29 put a search in front of the finish; it is
+now `--effort fast`, which the Vite and Astro dev servers use on every rebuild.
+
+**15 for `default`, 120 for `max`.** From `docs/BENCHMARKS.md`, the finish over the 192 and
+512 px encodes of ten marks:
 
 | iterations | bytes | vs 15 | seconds |
 |---|---|---|---|
-| 15 | 57 159 | 0 | 27.8 |
+| 15 | 57 159 | 0 | 38.8 |
 | 120 | 57 066 | −0.16 % | 133.2 |
-| 240 | 57 046 | −0.20 % | 254.7 |
+| 240 | 57 046 | −0.20 % | 254.3 |
 
-240 doubles the time again for a further 0.04 pp, so the knee stays at 120 for a release build;
-15 is the fast mode's count. Size is not monotonic per file: four of 44 PNGs were smallest at a
-lower count, but picking each file's best would have saved 9 B in total
-([bench/zopfli/EFFORT.md](../bench/zopfli/EFFORT.md)).
+Those seconds are one pass each and move between regenerations (15 iterations took 27.8 s on
+2026-11-07 and 38.8 s in this one). The interleaved sweep in
+[bench/zopfli/EFFORT.md](../bench/zopfli/EFFORT.md) has the ratio: over 44 PNGs, 120
+iterations took 154.82 s against 29.74 s for 15, 5.2× the finish time for 0.21 %. 240 doubles
+it again for a further 0.04 pp, so the knee stays at 120 for the effort that exists to spend
+time; the default effort takes 15, after the search has already done most of the work
+(decision 29 has the build times).
+Size is not monotonic per file: four of 44 PNGs were smallest at a lower count, but picking each
+file's best would have saved 9 B in total (the same report).
 
 **One guarded palette pass.** Before deflating a bare PNG with a full 256-entry palette, the
 finish tries one lossless `Sub`-filter re-encode and keeps it only if smaller. Across 44 PNGs it
@@ -409,7 +430,7 @@ gate able to tell the two apart. Sharing the code is the lesser evil by a wide m
 **Measured:** a first website version ran a different quantiser (`image-q`) and an oxipng
 without Zopfli, and its PNGs came out 2.4–6.2 % larger than the CLI's on typical marks and
 **117 %** larger on the gradient at `--colors 8`. On one engine the outputs are the same files:
-matching self-contained input, options and mode produce identical bytes, links and placement
+matching self-contained input and options, effort included, produce identical bytes, links and placement
 ([site/README.md](../site/README.md)). The browser's single-thread compatibility build matched
 native SHA-256 on 184 files across 31 fixture and option cases
 ([bench/browser-compat](../bench/browser-compat/README.md)).
@@ -480,54 +501,6 @@ The job also installs with `--ignore-scripts`: it is the one job holding the OID
 dependency lifecycle script runs in it. The only system package it installs is icoutils, so the
 ICO equivalence test runs rather than skips.
 
-### 24. `--colors` defaults to 256: the bar holds by default, for 44.6 % more bytes
-
-Decision 19 shipped 8 colours as a stated trade: smaller than 16, and outside the 1.0 %
-accuracy bar on anti-aliased marks. Two things made that the wrong trade.
-
-**8 is not a mild miss on every mark.** On a gradient it is a broken one: in the run this
-decision was taken on, 27–28 % of pixels were off by a visible margin at every size, and
-favseed's own benchmark excluded the gradient from its worst-case line as "meant to be bad". A
-favicon generator that wrecks a common kind of mark by default, and says so only in a
-benchmark, is not making a trade users can see.
-
-**Matched against a competitor, 8 colours is where most of favseed's byte lead came from.**
-Measured 2026-10-01 against `@vite-pwa/assets-generator` 2.0.0 (sharp, `quality: 60`): fed the
-same lossless pixels, favseed's encoder at 16 colours beat or matched its bytes on typical marks
-(−6 % to +5 % over four files) while being more accurate on every file, and won by 30 % only
-on pixel-grid marks. The large default-set gaps came from fewer files and fewer colours. Bytes
-won through visible error are not a lead worth having.
-
-256 is the quantiser's ceiling, not a target: it spends only the colours a mark needs, which is
-why 64, 128 and 256 produce identical bytes on every non-gradient fixture. The 44.6 % in the
-title was measured with Zopfli on, against the native pipeline (25 500 B at 8 against 36 881 B
-at 256). Regenerated on the engine, Zopfli off (`docs/BENCHMARKS.md`, 9 marks, gradient
-excluded, 180 + 192 + 512 px):
-
-| `--colors` | bytes | vs 256 | worst pct |
-|---|---|---|---|
-| 8 | 27 850 | −27.1 % | **1.892 %** (over the bar) |
-| 16 | 32 388 | −15.2 % | 0.423 % |
-| 32 | 36 291 | −5.0 % | 0.114 % |
-| 64 – 256 | 38 195 | 0 | **0.114 %** |
-
-So 256 costs **37.1 % more** than 8 today, and every non-gradient raster is at least 8.8× inside
-the bar. The gradient, at 29–30 % with 8 colours, scored 1.6–1.7 % at 256 while its stops were
-rounded and scores 0.00–0.01 % now that they are not (decision 5).
-
-**The default build reaches the palette through `--quality 80`.** Below 100 the quantiser
-derives its palette from the quality target and `colors` is not passed at all; an explicit
-`--colors` alone selects quality 100 and this ceiling, and `--colors` with a quality below 100
-is an error. Over 11 fixtures, Zopfli off, quality 80 wrote 69 291 PNG/ICO bytes against 74 180
-at 100 (−6.6 %), with the worst non-gradient source error 0.114 % at both
-([bench/zopfli/QUALITY.md](../bench/zopfli/QUALITY.md)). With selective precision the worst
-final PNG source error at the default is 0.114 % on those fixtures, gradient included
-([bench/precision](../bench/precision/README.md)).
-
-The accuracy tests score the **default** build instead of a hand-picked palette, so "inside the
-bar" is a claim about what ships. `--colors 8` remains one flag away for anyone who wants the old
-trade, and a test pins that it still misses the bar on `flat.svg`.
-
 ### 25. `icon.svg` keeps a `prefers-color-scheme` block
 
 A dark-mode rule is the usual reason to ship an SVG favicon: a dark mark disappears on a dark
@@ -590,8 +563,8 @@ integration cache key. The bench now measures the engine alone.
 **The Zopfli now ships as `lib/zopfli.wasm`.** It compiles the exact Google Zopfli revision
 `@gfx/zopfli` 1.0.15 was built from, with modern LLVM, and both hosts load it through
 `lib/zopfli.mjs`. `@gfx/zopfli` stays as a development dependency only: `test/zopfli.mjs`
-asserts identical compressed bytes against it at 15 and 120 iterations. Full native release
-builds got 11.3–26.4 % faster on four fixtures with every byte unchanged
+asserts identical compressed bytes against it at 15 and 120 iterations. Full native builds at
+120 iterations got 11.3–26.4 % faster on four fixtures with every byte unchanged
 ([bench/zopfli](../bench/zopfli/README.md)). The cache key's `zopfli` entry carries the WASM's
 SHA-256, so a rebuilt binary invalidates cached sets.
 
@@ -610,10 +583,10 @@ encoded at 256 colours, then finished with zopfli at 120 iterations, once in tur
 one worker thread per file. Three interleaved repetitions on an 8-core/16-thread Ryzen 7 7840U,
 median shown:
 
-| arm | when decided | `docs/BENCHMARKS.md`, 2026-11-07 |
+| arm | when decided | `docs/BENCHMARKS.md`, 2026-11-08 |
 |---|---|---|
-| in turn | 26.46 s | 19.49 s |
-| one worker per file | 22.88 s (−13.5 %) | 16.33 s (−16.2 %) |
+| in turn | 26.46 s | 19.54 s |
+| one worker per file | 22.88 s (−13.5 %) | 16.35 s (−16.3 %) |
 
 The bar for a worker pool was 20 %, and the numbers show why it cannot be reached. In the first
 run the 512 px file alone took 22.88 s to finish, against 5.95 s for 180 px, 3.74 s for 192 px
@@ -629,9 +602,98 @@ both encodes are asynchronous native tasks, so they overlap; Zopfli is synchrono
 calling thread, so the finishes still run one after another. A failed batch drains before
 the build rejects, and results keep their input order. Over four fixtures with Zopfli off,
 bounded batches took 0.901 s against 1.151 s serial, with identical results
-([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)). A release build with `--zopfli`
-pays for the 512 px finish; `mode: 'fast'` (15 iterations) is the answer where that wait
-matters.
+([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)). `--effort max` pays for the
+512 px finish at 120 iterations; the default effort's 15 and `--effort fast`'s none are the
+answer where that wait matters (decision 29 has the build times).
+
+### 29. Each raster is the smallest encode that passes the bar and the edge gate
+
+With no `--quality` or `--colors`, every PNG and the ICO payload is the smallest of a fixed
+candidate list that passes both clauses of the accuracy bar, `pct <= 1.0 %` and edge error
+`<= 1.5883`, scored against the reference placed like the raster. The candidates are quality
+40, 50, 60, 70, 80, 90, 95, 98 and 99 at the 256-colour palette ceiling, and quality 100 at
+2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192 and 256 colours (`SEARCH_QUALITIES`
+and `SEARCH_COLORS` in `lib/core.mjs`): 26 encodes, each `engine.encode`'s own smaller of its
+quantised and lossless paths (decision 7). `--effort` sets how many are tried, and the Zopfli
+count that follows (decision 8):
+
+| effort | candidates | Zopfli |
+|---|---|---|
+| `fast` | quality 80 alone, not scored | none |
+| `default` | a binary search of each list; the smallest passing probe | 15 |
+| `max` | all 26; the smallest that passes | 120 |
+
+Two rules decide the cases where the search has no clean answer. **When quality 80 fails and
+a candidate passes, the candidate wins even when it is larger**: the bar is a constraint, not
+one side of the byte trade. **When nothing passes, the raster keeps the quality-80 encode and
+the build does not warn**: those rasters are limited by their geometry, not by their encode.
+A pinned `--quality` or `--colors` is one encode of exactly that setting, and warns, never
+fails, when it misses. The Vite and Astro dev servers use `fast`.
+
+**Measured** with `bench/search.mjs` ([bench/search](../bench/search/README.md)) over 568
+rasters (the ICO payload, the apple icon and the two default sizes of 23 fixtures, 80
+openly licensed icons and 39 private marks), against quality 80 as it shipped:
+
+| corpus | rasters | quality 80 | every candidate | binary search |
+|---|---|---|---|---|
+| fixtures | 92 | 129 398 | 77 505 (−40.1 %) | 77 630 (−40.0 %) |
+| open | 320 | 829 568 | 719 503 (−13.3 %) | 720 967 (−13.1 %) |
+| private | 156 | 183 489 | 110 971 (−39.5 %) | 111 249 (−39.4 %) |
+| all | 568 | 1 142 455 | 907 979 (−20.5 %) | 909 846 (−20.4 %) |
+
+On the 502 rasters where quality 80 already passes, a passing quality 80 is itself a candidate,
+so the search can only save: 40.5 %, 23.1 % and 39.5 % by the same three corpora. On the
+fixtures the CI byte manifest checks (`test/bytes.json`: 11 marks, 44 rasters at the default
+effort) the rasters fall from 70 800 to 41 904 B (−40.8 %), from −1.2 % on `tiles` to −53.4 % on
+`smil`; none grew, and every one passes both clauses against the suite's independent
+reference, worst pct 0.996 % and worst edge error 1.289.
+
+**Why the bar grew a second clause.** pct alone was the first gate, and a side-by-side sheet of
+its winners (`bench/sheet.mjs`, 109 sampled rasters) showed it passing files no one should ship:
+the `flat-color-icons/file` 192 px winner, visibly serrated at an edge error of 3.39, and the
+lettering of `deepgram-dark` at 512 px, harsher still at 6.59 against 0.74 at quality 80. Many
+edge pixels each off by a little stay under pct's 8/255 per channel; weighting luma error by
+the reference's edges catches them. The threshold is measured, not derived: 1.5883 is the worst
+edge error of any quality-80 raster that already passed pct, over 346 rasters of the fixtures
+and the open corpus, so the gate refuses nothing quality 80 shipped as passing; 17 of the 109
+sampled winners were beyond it ([bench/search/GATE.md](../bench/search/GATE.md) has the sheet's
+thresholds and rows). Its cost: 907 979 B gated against 903 804 under pct alone
+(+0.5 %), all of it on the 27 rasters whose winner it moves (4 175 B). No raster that passes pct
+at quality 80 misses on edge error alone (0 of 568).
+
+**Where quality 80 misses.** It misses the gated bar on 66 of 568 rasters (fixtures 2, open
+64). 25 have a passing candidate and take it, for 3.6 % more bytes on those rasters (179 216 →
+185 587 B). 41 have none on either list (fixtures 2, open 39) and keep quality 80's bytes; the
+two fixtures are the 48 px ICOs of `grid-1` and `grid-tiny` at 1.2153 %, the suite's accepted
+exception (decision 9).
+
+**Binary by default, and the smallest probe rather than the first pass.** A binary search
+assumes pass and fail are monotone along each list. The quality list is, on 568 of 568; the
+colour list is not, on 16 (13 under pct alone), where a palette passes and a larger one fails
+again. The colour list is not monotone in bytes either: at 2 colours the 1-bit quantised PNG can
+lose to the lossless path, and the candidate is then the lossless file, 3 949 B on a flat 512 px
+icon against 1 427 B at 3 colours, both passing. A first-match rule would ship the 3 949. So the
+winner is the smallest passing candidate among every probe the search made, ties going to the
+less lossy setting. That makes the binary search differ from trying all 26 on 25 of 568
+rasters, 1 867 B in all (+0.2 %), worst on the open corpus `logos/gwt` at 512 px, 2 659 B
+against 1 816 (+46.4 %). It takes 7 to 9 probes per raster (median 7) against 26: per 512 px
+raster, a median 779 ms of encoding and scoring against 2 866 ms for every candidate and 91 ms
+for one quality-80 encode.
+
+**Build time.** CLI wall clock for a default set, `node bin/favseed.mjs` with `--bg '#000000'`,
+three interleaved repetitions, median, on an idle 8-core/16-thread Ryzen 7 7840U:
+
+| mark | `fast` | `default` | `max` |
+|---|---|---|---|
+| `general` | 0.40 s | 2.33 s | 8.73 s |
+| `gradient` | 0.60 s | 4.67 s | 17.68 s |
+| `heavy` | 0.38 s | 2.41 s | 8.25 s |
+
+On `general` and `gradient`, the two marks the byte manifest also builds at `max`, `max` writes
+18 670 raster bytes against `default`'s 18 780 (−0.6 %) in 3.7–3.8× the time. Under the
+priority rule that is a byte cost for build time, and it is the one the default takes: 0.6 %
+for a build of seconds rather than tens of seconds. Every raster that can pass passes at
+either effort, and `--effort max` is one flag away.
 
 ---
 
@@ -697,6 +759,58 @@ mark scored 0.00 %. It was shipped as a trade stated in full, with a test pinnin
 Decision 24 records the two things that made it the wrong one: 8 wrecks a gradient, and most of
 the byte lead it bought over a competitor came from visible error.
 
+### 24. `--colors` defaults to 256: the bar holds by default, for 44.6 % more bytes
+
+> **Replaced by decision 29:** with no `--quality` or `--colors`, each raster is now the
+> smallest of 26 candidates that passes the bar, and 256 is the palette ceiling of its quality
+> list. The measurement below is why the ceiling is 256 and not 8.
+
+Decision 19 shipped 8 colours as a stated trade: smaller than 16, and outside the 1.0 %
+accuracy bar on anti-aliased marks. Two things made that the wrong trade.
+
+**8 is not a mild miss on every mark.** On a gradient it is a broken one: in the run this
+decision was taken on, 27–28 % of pixels were off by a visible margin at every size, and
+favseed's own benchmark excluded the gradient from its worst-case line as "meant to be bad". A
+favicon generator that wrecks a common kind of mark by default, and says so only in a
+benchmark, is not making a trade users can see.
+
+**Matched against a competitor, 8 colours is where most of favseed's byte lead came from.**
+Measured 2026-10-01 against `@vite-pwa/assets-generator` 2.0.0 (sharp, `quality: 60`): fed the
+same lossless pixels, favseed's encoder at 16 colours beat or matched its bytes on typical marks
+(−6 % to +5 % over four files) while being more accurate on every file, and won by 30 % only
+on pixel-grid marks. The large default-set gaps came from fewer files and fewer colours. Bytes
+won through visible error are not a lead worth having.
+
+256 is the quantiser's ceiling, not a target: it spends only the colours a mark needs, which is
+why 64, 128 and 256 produce identical bytes on every non-gradient fixture. The 44.6 % in the
+title was measured with Zopfli on, against the native pipeline (25 500 B at 8 against 36 881 B
+at 256). Regenerated on the engine, Zopfli off (`docs/BENCHMARKS.md`, 9 marks, gradient
+excluded, 180 + 192 + 512 px):
+
+| `--colors` | bytes | vs 256 | worst pct |
+|---|---|---|---|
+| 8 | 27 850 | −27.1 % | **1.892 %** (over the bar) |
+| 16 | 32 388 | −15.2 % | 0.423 % |
+| 32 | 36 291 | −5.0 % | 0.114 % |
+| 64 – 256 | 38 195 | 0 | **0.114 %** |
+
+So 256 costs **37.1 % more** than 8 today, and every non-gradient raster is at least 8.8× inside
+the bar. The gradient, at 29–30 % with 8 colours, scored 1.6–1.7 % at 256 while its stops were
+rounded and scores 0.00–0.01 % now that they are not (decision 5).
+
+**The default build reaches the palette through `--quality 80`.** Below 100 the quantiser
+derives its palette from the quality target and `colors` is not passed at all; an explicit
+`--colors` alone selects quality 100 and this ceiling, and `--colors` with a quality below 100
+is an error. Over 11 fixtures, Zopfli off, quality 80 wrote 69 291 PNG/ICO bytes against 74 180
+at 100 (−6.6 %), with the worst non-gradient source error 0.114 % at both
+([bench/zopfli/QUALITY.md](../bench/zopfli/QUALITY.md)). With selective precision the worst
+final PNG source error at the default is 0.114 % on those fixtures, gradient included
+([bench/precision](../bench/precision/README.md)).
+
+The accuracy tests score the **default** build instead of a hand-picked palette, so "inside the
+bar" is a claim about what ships. `--colors 8` remains one flag away for anyone who wants the old
+trade, and a test pins that it still misses the bar on `flat.svg`.
+
 ### 28. Two lanes for Zopfli: measured, not shipped
 
 After decision 27 rejected a worker pool, a narrower design was measured: finish the largest
@@ -710,3 +824,6 @@ The bounded-batch scheduler (decision 27) was kept instead. The default build sk
 (decision 8), so the default has no finish to put in a lane, and it is the native render and
 encode work that batches overlap. For an opt-in Zopfli build, `mode: 'fast'` cuts the 512 px
 wait more than any schedule can.
+
+Decision 29 has since put Zopfli back into the default build, at 15 iterations, so the second
+paragraph's premise no longer holds; the lane design has not been measured again since.

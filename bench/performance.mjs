@@ -9,13 +9,16 @@ import * as image from '@napi-rs/image';
 import { loadEngine, optimiseSvg, engineVersions } from '../bin/favseed.mjs';
 import { createEngine } from '../lib/engine.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
+import { EFFORT_ITERATIONS } from '../lib/core.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
 
 const engines = {
   baseline: createEngine({ image, zopfli: reference, inflate: inflateSync }),
   candidate: await loadEngine(),
 };
-const mode = process.argv.includes('--fast') ? 'fast' : 'release';
+// The quality-80 encode with Zopfli at effort 'default' (--fast) or 'max': the search is
+// left out, so both engines time the same single encode and its finish.
+const mode = process.argv.includes('--fast') ? 'default' : 'max';
 const marks = ['tiles', 'general', 'heavy', 'gradient'];
 const samples = new Map();
 console.log(
@@ -33,10 +36,14 @@ for (let rep = 0; rep < 3; rep++) {
     const results = {};
     for (const name of rep % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']) {
       const start = performance.now();
-      const result = await buildSet(source, normaliseOptions({ mode, zopfli: true }), {
-        optimiseSvg,
-        engine: engines[name],
-      });
+      const result = await buildSet(
+        source,
+        { ...normaliseOptions({ effort: 'fast' }), iterations: EFFORT_ITERATIONS[mode] },
+        {
+          optimiseSvg,
+          engine: engines[name],
+        },
+      );
       const ms = performance.now() - start;
       results[name] = { result, ms };
       if (rep > 0) {

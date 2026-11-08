@@ -101,7 +101,7 @@ export async function framingSweep(out) {
       const order = (rep + index) % 2 ? arms.toReversed() : arms;
       for (const arm of order) {
         const old = arm === 'before',
-          options = (old ? oldOptions : normaliseOptions)({ manifest: true });
+          options = (old ? oldOptions : normaliseOptions)({ manifest: true, effort: 'fast' });
         const start = performance.now();
         let result;
         try {

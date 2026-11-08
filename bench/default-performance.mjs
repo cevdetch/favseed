@@ -35,7 +35,7 @@ const engine = await loadEngine(),
   marks = ['tiles', 'general', 'heavy', 'gradient'];
 const arms = ['before-release', 'before-no-zopfli', 'current-default'];
 assert.equal(oldOptions({}).iterations, 120, 'Before snapshot must have default compression');
-assert.equal(normaliseOptions({}).iterations, 0, 'Current default must skip compression');
+assert.equal(normaliseOptions({ effort: 'fast' }).iterations, 0, "The current arm's effort must skip compression");
 const metadata = {
   node: process.version,
   cpu: cpus()[0]?.model,
@@ -72,7 +72,7 @@ for (let rep = 0; rep < 3; rep++)
       const result = await (current ? buildSet : oldBuild)(
         source,
         current
-          ? normaliseOptions({ manifest: true, quality: 100 })
+          ? normaliseOptions({ manifest: true, quality: 100, effort: 'fast' })
           : oldOptions({ manifest: true, ...(arm === 'before-no-zopfli' ? { zopfli: false } : {}) }),
         { engine: current ? engine : oldEngine, optimiseSvg: current ? optimiseSvg : oldSvg },
       );

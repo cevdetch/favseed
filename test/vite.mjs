@@ -23,25 +23,28 @@ import { build, buildFiles } from '../bin/favseed.mjs';
 import { declaresIcon, manifestIcons, manifestJson } from '../lib/core.mjs';
 import { cacheKey, favseedVersion, readSlot, writeSlot } from '../vite/cache.mjs';
 
-it('persistent cache normalizes default quality 80 and preserves explicit palette keys', () => {
+it('persistent cache keys the pinned setting, and only what was given pins', () => {
   const shared = { version: 'test', source: Buffer.from('<svg/>'), engine: {} };
   const key = (options) => cacheKey({ ...shared, options });
-  assert.equal(key({}), key({ quality: 80 }));
   assert.equal(key({ colors: 32 }), key({ colors: 32, quality: 100 }));
   assert.equal(key({ colors: 256 }), key({ colors: 256, quality: 100 }));
   assert.equal(key({ quality: 80 }), key({ quality: '80' }));
-  assert.notEqual(key({}), key({ quality: 100 }));
+  assert.equal(key({ quality: 100 }), key({ colors: 256 }));
+  // An explicit quality 80 is one encode; the default searches.
+  assert.notEqual(key({}), key({ quality: 80 }));
+  assert.notEqual(key({ quality: 80 }), key({ quality: 100 }));
+  assert.notEqual(key({ colors: 16 }), key({ colors: 32 }));
 });
 
-it('persistent cache distinguishes explicit Zopfli from the default', () => {
+it('persistent cache keys the effort', () => {
   const shared = { version: 'test', source: Buffer.from('<svg/>'), engine: {} };
-  assert.notEqual(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { zopfli: true } }));
-  assert.equal(cacheKey({ ...shared, options: {} }), cacheKey({ ...shared, options: { zopfli: false } }));
-  assert.equal(
-    cacheKey({ ...shared, options: {} }),
-    cacheKey({ ...shared, options: { mode: 'fast' } }),
-    'disabled compression should share a cache entry across effort modes',
-  );
+  const key = (options) => cacheKey({ ...shared, options });
+  assert.equal(key({}), key({ effort: 'default' }));
+  assert.notEqual(key({}), key({ effort: 'fast' }));
+  assert.notEqual(key({}), key({ effort: 'max' }));
+  assert.notEqual(key({ effort: 'fast' }), key({ effort: 'max' }));
+  // A pin skips the search, but each effort still runs its own Zopfli pass.
+  assert.notEqual(key({ colors: 16, effort: 'fast' }), key({ colors: 16, effort: 'max' }));
 });
 
 it('persistent cache distinguishes the default opaque background from transparent output', () => {
@@ -101,7 +104,7 @@ describe('toRealPath', () => {
 
 describe('buildFiles', () => {
   it('returns the bytes build() writes, and writes nothing', async () => {
-    const opts = { input: fixture('general.svg'), sizes: [32], mode: 'fast', bg: '#000000' };
+    const opts = { input: fixture('general.svg'), sizes: [32], effort: 'fast', bg: '#000000' };
     const set = await buildFiles(opts);
     const out = dir();
     const r = await build({ ...opts, out });
@@ -245,7 +248,7 @@ const app = (files = {}) => {
   }
   return d;
 };
-const FAST = { sizes: [32], mode: 'fast', bg: '#000000' };
+const FAST = { sizes: [32], effort: 'fast', bg: '#000000' };
 const warnings = [];
 const vbuild = (root, plugins, extra = {}) =>
   viteBuild({
@@ -426,6 +429,16 @@ describe('favseed/vite in a build', () => {
     await assert.rejects(vbuild(root, [favseed({ ...FAST, input: 'nope.svg' })]), /favseed: no such file: .*nope\.svg/);
   });
 
+  it('refuses zopfli and mode, naming effort', async () => {
+    const root = app();
+    for (const options of [{ zopfli: true }, { mode: 'release' }]) {
+      await assert.rejects(
+        vbuild(root, [favseed(options)]),
+        /favseed: zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      );
+    }
+  });
+
   it('serves the second build from the cache', async () => {
     const root = app();
     await vbuild(root, [favseed(FAST)]);
@@ -479,6 +492,25 @@ describe('favseed/vite in dev', () => {
       }
       const html = await (await fetch(url('/sub/'))).text();
       assert.match(html, /href="\/sub\/favicon\.ico"/);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("serves effort 'fast' bytes in dev, whatever effort the build asks for", async () => {
+    const root = app();
+    const { server, url } = await serve(root, [favseed({ sizes: [32], bg: '#000000', effort: 'max' })]);
+    try {
+      const fast = await buildFiles({
+        sizes: [32],
+        bg: '#000000',
+        effort: 'fast',
+        input: join(root, 'src', 'logo.svg'),
+      });
+      for (const name of ['favicon.ico', 'icon-32.png']) {
+        const served = Buffer.from(await (await fetch(url(`/${name}`))).arrayBuffer());
+        assert.equal(sha(served), sha(fast.files.find((f) => f.name === name).bytes), name);
+      }
     } finally {
       await server.close();
     }
@@ -585,11 +617,11 @@ describe('favseed/vite types', () => {
     const spec = JSON.stringify(join(ROOT, 'vite', 'index.mjs').replace(/\\/g, '/'));
     writeFileSync(
       join(d, 'good.mts'),
-      `import favseed, { favseedIcons } from ${spec};\nconst p = favseed({ input: 'src/logo.svg', sizes: [192, 512], mode: 'fast', base: '/x/' });\nconst icons: { src: string; sizes: string; type: string; purpose?: string }[] = favseedIcons({ sizes: [192] });\nexport { p, icons };\n`,
+      `import favseed, { favseedIcons } from ${spec};\nconst p = favseed({ input: 'src/logo.svg', sizes: [192, 512], effort: 'fast', base: '/x/' });\nconst icons: { src: string; sizes: string; type: string; purpose?: string }[] = favseedIcons({ sizes: [192] });\nexport { p, icons };\n`,
     );
     writeFileSync(
       join(d, 'bad.mts'),
-      `import favseed from ${spec};\nexport const badOut = favseed({ out: 'dist' });\nexport const badColour = favseed({ colours: 8 });\n`,
+      `import favseed from ${spec};\nexport const badOut = favseed({ out: 'dist' });\nexport const badColour = favseed({ colours: 8 });\nexport const badEffort = favseed({ effort: 'release' });\nexport const badZopfli = favseed({ zopfli: true });\n`,
     );
     const check = (f) =>
       spawnSync(
@@ -613,5 +645,7 @@ describe('favseed/vite types', () => {
     assert.notEqual(bad.status, 0);
     assert.match(bad.stdout, /'out'/);
     assert.match(bad.stdout, /'colours'/);
+    assert.match(bad.stdout, /"release".*Effort/);
+    assert.match(bad.stdout, /'zopfli'/);
   });
 });

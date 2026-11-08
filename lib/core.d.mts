@@ -1,5 +1,5 @@
-import type { PlacementMetrics, RgbaImage, SvgVariables } from './types.mjs';
-export type { PlacementMetrics, RgbaImage, SvgVariables } from './types.mjs';
+import type { Effort, PlacementMetrics, RgbaImage, SvgVariables } from './types.mjs';
+export type { Effort, PlacementMetrics, RgbaImage, SvgVariables } from './types.mjs';
 
 export class FavseedError extends Error {}
 
@@ -10,10 +10,15 @@ export const DEFAULT_COLORS: number;
 /** Default numbered PNG sizes. Treat this shared array as read-only. */
 export const DEFAULT_SIZES: number[];
 export const DEFAULT_BG: string;
-export const ZOPFLI_ITERATIONS: number;
-export const FAST_ZOPFLI_ITERATIONS: number;
+/** Zopfli iterations per effort. */
+export const EFFORT_ITERATIONS: Readonly<Record<Effort, number>>;
+export const DEFAULT_EFFORT: Effort;
 export const MASK_SAFE_RADIUS: number;
 export const SNAP_WINDOW: number;
+export const ACCURACY_PCT: number;
+export const EDGE_GATE: number;
+export const SEARCH_QUALITIES: number[];
+export const SEARCH_COLORS: number[];
 
 export interface SvgOptions {
   /** Explicit static mode: strips motion and accessibility. Default false. */
@@ -60,7 +65,7 @@ export function mapImages<T, R>(
   items: readonly T[],
   sizeOf: (item: T) => number,
   work: (item: T) => R | PromiseLike<R>,
-  options?: { serial?: boolean },
+  options?: { serial?: boolean; extraBytes?: (item: T) => number },
 ): Promise<Awaited<R>[]>;
 
 export interface SafeZonePlacement extends PlacementMetrics {

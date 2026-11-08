@@ -91,9 +91,15 @@ export async function precisionSweep(out) {
       for (const arm of order) {
         const steps = [],
           old = arm === 'before-q80';
+        // Pinning quality 80 on the q80 arms would gate the new pipeline's result against a
+        // rendered reference it otherwise skips (lib/pipeline.mjs's `gated`), charging the
+        // comparison for a render and a score that have nothing to do with selective precision.
+        // Quality 100 still needs the explicit pin; the q80 arms get the same bytes from the
+        // plain default (test/run.mjs's "effort fast and colors256" case is the same equivalence).
         const options = (old ? beforeOptions : normaliseOptions)({
           manifest: true,
-          quality: arm === 'selective-q100' ? 100 : 80,
+          ...(arm === 'selective-q100' ? { quality: 100 } : {}),
+          effort: 'fast',
         });
         const svg = (source, o) => {
           const output = (old ? beforeSvg : optimiseSvg)(source, o);

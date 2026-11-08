@@ -42,7 +42,7 @@ const engine = await loadEngine(),
 const prepStart = performance.now();
 for (const mark of marks) {
   const source = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-  await buildSet(source, normaliseOptions({ mode: 'release' }), {
+  await buildSet(source, normaliseOptions({ effort: 'fast' }), {
     optimiseSvg,
     engine: {
       ...engine,

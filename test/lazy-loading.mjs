@@ -79,6 +79,11 @@ describe('lazy build dependencies', () => {
       const api = await import(${JSON.stringify(CLI)});
       await assert.rejects(api.buildFiles({input:'test/fixtures/flat.svg', colors:1}), /--colors/);
       await assert.rejects(api.buildFiles({input:'test/fixtures/notsvg.txt'}), /not an SVG/);
+      for (const options of [{zopfli:true}, {mode:'release'}]) {
+        for (const fn of [api.build, api.buildFiles]) {
+          await assert.rejects(fn({input:'test/fixtures/flat.svg', ...options}), /^FavseedError: zopfli and mode were replaced by effort \\('fast', 'default' or 'max'\\)$/);
+        }
+      }
     `,
     );
   });
@@ -194,7 +199,7 @@ describe('lazy build dependencies', () => {
       guard(true) +
         `
       const {default:favseed} = await import(${JSON.stringify(ASTRO)});
-      for (const options of [{imput:'logo.svg'}, {sizes:[33]}, {quality:0}, {dev:'fast'}, {mode:'slow'}]) {
+      for (const options of [{imput:'logo.svg'}, {sizes:[33]}, {quality:0}, {dev:'fast'}, {mode:'fast'}, {zopfli:true}, {effort:'slow'}]) {
         assert.throws(() => favseed(options), /favseed:/);
       }
       const root = new URL('../', ${JSON.stringify(ASTRO)});

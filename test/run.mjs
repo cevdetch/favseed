@@ -1,5 +1,6 @@
 // Build/API contracts, independently decoded raster accuracy and package contents.
-// Builds are memoised across cases; opt-in Zopfli runs only where needed.
+// Builds are memoised across cases. Cases that test placement or pixels pin effort 'fast'; the rest
+// run the default effort's search.
 // These tests compare behavior and pixels. test/hashes.mjs separately checks the
 // reviewed byte baseline across engine upgrades and platforms.
 
@@ -386,13 +387,15 @@ describe('accuracy', () => {
     ['icon-512.png', 512, '#000000', true],
   ];
 
-  // Use default quality80, with the default-off recompressor explicit for clarity.
+  // Effort 'fast': quality 80, the encode a search falls back to when nothing passes, so the
+  // ICO's encoding error below stays zero. test/pipeline.mjs scores the search's own winners.
   const accuracyBuild = (name) =>
-    buildOnce(`acc-${name}`, { input: fixture(`${name}.svg`), sizes: [192, 512], zopfli: false });
+    buildOnce(`acc-${name}`, { input: fixture(`${name}.svg`), sizes: [192, 512], effort: 'fast' });
 
-  it('zopfli changes bytes, not pixels', async () => {
-    const withZopfli = await SMALL('second', { zopfli: true, mode: 'fast' });
-    const without = await SMALL('second', { zopfli: false, mode: 'fast' });
+  it('Zopfli changes bytes, not pixels', async () => {
+    // A pinned setting is one encode at every effort, so only the Zopfli pass differs.
+    const withZopfli = await SMALL('second', { quality: 80, effort: 'default' });
+    const without = await SMALL('second', { quality: 80, effort: 'fast' });
     let saved = 0;
     for (const file of ['favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
       const a = readFileSync(join(withZopfli.out, file)),
@@ -402,7 +405,7 @@ describe('accuracy', () => {
       const payload = (bytes) => (file.endsWith('.ico') ? bytes.subarray(22) : bytes);
       assert.deepEqual(decode(payload(a)), decode(payload(b)), `${file}: zopfli changed pixels`);
     }
-    assert.ok(saved > 0, 'opt-in Zopfli did not reduce the fixture');
+    assert.ok(saved > 0, 'Zopfli did not reduce the fixture');
   });
 
   for (const name of [
@@ -461,24 +464,24 @@ describe('accuracy', () => {
     });
   }
 
-  it('keeps flat accurate at default quality, while an eight-color palette exceeds the bar', async () => {
+  it("keeps flat accurate at effort 'fast', while an eight-color palette exceeds the bar", async () => {
     // On this fixture quality80 matches explicit colors256; this does not make
-    // the default encoder policy a fixed 256-color palette.
-    const dflt = await buildOnce('dflt-colors', { input: fixture('flat.svg'), sizes: [32], zopfli: false });
+    // effort 'fast' a fixed 256-color palette.
+    const dflt = await buildOnce('dflt-colors', { input: fixture('flat.svg'), sizes: [32], effort: 'fast' });
     const full = await buildOnce('full-colors', {
       input: fixture('flat.svg'),
       sizes: [32],
       colors: 256,
-      zopfli: false,
+      effort: 'fast',
     });
     for (const f of ['icon-32.png', 'apple-touch-icon.png']) {
       assert.deepEqual(
         [...readFileSync(join(dflt.out, f))],
         [...readFileSync(join(full.out, f))],
-        `default quality and colors256 differ on flat (${f})`,
+        `effort fast and colors256 differ on flat (${f})`,
       );
     }
-    const { out } = await buildOnce('flat-8', { input: fixture('flat.svg'), sizes: [192], colors: 8, zopfli: false });
+    const { out } = await buildOnce('flat-8', { input: fixture('flat.svg'), sizes: [192], colors: 8, effort: 'fast' });
     const ref = await reference({ source: fixture('flat.svg'), px: 180, bg: '#000000', vars: {}, fitted: true });
     const s = score(decode(readFileSync(join(out, 'apple-touch-icon.png'))), ref);
     assert.ok(
@@ -493,7 +496,7 @@ describe('accuracy', () => {
     const source = fixture('gradient.svg');
     const ref = await reference({ source, px: 192, bg: '#000000', vars: {}, fitted: true });
     const at = async (colors) => {
-      const { out } = await buildOnce(`grad-${colors}`, { input: source, sizes: [192], colors, zopfli: false });
+      const { out } = await buildOnce(`grad-${colors}`, { input: source, sizes: [192], colors, effort: 'fast' });
       return score(decode(readFileSync(join(out, 'icon-192.png'))), ref).pct;
     };
     assert.ok((await at(8)) > THRESHOLD_PCT, '8 colours should not be enough for a gradient');
@@ -505,7 +508,7 @@ describe('accuracy', () => {
       input: fixture('general.svg'),
       sizes: [192],
       padding: 20,
-      zopfli: false,
+      effort: 'fast',
     });
     const ref = await reference({ source: fixture('general.svg'), px: 192, bg: '#000000', fitted: true, padding: 20 });
     const s = score(decode(readFileSync(join(out, 'icon-192.png'))), ref);
@@ -601,7 +604,7 @@ describe('the masked icons', () => {
       input: fixture(`${name}.svg`),
       sizes: [32, 64, 192, 512],
       bg: BG,
-      zopfli: false,
+      effort: 'fast',
       ...extra,
     });
 
@@ -718,7 +721,7 @@ describe('the masked icons', () => {
     // An explicit percentage must be obeyed as given: box = canvas * (1 - 2p), rounded down
     // to an even pixel so the offset stays whole. 20% of 512 leaves 60% = 307 -> 306.
     const out = freshDir();
-    const r = await build({ input: fixture('tiles.svg'), out, sizes: [512], padding: 20, zopfli: false });
+    const r = await build({ input: fixture('tiles.svg'), out, sizes: [512], padding: 20, effort: 'fast' });
     assert.equal(r.fit.apple.padding, 20);
     assert.equal(r.fit.apple.box, 108); // 180 * 0.6 = 108, already even
     assert.equal(r.fit.apple.snapped, false, 'an explicit padding must not be snapped away');
@@ -726,14 +729,14 @@ describe('the masked icons', () => {
 
   it('--padding auto still measures and snaps', async () => {
     const out = freshDir();
-    const r = await build({ input: fixture('tiles.svg'), out, sizes: [512], padding: 'auto', zopfli: false });
+    const r = await build({ input: fixture('tiles.svg'), out, sizes: [512], padding: 'auto', effort: 'fast' });
     assert.equal(r.fit.apple.box, 112, 'tiles is a pixel-grid mark and snaps to 112 of 180');
     assert.equal(r.fit.apple.snapped, true);
   });
 
   it('writes one padded set and no separate maskable icon', async () => {
     const out = freshDir();
-    await build({ input: fixture('general.svg'), out, sizes: [192, 512], zopfli: false });
+    await build({ input: fixture('general.svg'), out, sizes: [192, 512], effort: 'fast' });
     assert.deepEqual(readdirSync(out).sort(), [
       'apple-touch-icon.png',
       'favicon.ico',
@@ -745,14 +748,14 @@ describe('the masked icons', () => {
 
   it('declares the padded icons "any maskable", and "any" alone when transparent', async () => {
     const opaque = freshDir();
-    await build({ input: fixture('general.svg'), out: opaque, sizes: [192], manifest: true, zopfli: false });
+    await build({ input: fixture('general.svg'), out: opaque, sizes: [192], manifest: true, effort: 'fast' });
     const a = JSON.parse(readFileSync(join(opaque, 'site.webmanifest'), 'utf8'));
     assert.equal(a.icons[0].purpose, 'any maskable');
 
     // --bg none cannot produce a maskable icon: the spec lets a platform composite a
     // transparent one onto any colour, so the safe zone would mean nothing.
     const clear = freshDir();
-    await build({ input: fixture('general.svg'), out: clear, sizes: [192], bg: null, manifest: true, zopfli: false });
+    await build({ input: fixture('general.svg'), out: clear, sizes: [192], bg: null, manifest: true, effort: 'fast' });
     const b = JSON.parse(readFileSync(join(clear, 'site.webmanifest'), 'utf8'));
     assert.equal(b.icons[0].purpose, undefined, 'a transparent icon is "any" only');
   });
@@ -761,7 +764,7 @@ describe('the masked icons', () => {
     // These two are never masked: the SVG favicon is drawn in a browser tab and the ICO is
     // an unpadded fallback. Padding them would shrink the mark for nothing.
     const out = freshDir();
-    await build({ input: fixture('tiles.svg'), out, sizes: [32], zopfli: false });
+    await build({ input: fixture('tiles.svg'), out, sizes: [32], effort: 'fast' });
     const icon32 = readFileSync(join(out, 'icon-32.png'));
     const payload = readFileSync(join(out, 'favicon.ico')).subarray(22);
     assert.notDeepEqual([...icon32], [...payload], 'icon-32.png is padded now, so it can no longer be the ICO payload');
@@ -819,7 +822,7 @@ describe('the masked icons', () => {
         '<rect width="64" height="64" fill="#0E7C68"/><circle cx="32" cy="32" r="20" fill="#F4F1EA"/></svg>',
     );
     const out = freshDir();
-    const r = await build({ input: svg, out, sizes: [32, 64, 192, 512], bg: '#000000', zopfli: false });
+    const r = await build({ input: svg, out, sizes: [32, 64, 192, 512], bg: '#000000', effort: 'fast' });
     for (const [file, px, key] of ICONS) {
       assert.equal(placed(r.fit, key).fullBleed, true, key);
       assert.equal(placed(r.fit, key).box, px, key);
@@ -877,7 +880,7 @@ describe('determinism and atomicity', () => {
     const saved = { TMPDIR: process.env.TMPDIR, TEMP: process.env.TEMP, TMP: process.env.TMP };
     Object.assign(process.env, { TMPDIR: priv, TEMP: priv, TMP: priv });
     try {
-      await build({ input: fixture('flat.svg'), out: freshDir(), sizes: [32], zopfli: false });
+      await build({ input: fixture('flat.svg'), out: freshDir(), sizes: [32], effort: 'fast' });
       await assert.rejects(build({ input: fixture('unresolved.svg'), out: freshDir(), sizes: [32] }));
     } finally {
       for (const [k, v] of Object.entries(saved)) {
@@ -1155,6 +1158,7 @@ describe('the published tarball', () => {
         'lib/core.d.mts',
         'lib/engine.mjs',
         'lib/pipeline.mjs',
+        'lib/quality.mjs',
         'lib/svg-precision.mjs',
         'lib/types.d.mts',
         'lib/zopfli-build.mjs',
@@ -1445,9 +1449,16 @@ describe('the astro integration', () => {
       [{ quality: 80, colors: 8 }, /quality below 100 cannot be combined with colors/],
       [{ sizes: [33] }, /sizes takes even pixel sizes/],
       [{ sizes: [] }, /sizes is empty/],
-      [{ mode: 'slow' }, /mode must be 'release' or 'fast'/],
+      [{ effort: 'slow' }, /effort must be 'fast', 'default' or 'max', got 'slow'/],
       [{ padding: 46 }, /padding must be 'auto' or a percentage 0-45/],
-      [{ zopfli: null }, /zopfli must be true or false/],
+      [
+        { zopfli: true },
+        /unknown option 'zopfli'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      ],
+      [
+        { mode: 'fast' },
+        /unknown option 'mode'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+      ],
       [{ animation: 'no' }, /animation must be true or false/],
       [{ manifest: [] }, /manifest must be true, false or an object/],
       [{ vars: { 'bad name': 'red' } }, /vars name must be a CSS custom property/],
@@ -1676,12 +1687,15 @@ describe('the astro integration', () => {
     const root = freshDir();
     mkdirSync(root, { recursive: true });
     copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
-    for (const zopfli of [false, null]) {
-      if (zopfli === null) {
-        assert.throws(() => favseedAstro({ input: 'logo.svg', sizes: [32], zopfli }), /zopfli must be true or false/);
+    for (const effort of ['fast', 'slow']) {
+      if (effort === 'slow') {
+        assert.throws(
+          () => favseedAstro({ input: 'logo.svg', sizes: [32], effort }),
+          /effort must be 'fast', 'default'/,
+        );
         continue;
       }
-      await astroBuild(favseedAstro({ input: 'logo.svg', sizes: [32], zopfli }), root);
+      await astroBuild(favseedAstro({ input: 'logo.svg', sizes: [32], effort }), root);
     }
   });
 

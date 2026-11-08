@@ -52,7 +52,7 @@ const rawRenders = async () => {
     // Render from favseed's own icon.svg, so the sweeps measure the PNG pipeline in
     // isolation rather than re-measuring svgo on every axis.
     const built = join(OUT, 'svg', m);
-    await build({ input: join(FIXTURES, `${m}.svg`), out: built, sizes: [16], bg: null, zopfli: false });
+    await build({ input: join(FIXTURES, `${m}.svg`), out: built, sizes: [16], bg: null, effort: 'fast' });
     const rasterSvg = squareIconSvg(readFileSync(join(built, 'icon.svg'), 'utf8')).data;
     for (const px of [16, 32, 180, 192, 512]) {
       const f = join(dir, `${m}-${px}.png`);
@@ -86,7 +86,7 @@ sweeps.accuracy = async () => {
           sizes: [192, 512],
           colors: c,
           bg: '#000000',
-          zopfli: false,
+          effort: 'fast',
         });
         const ref = await reference({ source: join(FIXTURES, `${m}.svg`), px, bg, vars: {}, fitted });
         const s = score(decode(readFileSync(join(out, file))), ref);
@@ -123,6 +123,9 @@ sweeps.colors = async () => {
         sizes: [192, 512],
         colors: c,
         bg: '#000000',
+        // A pin keeps its effort's Zopfli pass; 'fast' keeps this sweep's bytes unfinished, as
+        // its note says, so they stay comparable with the table decision 24 cites.
+        effort: 'fast',
       });
       for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) bytes += r.bytes[f];
       for (const [label, px, file, bg, fitted] of CHECKS) {
@@ -146,7 +149,7 @@ sweeps.colors = async () => {
   ].join('\n');
   return {
     title: 'Palette size: bytes against accuracy',
-    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. Passing --colors here selects quality 100, not the quality-80 default that ships when --colors is left unset; this is the sweep that set the default --colors ceiling.`,
+    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, effort fast (no Zopfli). Passing --colors here pins that palette at quality 100; left unset, the default effort searches qualities and palettes per raster instead. This is the sweep that set the 256-colour palette ceiling.`,
     text,
   };
 };
@@ -169,7 +172,7 @@ sweeps.zopfli = async () => {
   const base = rows[0][1];
   return {
     title: 'Zopfli iterations',
-    note: "The engine's finish over the default encode of every 192 and 512 px raw render. 15 is the fast mode's count, 120 the release count.",
+    note: "The engine's finish over the default encode of every 192 and 512 px raw render. 15 is effort default's count, 120 effort max's.",
     text: [
       `${num('iters', 6)}${num('bytes', 10)}${num('vs 15', 9)}${num('seconds', 10)}`,
       ...rows.map(

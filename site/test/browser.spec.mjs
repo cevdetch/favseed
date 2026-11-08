@@ -234,8 +234,8 @@ for (const compatibility of [false, true])
             'grid-tiny/precision',
             'grid-fallback/precision',
             'gradient/fast',
-            'tiles/release',
-            'gradient/quality60-zopfli',
+            'tiles/max',
+            'gradient/quality60-default',
             'transparent-aliases',
             'custom-manifest',
           ].includes(item.name),
@@ -264,7 +264,7 @@ for (const compatibility of [false, true])
       });
     }
     const source = await readFile(fixture('general'), 'utf8'),
-      options = { mode: 'fast', sizes: [180, 32] };
+      options = { effort: 'fast', sizes: [180, 32] };
     expect(
       await page.evaluate(({ source, options }) => window.favseedCheck.cache(source, options), { source, options }),
     ).toBe(true);
@@ -381,7 +381,7 @@ for (const compatibility of [false, true])
   }) => {
     await checkPage(page, compatibility);
     const source = await readFile(fixture('general'), 'utf8'),
-      options = { mode: 'fast', sizes: [32] };
+      options = { effort: 'fast', sizes: [32] };
     expect(await page.evaluate((source) => window.favseedCheck.invalid(source), source)).toBe(true);
     await page.evaluate(() => window.favseedCheck.dispose());
     expect(
@@ -428,7 +428,7 @@ for (const compatibility of [false, true])
     await checkPage(page, compatibility);
     const input = fixture('general'),
       source = await readFile(input, 'utf8');
-    const options = { mode: 'fast', sizes: [1024], padding: 0, bg: 'none' };
+    const options = { effort: 'fast', sizes: [1024], padding: 0, bg: 'none' };
     const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
       source,
       options,
@@ -456,13 +456,13 @@ test('form downloads match native and survive failed and cancelled builds', asyn
     });
   await expect(page.locator('#cancel')).toBeHidden();
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
-  await page.locator('select[name=mode]').selectOption('fast');
+  await page.locator('select[name=effort]').selectOption('fast');
   const generate = page.getByRole('button', { name: 'Generate', exact: true });
   if (isMobile) await generate.tap();
   else await generate.click();
   await expect(page.locator('output')).toHaveClass('good', { timeout: 90_000 });
   await expect(page.locator('#result')).toBeVisible();
-  const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', manifest: true }));
+  const expected = summary(await buildFiles({ input: fixture('tiles'), effort: 'fast', manifest: true }));
   const actual = await downloads(page);
   expect(actual).toEqual(expected.files);
   if (browserName === 'chromium') {
@@ -488,7 +488,7 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   await expect(page.locator('#zip')).toHaveAttribute('href', url);
   await page.locator('input[name=bg]').fill('#000000');
   await page.locator('input[name=padding]').fill('20');
-  await page.locator('input[name=zopfli]').check();
+  await page.locator('select[name=effort]').selectOption('max');
   await generate.click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('output')).toHaveText('Cancelled.');
@@ -512,17 +512,24 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   expect(errors).toEqual([]);
 });
 
-test('PNG quality controls palette availability and downloads match native', async ({ page }) => {
+test('pinned settings default to Auto, gate the palette and match native', async ({ page }) => {
   await page.goto('/');
   const quality = page.locator('[name=quality]'),
     colors = page.locator('[name=colors]');
-  await expect(quality).toHaveValue('80');
+  // Hidden until asked for, and empty: Auto pins nothing.
+  await expect(quality).toBeHidden();
+  await page.getByText('Advanced: pin a setting').click();
+  await expect(quality).toHaveValue('');
+  await expect(colors).toHaveValue('');
+  await expect(quality).toHaveAttribute('placeholder', 'Auto (recommended)');
+  await expect(colors).toBeEnabled();
+  await quality.fill('80');
   await expect(colors).toBeDisabled();
   await quality.fill('100');
   await colors.fill('32');
   await quality.fill('80');
   await expect(colors).toBeDisabled();
-  await quality.fill('100');
+  await quality.fill('');
   await expect(colors).toBeEnabled();
   await expect(colors).toHaveValue('32');
   await quality.fill('80');
@@ -531,28 +538,32 @@ test('PNG quality controls palette availability and downloads match native', asy
   expect(await page.locator('form').evaluate((form) => form.checkValidity())).toBe(false);
   await quality.fill('80');
   expect(await page.locator('form').evaluate((form) => form.checkValidity())).toBe(true);
+  await page.locator('select[name=effort]').selectOption('fast');
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
   await expect(page.locator('output')).toContainText('Done in', { timeout: 120_000 });
-  const expected = summary(await buildFiles({ input: fixture('gradient'), quality: 80, manifest: true }));
+  const expected = summary(
+    await buildFiles({ input: fixture('gradient'), quality: 80, effort: 'fast', manifest: true }),
+  );
   expect(await downloads(page)).toEqual(expected.files);
   await expect(colors).toBeDisabled();
-  await quality.fill('100');
-  await expect(colors).toBeEnabled();
-  await expect(colors).toHaveValue('32');
+  await quality.fill('');
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('output')).toContainText('Done in', { timeout: 120_000 });
+  const palette = summary(await buildFiles({ input: fixture('gradient'), colors: 32, effort: 'fast', manifest: true }));
+  expect(await downloads(page)).toEqual(palette.files);
 });
 
-test('form defaults skip extra compression and opt-in matches native bytes', async ({ page }) => {
+test('form defaults to the default effort, unpinned, and matches native bytes', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('input[name=zopfli]')).not.toBeChecked();
+  await expect(page.locator('select[name=effort]')).toHaveValue('default');
+  await expect(page.locator('details')).not.toHaveAttribute('open');
   expect(await page.locator('header img').getAttribute('src')).toBe(
     await page.locator('link[type="image/svg+xml"]').getAttribute('href'),
   );
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
-  await page.locator('select[name=mode]').selectOption('fast');
-  await page.locator('input[name=zopfli]').check();
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.locator('output')).toHaveClass('good', { timeout: 90_000 });
-  const expected = summary(await buildFiles({ input: fixture('tiles'), mode: 'fast', zopfli: true, manifest: true }));
+  await expect(page.locator('output')).toHaveClass('good', { timeout: 120_000 });
+  const expected = summary(await buildFiles({ input: fixture('tiles'), manifest: true }));
   expect(await downloads(page)).toEqual(expected.files);
   expect(expected.files.filter((f) => f.name.endsWith('.svg')).map((f) => f.name)).toEqual(['icon.svg']);
 });
@@ -588,7 +599,7 @@ test('missing worker isolation headers follow browser policy and allow retry', a
     await page.evaluate(() => window.favseedCheck.warm());
     const input = fixture('tiles'),
       source = await readFile(input, 'utf8');
-    const options = { manifest: true, mode: 'fast', sizes: [32] };
+    const options = { manifest: true, effort: 'fast', sizes: [32] };
     const actual = await page.evaluate(({ source, options }) => window.favseedCheck.build(source, options), {
       source,
       options,

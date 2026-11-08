@@ -28,7 +28,7 @@ const engine = await loadEngine(),
 for (let rep = 0; rep < 3; rep++)
   for (const mark of ['tiles', 'general', 'heavy', 'gradient']) {
     const svg = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-    const options = normaliseOptions({});
+    const options = normaliseOptions({ effort: 'fast' });
     options.iterations = iterations;
     let reference;
     for (const arm of rep % 2 ? ['parallel', 'serial'] : ['serial', 'parallel']) {

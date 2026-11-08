@@ -8,7 +8,7 @@ export type { ManifestIcon } from '../lib/core.mjs';
 export type FavseedViteOptions = Omit<FavseedConfig, 'out'>;
 
 /**
- * The favicon set as a Vite plugin. Dev serves it from memory (fast mode); a build emits it
+ * The favicon set as a Vite plugin. Dev serves it from memory (effort `'fast'`); a build emits it
  * at the output root and links it in index.html. Options win over favseed.config.* in the
  * Vite root. Default input: `src/logo.svg`.
  */

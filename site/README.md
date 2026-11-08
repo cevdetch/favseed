@@ -50,7 +50,7 @@ regenerated card before committing it. The site build copies the committed PNG.
 The browser imports the same `lib/core.mjs`, `lib/config.mjs`, `lib/engine.mjs`, and
 `lib/pipeline.mjs` as the CLI. The host adapters inject native or WASI
 `@napi-rs/image` 1.15.0, the shared rebuilt Google Zopfli WASM, SVGO, and a deflate decoder.
-Matching self-contained source, normalized options, and mode produce identical files, links, and placement.
+Matching self-contained source and normalized options produce identical files, links, and placement.
 The browser includes a manifest by default; the CLI needs `--manifest` to match.
 
 Use self-contained SVGs for raster parity: outline text and embed images. The shared reference
@@ -60,12 +60,14 @@ must provide a valid finite viewBox or positive absolute width/height. Browser `
 receive the same guidance as native `onWarn`, including cache replay; the form keeps warnings
 separate from progress/errors and clears them on the next build. No resource fetching is added.
 
-PNG quality defaults to 80. Choose 100 for the higher-fidelity fixed-palette encoding path; lower values trade raster fidelity
-for size using the same native target in both hosts. Set `--quality 80` or `quality: 80` to match
-the form; explicit quality below 100 cannot combine with custom `colors`. Custom colors without
-quality retain the quality-100 path. The form disables and preserves that field until quality
-returns to 100. Quality is not a measured error percentage and smaller output is not guaranteed.
-See [quality measurements](../bench/zopfli/QUALITY.md).
+The Effort control matches `--effort`: Default (the form's default) keeps, for each raster,
+the smallest encode that passes the accuracy bar and finishes it with Zopfli at 15
+iterations; Fast makes one quality-80 encode with no Zopfli; Maximum tries every candidate
+and runs Zopfli at 120 iterations. Quality and palette sit under "Advanced: pin a setting"
+and are empty (Auto) by default, so nothing is pinned. A value pins that exact setting, as
+`--quality` or `--colors` does: one encode, no search, and a warning when it misses the bar.
+A quality below 100 cannot combine with a palette; the form disables and preserves the
+palette field until quality is cleared or set to 100.
 
 Full builds select SVG precision against minimally prepared source at 512px, allowing at most
 1% bad pixels on either a black or white composite before PNG quantization. Passing marks keep
@@ -80,9 +82,7 @@ origins. Transparent outputs keep transparent bands; opaque PNGs use the chosen 
 and existing safe-zone placement. The downloadable `icon.svg` keeps its original viewport.
 See the [framing measurements](../bench/framing/README.md); square fixture output is unchanged.
 
-Standard builds skip Zopfli. Extra PNG compression is an explicit opt-in, matching `--zopfli`
-or `zopfli: true` in the CLI/API; release effort uses 120 iterations and fast effort uses 15.
-Both preserve pixels. One optimized `icon.svg` retains animation, styling and accessibility
+Zopfli preserves pixels at every effort. One optimized `icon.svg` retains animation, styling and accessibility
 and is reused by the site's header and favicon. Raster exports use a static base appearance.
 
 Placement searches and raster outputs run in bounded batches, with serial fallback for large
@@ -99,10 +99,10 @@ After generation, **Copy markup** copies the displayed head links and announces 
 manual-copy guidance if clipboard access is denied. The code block stays selectable; browsers
 without clipboard support show manual guidance. New results clear earlier copy feedback.
 
-Opt-in compression includes the guarded lossless palette pass described in the
+Zopfli finishing includes the guarded lossless palette pass described in the
 [competitor measurements](../bench/zopfli/COMPETITOR.md). Those historical measurements predate
-the default-off compression and single-SVG output change. Current measurements are in
-[the default-performance report](../bench/zopfli/DEFAULTS.md).
+the effort control and single-SVG output change; [the default-performance
+report](../bench/zopfli/DEFAULTS.md) records the later Zopfli-off measurements.
 
 The ICO fallback has one 48×48 PNG entry. Generated links declare `sizes="48x48"`;
 explicit 32px PNG requests stay 32px. Transparent 48px exports share the ICO payload,
@@ -116,7 +116,7 @@ with Brotli (3,193,943 transferred bytes in the measured response). The loader s
 64 MiB of growable shared memory. It preloads four async workers plus two to four spare workers,
 and retains upstream fallback spawning. Loading starts after selecting an SVG.
 Earlier release-mode compressor and palette measurements are retained in `bench/zopfli/`;
-they describe historical opt-in work, rather than the new standard default.
+they describe historical work, rather than the effort levels.
 
 Use HTTPS (or localhost), WebAssembly and DecompressionStream. When shared memory is
 available and transferable in both the page and worker, the browser uses the threaded engine.
@@ -171,7 +171,7 @@ node site/test/cdp-check.mjs
 
 The harness serves `dist/` with the required headers and drives real Chromium through Node's
 built-in DevTools WebSocket. It compares every file hash and shared metadata against native
-builds over eleven fast-mode fixtures, two release-mode fixtures, and custom option cases.
+builds over eleven effort-fast fixtures, two effort-max fixtures, and custom option cases.
 It also checks ZIP contents, cache mutation/transfer ownership, page responsiveness, missing
 isolation, cancellation, retry, nested-worker termination, and preservation of form downloads.
 `/check` supplies the test API; fixtures and native references are supplied by the Node harness.
@@ -184,7 +184,7 @@ The page remains `noindex`, has no canonical URL and is excluded from the sitema
 The browser command defaults to `chromium`; set `CHROME=google-chrome` to use Google Chrome.
 Only these command names are accepted, and the browser must be on `PATH`.
 `FAVSEED_SMOKE=1` runs a shorter matrix with all lifecycle checks.
-`FAVSEED_BENCH=1` measures initialization and four release-mode fixtures.
+`FAVSEED_BENCH=1` measures initialization, two effort-max and two effort-default fixtures.
 To exercise an already-running dev or preview server, set
 `FAVSEED_ORIGIN=http://127.0.0.1:4321` (only local HTTP origins are accepted).
 
@@ -192,7 +192,7 @@ To exercise an already-running dev or preview server, set
 
 The pinned Playwright suite runs desktop Chromium, Firefox and WebKit, plus Pixel 7 and
 iPhone 13 emulation. It reuses native references, including small-coordinate and source-fallback
-cases on desktop and mobile alongside gradient, release compression, transparent aliases and custom
+cases on desktop and mobile alongside gradient, maximum effort, transparent aliases and custom
 manifest/animation options. It also checks cache ownership, ZIP downloads, page timers,
 cancellation/retry, 1024px raster parity after shared or unshared memory growth, failure
 preservation and touch controls at a 320 px viewport. Parity and lifecycle cases run in both

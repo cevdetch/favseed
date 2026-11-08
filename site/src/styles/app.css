@@ -83,9 +83,9 @@ aside {
   border-color: color-mix(in oklab, var(--accent) 35%, var(--line));
 }
 
-/* One grid: the drop zone and status span it, the four fields share it, and the checkbox takes
-   every column but the last, which holds the button. On one column that span collapses to the
-   first column and the button wraps below it. */
+/* One grid: the drop zone, the pinned settings and status span it, the four fields share it,
+   and the checkbox takes every column but the last, which holds the button. On one column that
+   span collapses to the first column and the button wraps below it. */
 form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -103,6 +103,22 @@ label:has([type='checkbox']) {
   grid-column: 1 / -2;
   align-self: center;
   font-weight: 400;
+}
+/* A <details> does not reliably lay itself out as a grid, so its fields sit in a <div> that
+   repeats the form's columns. */
+details {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  & summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  & > div {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1rem;
+    margin-block-start: 0.75rem;
+  }
 }
 output {
   grid-column: 1 / -1;

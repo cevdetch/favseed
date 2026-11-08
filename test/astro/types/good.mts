@@ -28,8 +28,7 @@ const config: FavseedConfig = defineConfig({
   vars: { brand: '#123456', width: 2 },
   animation: false,
   manifest: { name: 'Example' },
-  zopfli: false,
-  mode: 'fast',
+  effort: 'max',
 });
 const result: Promise<BuildResult> = build({ ...config, input: 'logo.svg' });
 const optimizerVersion: string = engineVersions().svgo;
@@ -46,7 +45,13 @@ void memory.dir;
 buildFiles({ quality: 80 });
 // @ts-expect-error File contents are bytes, not text.
 const _text: string = memory.files[0].bytes;
-const plugin: Plugin = favseedVite({ input: 'src/logo.svg', sizes: [48], quality: 80, base: '/blog/' });
+const plugin: Plugin = favseedVite({
+  input: 'src/logo.svg',
+  sizes: [48],
+  colors: 64,
+  effort: 'default',
+  base: '/blog/',
+});
 const icons: ManifestIcon[] = favseedIcons({ sizes: [192, 512], bg: null, base: '/blog/' });
 const options: FavseedOptions = {
   input: 'src/logo.svg',
@@ -57,6 +62,7 @@ const options: FavseedOptions = {
   vars: { brand: '#123456' },
   manifest: { name: 'Example' },
   animation: false,
+  effort: 'fast',
 };
 favseedAstro({ vars: new Map([['brand', '#123456']]) });
 favseedVite({ vars: new Map([['brand', '#123456']]) });

@@ -83,7 +83,7 @@
       finally { clearTimeout(timer); }
     },
     async invalid(source) {
-      for (const options of [{ padding: 'foo' }, { sizes: [33] }, { colors: 300 }, { mode: 'unknown' }, { quality: 0 }, { quality: 101 }, { quality: [80] }, { quality: 80, colors: 256 }]) {
+      for (const options of [{ padding: 'foo' }, { sizes: [33] }, { colors: 300 }, { effort: 'unknown' }, { quality: 0 }, { quality: 101 }, { quality: [80] }, { quality: 80, colors: 256 }]) {
         let rejected = false;
         try { await buildInBrowser(source, options); } catch { rejected = true; }
         if (!rejected) throw new Error('Invalid options accepted');

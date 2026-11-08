@@ -69,8 +69,8 @@ export default function favseed(options = {}) {
     logger,
     pwa = null;
   // Kept per mode: configResolved can fire on one instance for a dev-mode server and for the
-  // build (Astro runs both in one `astro build`), and dev forces fast mode. One shared
-  // promise would let the first caller decide the mode of the release bytes.
+  // build (Astro runs both in one `astro build`), and dev forces effort 'fast'. One shared
+  // promise would let the first caller decide the effort of the release bytes.
   const settings = { dev: null, build: null }; // Promise<{ merged, o, names, links }>
   const sets = { dev: null, build: null }; // Promise<{ name, bytes }[]>
   let built = null; // the files this build emits
@@ -97,7 +97,8 @@ export default function favseed(options = {}) {
     const merged = resolveOptions({ input: 'src/logo.svg', base: vitePath ?? '/' }, config, options);
     delete merged.out;
     merged.input = resolve(root, merged.input);
-    if (dev) merged.mode = 'fast';
+    // Dev serves one quick encode per raster; the build's own effort makes the shipped bytes.
+    if (dev) merged.effort = 'fast';
     if (merged.bg === undefined) {
       warnOnce(
         `favseed: bg not given, using ${DEFAULT_BG} for the padded icons (iOS composites transparent icons onto black)`,

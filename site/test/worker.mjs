@@ -143,8 +143,9 @@ test('result cache owns its bytes, metadata and byte budget', () => {
 test('cache key includes all output options and normalizes vars order', () => {
   const key = (extra = {}, source = '<svg/>') => buildKey(source, normaliseOptions(extra));
   for (const extra of [
-    { zopfli: true },
-    { mode: 'fast', zopfli: true },
+    { effort: 'fast' },
+    { effort: 'max' },
+    { quality: 80 },
     { base: '/app/' },
     { manifest: { name: 'test' } },
     { vars: { x: 'red' } },
@@ -157,10 +158,10 @@ test('cache key includes all output options and normalizes vars order', () => {
   ])
     assert.notEqual(key(extra), key());
   assert.notEqual(key({}, '<svg />'), key());
-  assert.equal(key({ quality: 80 }), key());
+  assert.equal(key({ effort: 'default' }), key());
   assert.equal(key({ colors: 32 }), key({ quality: 100, colors: 32 }));
   assert.equal(key({ quality: '80' }), key({ quality: 80 }));
-  assert.equal(key({ mode: 'fast' }), key(), 'effort does not change output when compression is disabled');
+  assert.notEqual(key({ colors: 16, effort: 'fast' }), key({ colors: 16, effort: 'max' }), 'a pin keeps its effort');
   assert.equal(key({ vars: { a: 'red', b: 'blue' } }), key({ vars: { b: 'blue', a: 'red' } }));
 });
 

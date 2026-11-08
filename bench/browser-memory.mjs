@@ -84,7 +84,7 @@ try {
     for (const mark of variant.cores < 4 ? ['tiles'] : ['general', 'heavy', 'gradient']) {
       const source = await readFile(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
       const built = await page.evaluate(
-        (source) => window.favseedCheck.build(source, { mode: 'fast', manifest: true }),
+        (source) => window.favseedCheck.build(source, { effort: 'fast', manifest: true }),
         source,
       );
       const output = { files: built.files, fit: built.fit, links: built.links, animated: built.animated };

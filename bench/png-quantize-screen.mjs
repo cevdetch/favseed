@@ -23,15 +23,16 @@ const marks = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles'
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 for (const mark of marks) {
   const source = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-  await buildSet(source, normaliseOptions({}), {
+  await buildSet(source, normaliseOptions({ effort: 'fast' }), {
     optimiseSvg,
     engine: {
       ...engine,
-      encode: async (png) => {
+      // Replaced, not run: capture each job's unquantised render and hand it back ungated.
+      search: async (png) => {
         const raw = Buffer.from(png),
           px = raw.readUInt32BE(16);
         samples.push({ id: `${mark}-${px}`, mark, px, raw });
-        return raw;
+        return { png: raw, setting: { quality: 100, colors: 256 }, pct: null, edge: null, pass: null, probes: 0 };
       },
       finish: async (png) => png,
     },

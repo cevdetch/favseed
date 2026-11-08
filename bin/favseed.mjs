@@ -69,18 +69,16 @@ import { inflateSync } from 'node:zlib';
 import {
   createSvgStage,
   DEFAULT_BG,
-  FAST_ZOPFLI_ITERATIONS,
   FavseedError,
   icoWrap,
   linkTags,
   maskableFit,
   nestForMask,
   placeInSafeZone,
-  ZOPFLI_ITERATIONS,
 } from '../lib/core.mjs';
-import { checkConfig, defineConfig, normaliseOptions, resolveOptions, resolveQuality } from '../lib/config.mjs';
+import { checkConfig, defineConfig, normaliseOptions, resolveOptions } from '../lib/config.mjs';
 import { createEngine } from '../lib/engine.mjs';
-import { buildSet } from '../lib/pipeline.mjs';
+import { buildSet, describeSetting } from '../lib/pipeline.mjs';
 import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
 
 // Re-exported: the package root (`.`) is this file's API, and bench/ and the tests import from
@@ -197,9 +195,10 @@ export async function buildFiles(options = {}) {
 
 /**
  * Build the set. Throws FavseedError with a finished message; never exits, never writes to
- * stdout. Returns { files, bytes, animated, fit, links }, where `fit` is
+ * stdout. Returns { files, bytes, animated, fit, quality, links }, where `fit` is
  * { apple, icons: { [size]: fit } } (how the mark was placed in each masked icon), and
- * `icons[s]` is null under --bg none, when that size is transparent and unpadded.
+ * `icons[s]` is null under --bg none, when that size is transparent and unpadded. `quality`
+ * holds each raster's chosen setting and its accuracy-bar measurement.
  */
 export async function build(options = {}) {
   const o = normalise(options);
@@ -285,7 +284,15 @@ const publishSet = (set, out) => {
       throw error;
     }
     const bytes = Object.fromEntries(set.files.map((f) => [f.name, f.bytes.length]));
-    result = { files, bytes, animated: set.animated, fit: set.fit, dir: outDir, links: set.links };
+    result = {
+      files,
+      bytes,
+      animated: set.animated,
+      fit: set.fit,
+      quality: set.quality,
+      dir: outDir,
+      links: set.links,
+    };
   } catch (e) {
     failure = e;
   } finally {
@@ -356,8 +363,7 @@ const CLI_FLAGS = new Set([
   '--padding',
   '--var',
   '--no-animation',
-  '--zopfli',
-  '--no-zopfli',
+  '--effort',
   '--manifest',
   '--html',
   '-q',
@@ -373,8 +379,15 @@ const USAGE = `Usage:
 
 Options:
   -o, --out DIR     Output directory (default: current)
-      --colors N    Explicit palette ceiling, 2-256. Given alone, selects quality 100.
-                    Lower it to trade accuracy for bytes.
+      --effort LEVEL
+                    How hard to work on each PNG (default: default):
+                      fast     one encode at quality 80, no Zopfli; instant, larger files
+                      default  the smallest encode that passes the accuracy bar, Zopfli 15
+                      max      every candidate tried, Zopfli 120; slowest, smallest
+      --quality N   Pin PNG quality 1-100 at the full palette: one encode, no search.
+                    Below 100 cannot combine with --colors.
+      --colors N    Pin a palette of 2-256 colours at quality 100: one encode, no search.
+                    A pinned setting that misses the accuracy bar warns, never fails.
       --sizes LIST  Padded PNG sizes, the manifest's "any maskable" icons (default:
                     "192 512", the pair Chrome's install criteria document).
       --bg COLOR    Ground of the padded icons, apple-touch-icon.png (180px) and
@@ -391,10 +404,6 @@ Options:
                     browser resolves an undefined property.
       --no-animation
                     Explicitly remove motion from icon.svg. Default: preserve it.
-      --quality N   PNG quality target, 1-100 (default: 80; 100 restores previous fidelity).
-                    Lower trades fidelity for size; below 100 cannot combine with --colors.
-      --zopfli      Opt in to extra lossless PNG compression (slower; off by default).
-      --no-zopfli   Disable it, including when enabled by a config file.
       --manifest    Also write site.webmanifest with the icon entries.
       --html        Print the <link> tags for the generated set.
   -q, --quiet       Suppress the size summary.
@@ -405,7 +414,7 @@ Long options also take --opt=value. Use it for a value that matches a flag,
 e.g. --out=--manifest. Use -- to end options.
 
 Options may also come from favseed.config.js, .mjs or .ts in the working directory,
-which can set input, base and mode too; flags win over it.
+which can set input and base too; flags win over it.
 
 Outputs: icon.svg  favicon.ico  apple-touch-icon.png  icon-<size>.png
          [site.webmanifest]`;
@@ -429,7 +438,7 @@ export async function cli(argv) {
     vars: new Map(),
     animation: undefined,
     manifest: undefined,
-    zopfli: undefined,
+    effort: undefined,
     html: false,
     quiet: false,
   };
@@ -489,11 +498,8 @@ export async function cli(argv) {
       case '--no-animation':
         opts.animation = false;
         break;
-      case '--zopfli':
-        opts.zopfli = true;
-        break;
-      case '--no-zopfli':
-        opts.zopfli = false;
+      case '--effort':
+        opts.effort = need();
         break;
       case '--manifest':
         opts.manifest = true;
@@ -528,7 +534,8 @@ export async function cli(argv) {
         const a = argv[i];
         if (a.startsWith('-') && a !== '-') {
           process.stderr.write(USAGE + '\n');
-          die(`unknown option: ${flag}`);
+          // The two flags effort replaced get pointed at it, not just refused.
+          die(`unknown option: ${flag}${flag === '--zopfli' || flag === '--no-zopfli' ? '; use --effort' : ''}`);
         }
         if (input !== null) die('only one input file may be given');
         input = a;
@@ -556,7 +563,7 @@ export async function cli(argv) {
     vars: opts.vars.size ? opts.vars : undefined,
     animation: opts.animation,
     manifest: opts.manifest,
-    zopfli: opts.zopfli,
+    effort: opts.effort,
   });
 
   if (options.input === undefined) {
@@ -592,6 +599,9 @@ export async function cli(argv) {
   }
 
   if (!opts.quiet) {
+    // build() has validated these options already, so this cannot throw.
+    const { effort, pinned, iterations } = normaliseOptions(options);
+    const raster = (f) => result.quality[f];
     for (const f of result.files) {
       let note = '';
       if (f === 'icon.svg') note = result.animated ? '  animation preserved' : '  static';
@@ -604,17 +614,20 @@ export async function cli(argv) {
             ? '  full-bleed source, used as it is'
             : `  mark at ${where.box}px of ${where.canvas} in the safe zone${where.snapped ? ', on whole pixels' : ''}`;
       }
+      // A search chooses per raster, so each file names the setting it kept. A pinned build
+      // and effort fast use one setting throughout, which the summary line names once.
+      if (raster(f) && !pinned && effort !== 'fast') {
+        note += `${note ? ';' : ' '} ${describeSetting(raster(f).setting)}`;
+      }
       process.stdout.write(`${f.padEnd(22)} ${String(result.bytes[f]).padStart(6)} B${note}\n`);
     }
-    const mode = options.mode ?? 'release';
-    const quality = Number(resolveQuality(options));
-    if (quality < 100) process.stdout.write(`PNG quality target: ${quality}\n`);
+    const zopfli = iterations ? `Zopfli at ${iterations} iterations` : 'no Zopfli';
     process.stdout.write(
-      !options.zopfli
-        ? 'standard build (Zopfli disabled)\n'
-        : mode === 'fast'
-          ? `fast build (zopfli at ${FAST_ZOPFLI_ITERATIONS} iterations; not the release bytes)\n`
-          : `release build (zopfli at ${ZOPFLI_ITERATIONS} iterations)\n`,
+      pinned
+        ? `effort ${effort}: pinned at ${describeSetting(pinned)}, no search; ${zopfli}\n`
+        : effort === 'fast'
+          ? `effort fast: one encode at quality 80, no search; ${zopfli}\n`
+          : `effort ${effort}: the smallest encode that passes the accuracy bar; ${zopfli}\n`,
     );
   }
   if (opts.html) process.stdout.write('\n' + result.links);
