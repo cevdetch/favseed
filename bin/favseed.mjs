@@ -109,8 +109,9 @@ export const engineVersions = () => ({
 const PROG = 'favseed';
 
 // ================================================================== staging ==
-// Temp directories that must not outlive the process, even on a signal. build() cleans up in
-// its own finally; this is the belt to that pair of braces.
+// Best-effort cleanup for live staging directories on process exit and CLI-handled signals.
+// build() removes ordinary stages in finally; failed restoration preserves recovery files, and
+// cleanup errors or abrupt termination can leave a directory behind.
 const LIVE = new Set();
 let sweepRegistered = false;
 const sweep = () => {
