@@ -1,5 +1,6 @@
 // Build/API contracts, independently decoded raster accuracy and package contents.
-// Builds are memoised across cases; opt-in Zopfli runs only where needed.
+// Builds are memoised across cases. Cases that test placement or pixels pin effort 'fast'; the rest
+// run the default effort's search.
 // These tests compare behavior and pixels. test/hashes.mjs separately checks the
 // reviewed byte baseline across engine upgrades and platforms.
 

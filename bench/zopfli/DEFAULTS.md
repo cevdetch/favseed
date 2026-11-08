@@ -1,5 +1,7 @@
 # Default performance: Zopfli opt-in and one SVG
 
+Superseded by the effort control (decision 29); kept as the measurement behind decision 8.
+
 The effort control (`--effort fast|default|max`) has since replaced the Zopfli opt-in and the
 quality-80 default described here; the figures below describe the builds measured at the time.
 See [QUALITY.md](QUALITY.md) for the quality policy's history.

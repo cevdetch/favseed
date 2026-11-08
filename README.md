@@ -100,6 +100,8 @@ tiny-ICO error are measured separately.
 
 In our four-logo benchmark with matching raster inputs, the quality-80 set that `--effort fast`
 builds used **0.5% more PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default**, with lower measured PNG pixel error.
+The default effort was not part of that comparison; on the byte-manifest fixtures it writes
+40.8 % fewer PNG/ICO bytes than the quality-80 set (decision 29).
 See [the measurements and method](https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md); results depend on the input.
 
 ## Flags

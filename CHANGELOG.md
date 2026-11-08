@@ -54,8 +54,8 @@ contain.
   candidates and runs Zopfli at 120 iterations. A raster that fails at quality 80 takes a
   passing candidate even when it is larger; one with no passing candidate keeps the `fast`
   encode. Vite and Astro dev builds use `fast`. On the fixtures the byte manifest covers, the
-  default set's PNG/ICO bytes are 40.8 % smaller than quality 80's (41 904 B against 70 800);
-  `docs/DECISIONS.md` (decision 29) has the measurements and build times.
+  default set's PNG/ICO bytes are 40.8 % smaller than quality 80's (41 904 B against 70 800,
+  Zopfli included); `docs/DECISIONS.md` (decision 29) has the measurements and build times.
 - `--quality N` and `--colors N` pin an exact setting: one encode, no search. Quality alone
   uses the full 256-colour palette, colours alone use quality 100, and quality below 100
   cannot combine with colours. A pinned setting that misses the accuracy bar warns with its

@@ -198,7 +198,7 @@ now `--effort fast`, which the Vite and Astro dev servers use on every rebuild.
 | 240 | 57 046 | −0.20 % | 254.3 |
 
 Those seconds are one pass each and move between regenerations (15 iterations took 27.8 s on
-2026-11-07, against 42.9 s for 30 in this one). The interleaved sweep in
+2026-11-07 and 38.8 s in this one). The interleaved sweep in
 [bench/zopfli/EFFORT.md](../bench/zopfli/EFFORT.md) has the ratio: over 44 PNGs, 120
 iterations took 154.82 s against 29.74 s for 15, 5.2× the finish time for 0.21 %. 240 doubles
 it again for a further 0.04 pp, so the knee stays at 120 for the effort that exists to spend
@@ -656,7 +656,8 @@ edge pixels each off by a little stay under pct's 8/255 per channel; weighting l
 the reference's edges catches them. The threshold is measured, not derived: 1.5883 is the worst
 edge error of any quality-80 raster that already passed pct, over 346 rasters of the fixtures
 and the open corpus, so the gate refuses nothing quality 80 shipped as passing; 17 of the 109
-sampled winners were beyond it. Its cost: 907 979 B gated against 903 804 under pct alone
+sampled winners were beyond it ([bench/search/GATE.md](../bench/search/GATE.md) has the sheet's
+thresholds and rows). Its cost: 907 979 B gated against 903 804 under pct alone
 (+0.5 %), all of it on the 27 rasters whose winner it moves (4 175 B). No raster that passes pct
 at quality 80 misses on edge error alone (0 of 568).
 
@@ -691,8 +692,8 @@ three interleaved repetitions, median, on an idle 8-core/16-thread Ryzen 7 7840U
 On `general` and `gradient`, the two marks the byte manifest also builds at `max`, `max` writes
 18 670 raster bytes against `default`'s 18 780 (−0.6 %) in 3.7–3.8× the time. Under the
 priority rule that is a byte cost for build time, and it is the one the default takes: 0.6 %
-for a build of seconds rather than tens of seconds, with every raster inside the same bar
-either way and `--effort max` one flag away.
+for a build of seconds rather than tens of seconds. Every raster that can pass passes at
+either effort, and `--effort max` is one flag away.
 
 ---
 
