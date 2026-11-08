@@ -67,11 +67,12 @@ for (const mark of marks) {
     optimiseSvg,
     engine: {
       ...engine,
-      encode: async (png) => {
+      // Replaced, not run: capture each job's unquantised render and hand it back ungated.
+      search: async (png) => {
         const bytes = Buffer.from(png),
           px = bytes.readUInt32BE(16);
         references.set(mark + '-' + px, decode(bytes));
-        return png;
+        return { png, setting: { quality: 100, colors: 256 }, pct: null, edge: null, pass: null, probes: 0 };
       },
       finish: async (png) => png,
     },

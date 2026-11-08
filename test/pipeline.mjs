@@ -486,6 +486,22 @@ describe('raster search', () => {
     }
   });
 
+  it('names a pinned quality below 100 by its quality', async () => {
+    const warnings = [];
+    const set = await buildSet(read('gradient'), opts({ quality: 1 }), {
+      engine,
+      optimiseSvg,
+      warn: (message) => warnings.push(message),
+    });
+    const q = set.quality['apple-touch-icon.png'];
+    assert.equal(q.pass, false);
+    assert.ok(
+      warnings.includes(
+        `apple-touch-icon.png misses the accuracy bar at quality 1 (${q.pct.toFixed(2)} % of pixels off, edge error ${q.edge.toFixed(3)})`,
+      ),
+    );
+  });
+
   it('stays quiet when a pinned setting clears the bar', async () => {
     const warnings = [];
     const set = await buildSet(read('tiles'), opts({ quality: 90 }), {

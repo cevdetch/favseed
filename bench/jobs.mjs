@@ -2,10 +2,10 @@
 // suite's reference for scoring. The engine is wrapped, not modified, so the jobs are exactly
 // the production ones (placement, ICO payload, grounds).
 //
-// Matching encode's input to render's output by object identity (`j.raw === raw`) is safe here:
-// lib/pipeline.mjs's raster loop calls `engine.render` exactly once per job and passes its
-// result straight into `engine.encode` with no copy in between
-// (`const raw = await engine.render(...); ... await engine.encode(raw, ...)`), and
+// Matching the search's input to render's output by object identity (`j.raw === raw`) is safe
+// here: lib/pipeline.mjs's raster loop calls `engine.render` exactly once per job and passes its
+// result straight into `engine.search` with no copy in between
+// (`const raw = await engine.render(...); ... await engine.search(raw, ...)`), and
 // lib/engine.mjs's `render` returns a freshly allocated Uint8Array (`copy(...)`) on every call,
 // never a pooled or reused buffer. So each job's `raw` is a distinct object, and the `find` below
 // never matches the wrong job. `engine.render` is only called from that raster loop: the safe-zone
@@ -36,20 +36,19 @@ export const captureJobs = async (path, { name = basename(path) } = {}) => {
       jobs.push({ svg, px, bg: bg ?? null, raw });
       return raw;
     },
-    encode: async (raw, options) => {
-      const out = await engine.encode(raw, options);
+    // `today` is the effort-'fast' encode (quality 80, palette ceiling 256): the build below
+    // asks for that effort explicitly, so the search's result is today's default bytes.
+    search: async (raw, ref, options) => {
+      const result = await engine.search(raw, ref, options);
       const job = jobs.find((j) => j.raw === raw);
-      if (job) job.today = out;
-      return out;
+      if (job) job.today = result.png;
+      return result;
     },
   };
   let set;
   try {
-    set = await buildSet(readFileSync(path, 'utf8'), normaliseOptions({ input: path, manifest: false }), {
-      engine: wrapped,
-      optimiseSvg,
-      name,
-    });
+    const options = { ...normaliseOptions({ input: path, manifest: false }), effort: 'fast' };
+    set = await buildSet(readFileSync(path, 'utf8'), options, { engine: wrapped, optimiseSvg, name });
   } catch (error) {
     // buildSet's own errors already say `name` (it was passed the override above), but
     // readFileSync's ENOENT (and any other fs error) fires before buildSet ever runs, and

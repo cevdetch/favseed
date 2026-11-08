@@ -52,11 +52,12 @@ for (const mark of ['tiles', 'general', 'heavy', 'gradient']) {
     optimiseSvg,
     engine: {
       ...engine,
-      encode: async (png) => {
+      // Replaced, not run: capture each job's unquantised render and hand it back ungated.
+      search: async (png) => {
         const raw = Buffer.from(png),
           px = new DataView(raw.buffer, raw.byteOffset).getUint32(16);
         samples.push({ id: `${mark}-${px}`, raw, px, reference: decode(raw) });
-        return png;
+        return { png, setting: { quality: 100, colors: 256 }, pct: null, edge: null, pass: null, probes: 0 };
       },
       finish: async (png) => png,
     },
