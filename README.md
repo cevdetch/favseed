@@ -451,8 +451,9 @@ slash, such as `/blog/`. Full builds normalize `base` for you. Low-level helpers
 apply the complete build-option validation.
 
 Core also exports `ICO_SIZE`, `APPLE_SIZE`, `DEFAULT_QUALITY`, `DEFAULT_COLORS`,
-`DEFAULT_SIZES`, `DEFAULT_BG`, `DEFAULT_EFFORT`, `EFFORT_ITERATIONS`,
-`MASK_SAFE_RADIUS` and `SNAP_WINDOW`. Treat `DEFAULT_SIZES` as read-only.
+`DEFAULT_SIZES`, `DEFAULT_BG`, `DEFAULT_EFFORT`, `EFFORT_ITERATIONS`, `ACCURACY_PCT`,
+`EDGE_GATE`, `SEARCH_QUALITIES`, `SEARCH_COLORS`, `MASK_SAFE_RADIUS` and `SNAP_WINDOW`.
+Treat `DEFAULT_SIZES` as read-only.
 Current values describe the engine; output policy can change in a release that allows
 byte changes. Import through `favseed/core`; other `lib/` paths are package internals.
 
