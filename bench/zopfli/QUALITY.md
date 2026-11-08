@@ -1,5 +1,7 @@
 # PNG quality: smaller optional raster output
 
+Superseded by the effort control (decision 29); kept as the measurement behind decision 24.
+
 These are historical measurements before selective SVG precision. Quality 80 remains the
 default, but the corrected gradient changes current byte totals and source-error results;
 see the [current precision report](../precision/README.md). The byte-equality statements
