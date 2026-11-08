@@ -3,7 +3,6 @@
 // is that the pipeline imports the shared engine and WASM packages, and something has to
 // resolve and bundle them.
 import '../styles/app.css';
-import { DEFAULT_QUALITY } from '../../../lib/core.mjs';
 
 const title = 'favseed: one SVG in, an optimised favicon set out';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
@@ -72,14 +71,6 @@ const outputs = [
       <strong>Choose an SVG</strong>
       <small>or drop one here</small>
     </label>
-    <label>PNG quality
-      <input type="number" name="quality" value={DEFAULT_QUALITY} min="1" max="100" step="1" required />
-      <small>80 balances size and fidelity. Choose 100 for higher fidelity.</small>
-    </label>
-    <label>Palette
-      <input type="number" name="colors" value="256" min="2" max="256" required disabled />
-      <small>2–256. Available at quality 100; lower quality chooses the palette.</small>
-    </label>
     <label>Sizes
       <input type="text" name="sizes" value="192 512" pattern="\s*\d+([\s,]+\d+)*\s*" required />
       <small>The padded “any maskable” icons.</small>
@@ -92,12 +83,28 @@ const outputs = [
       <input type="text" name="padding" value="auto" pattern="\s*(auto|\d+(\.\d+)?)\s*" required />
       <small>Percent per side, or <code>auto</code> to measure the mark.</small>
     </label>
-    <label><input type="checkbox" name="animation" checked /> Preserve SVG animation</label>
-    <label>Extra compression effort
-      <select name="mode"><option value="release">Maximum — smallest files</option><option value="fast">Fast — lower effort</option></select>
-      <small>Applies only when extra PNG compression is enabled. Standard builds skip it.</small>
+    <label>Effort
+      <select name="effort">
+        <option value="fast">Fast — instant, larger files</option>
+        <option value="default" selected>Default — smallest passing files</option>
+        <option value="max">Maximum — slowest, smallest</option>
+      </select>
+      <small>How hard to work on each PNG.</small>
     </label>
-    <label><input type="checkbox" name="zopfli" /> Extra PNG compression (slower)</label>
+    <details>
+      <summary>Advanced: pin a setting</summary>
+      <div>
+        <label>PNG quality
+          <input type="number" name="quality" min="1" max="100" step="1" placeholder="Auto (recommended)" />
+          <small>1–100 at the full palette. One encode, no search.</small>
+        </label>
+        <label>Palette
+          <input type="number" name="colors" min="2" max="256" step="1" placeholder="Auto (recommended)" />
+          <small>2–256 colours at quality 100. Unavailable below quality 100.</small>
+        </label>
+      </div>
+    </details>
+    <label><input type="checkbox" name="animation" checked /> Preserve SVG animation</label>
     <button type="submit">Generate</button>
     <button type="button" id="cancel" hidden>Cancel</button>
     <output aria-live="polite"></output>
@@ -133,14 +140,17 @@ const outputs = [
   <aside>
     <h2>The same files as the CLI</h2>
     <p>This page runs the same pinned image engine and build pipeline as the command line.
-      Matching SVG, options, and build mode produce identical SVG, PNG, ICO, and manifest
+      Matching SVG and options produce identical SVG, PNG, ICO, and manifest
       files. Builds run in a worker so the page stays responsive; Cancel stops the build.</p>
-    <p>In a four-logo benchmark using matching raster inputs, the default set used 0.5% more
+    <p>In a four-logo benchmark using matching raster inputs, Fast’s quality-80 set used 0.5% more
       PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel error.
       <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
-    <p>Standard builds skip Zopfli. Enable extra PNG compression to trade generation time for
-      smaller files, matching <code>--zopfli</code> in the CLI. This page includes a manifest; use
-      <code>--manifest</code> for the matching CLI set.</p>
+    <p>Default effort keeps, for each PNG, the smallest encode that still passes the accuracy
+      bar, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
+      Maximum tries every candidate and runs Zopfli longest. A pinned quality or palette makes
+      one encode at that setting and warns when it misses the bar. These match
+      <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
+      page includes a manifest; use <code>--manifest</code> for the matching CLI set.</p>
     <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
       Browser privacy restrictions can select a slower compatibility mode.
@@ -158,7 +168,8 @@ const outputs = [
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
   const { file, quality, colors } = form.elements;
-  const updatePalette = () => { colors.disabled = Number(quality.value) < 100; };
+  // A quality below 100 lets the quantiser choose the palette, so the two cannot be pinned together.
+  const updatePalette = () => { colors.disabled = quality.value.trim() !== '' && Number(quality.value) < 100; };
   quality.addEventListener('input', updatePalette);
   updatePalette();
   const drop = file.labels[0], go = form.querySelector('button[type=submit]'), status = form.querySelector('output');
@@ -233,15 +244,16 @@ const outputs = [
       const { buildInBrowser } = await load();
       controller.signal.throwIfAborted();
       const t0 = performance.now();
+      // An empty field is Auto: it is left out, so it pins nothing and the search chooses.
+      const pin = (name) => (data.get(name)?.trim() ? { [name]: data.get(name).trim() } : {});
       const built = await buildInBrowser(await data.get('file').text(), {
-        ...(data.has('colors') ? { colors: data.get('colors') } : {}),
-        quality: data.get('quality'),
+        ...pin('quality'),
+        ...pin('colors'),
         sizes: data.get('sizes').trim().split(/[\s,]+/).map(Number),
         bg: data.get('bg').trim(),
         padding: data.get('padding').trim(),
         animation: data.has('animation'),
-        mode: data.get('mode'),
-        zopfli: data.has('zopfli'),
+        effort: data.get('effort'),
       }, {
         signal: controller.signal,
         onWarn: (message) => {

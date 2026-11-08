@@ -13,30 +13,27 @@ export const cases = [
   })),
   { name: 'gradient/quality100', mark: 'gradient', options: { quality: 100 } },
   { name: 'gradient/quality80', mark: 'gradient', options: { quality: 80 } },
-  {
-    name: 'gradient/quality60-zopfli',
-    mark: 'gradient',
-    options: { quality: 60, zopfli: true, mode: 'fast', sizes: [32] },
-  },
+  { name: 'gradient/quality60-default', mark: 'gradient', options: { quality: 60, effort: 'default', sizes: [32] } },
   ...['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'].map(
-    (mark) => ({ name: `${mark}/fast`, mark, options: { mode: 'fast' } }),
+    (mark) => ({ name: `${mark}/fast`, mark, options: { effort: 'fast' } }),
   ),
   ...['tiles', 'gradient'].map((mark) => ({
-    name: `${mark}/release`,
+    name: `${mark}/max`,
     mark,
-    options: { mode: 'release', zopfli: true },
+    options: { effort: 'max' },
   })),
-  { name: 'general/zopfli-fast', mark: 'general', options: { mode: 'fast', zopfli: true } },
+  { name: 'general/default', mark: 'general', options: { effort: 'default' } },
+  { name: 'general/colors16-max', mark: 'general', options: { colors: 16, effort: 'max', sizes: [32] } },
   {
     name: 'transparent-aliases',
     mark: 'general',
-    options: { mode: 'fast', sizes: [32, 48, 180, 32], bg: 'none', padding: 10, manifest: false },
+    options: { effort: 'fast', sizes: [32, 48, 180, 32], bg: 'none', padding: 10, manifest: false },
   },
   {
     name: 'custom-manifest',
     mark: 'animated',
     options: {
-      mode: 'fast',
+      effort: 'fast',
       sizes: [180, 32],
       base: '/app/',
       manifest: { name: 'My app', theme_color: '#123456' },

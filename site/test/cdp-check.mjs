@@ -266,14 +266,14 @@ try {
     console.log(JSON.stringify({ initializationMs }));
     await buildFiles({
       input: fileURLToPath(new URL('../../test/fixtures/general.svg', import.meta.url)),
-      mode: 'fast',
+      effort: 'fast',
       sizes: [32],
     });
   }
   const selectedCases = benchmark
     ? [
-        ...cases.filter((c) => c.name.endsWith('/release')),
-        ...['general', 'heavy'].map((mark) => ({ name: `${mark}/release`, mark, options: { mode: 'release' } })),
+        ...cases.filter((c) => c.name.endsWith('/max')),
+        ...['general', 'heavy'].map((mark) => ({ name: `${mark}/default`, mark, options: { effort: 'default' } })),
       ]
     : process.env.FAVSEED_SMOKE === '1'
       ? cases.slice(0, 1)
@@ -302,7 +302,7 @@ try {
   }
   phase = 'cache, cancellation and page lifecycle';
   const source = readFileSync(new URL('../../test/fixtures/general.svg', import.meta.url), 'utf8');
-  const options = { sizes: [180, 32], mode: 'fast' };
+  const options = { sizes: [180, 32], effort: 'fast' };
   assert.equal(await call('cache', source, options), true);
   const repeat = await call('build', source, options);
   assert.deepEqual(repeat.progress, [], 'identical build hits cache');
@@ -335,7 +335,7 @@ try {
     files: [fileURLToPath(new URL('../../test/fixtures/tiles.svg', import.meta.url))],
   });
   await evaluate(
-    'document.querySelector("select[name=mode]").value="fast"; document.querySelector("form").requestSubmit()',
+    'document.querySelector("select[name=effort]").value="fast"; document.querySelector("form").requestSubmit()',
   );
   await waitFor('document.querySelector("output").className === "good"');
   const download = await evaluate('document.getElementById("zip").href');
@@ -352,7 +352,7 @@ try {
     ),
   );
   await evaluate(
-    'document.querySelector("input[name=bg]").value="#000000"; document.querySelector("input[name=padding]").value="20"; document.querySelector("input[name=zopfli]").checked=true; document.querySelector("form").requestSubmit()',
+    'document.querySelector("input[name=bg]").value="#000000"; document.querySelector("input[name=padding]").value="20"; document.querySelector("select[name=effort]").value="max"; document.querySelector("form").requestSubmit()',
   );
   await waitFor('!document.getElementById("cancel").hidden');
   await evaluate('document.getElementById("cancel").click()');

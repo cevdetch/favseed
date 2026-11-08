@@ -118,6 +118,7 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   await page.goto('/');
   // A bounded settled-load observation, not a timing/performance benchmark.
   await settled();
+  await page.getByText('Advanced: pin a setting').click();
   await page.locator('input[name=quality]').fill('100');
   await expect(page.locator('input[name=colors]')).toBeEnabled();
   await page.locator('input[name=quality]').fill('80');
