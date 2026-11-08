@@ -43,8 +43,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, 'bench/out/search');
 const README = join(ROOT, 'bench/search/README.md');
 
-export const QUALITY_LIST = [40, 50, 60, 70, 80, 90, 95, 98, 99];
-export const COLORS_LIST = [2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256];
+const QUALITY_LIST = [40, 50, 60, 70, 80, 90, 95, 98, 99];
+const COLORS_LIST = [2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256];
 
 // ------------------------------------------------------------------ winners --
 
@@ -82,11 +82,11 @@ function binaryProbe(list) {
 }
 
 /**
- * Controller ruling R3 (fix round 1): the binary winner is NOT "the leftmost passing index",
- * because the search space is not actually monotone in bytes. At colours=2 the quantiser can
- * produce a 1-bit PNG far larger than colours=3 (a flat icon at 512px: colours=2 at 3,949 B vs
- * colours=3 at 1,427 B — `engine.encode` falls back to its lossless path there, which trivially
- * passes the accuracy bar). "Fewest passing colours" then names colours=2, the bigger file —
+ * The binary winner is NOT "the leftmost passing index", because the search space is not
+ * actually monotone in bytes. At colours=2 the quantiser can produce a 1-bit PNG far larger
+ * than colours=3 (a flat icon at 512px: colours=2 at 3,949 B vs colours=3 at 1,427 B —
+ * `engine.encode` falls back to its lossless path there, which trivially passes the accuracy
+ * bar). "Fewest passing colours" then names colours=2, the bigger file —
  * exactly backwards for a search that exists to find the smaller one. Any "first setting that
  * passes" policy on this list inherits the same quirk.
  *
@@ -200,7 +200,7 @@ async function sweep({ privateDir, open }) {
     try {
       const captured = await captureJobs(file.path, { name: file.name });
       if (!captured.ok) {
-        // captureJobs already scrubs its own error (fix round 2); sanitise again here as a
+        // captureJobs already scrubs its own error; sanitise again here as a
         // second line of defence, since nothing about results.json or the README should ever
         // have to trust a single call site to have gotten that right.
         marks.push({ corpus: file.corpus, name: file.name, ok: false, error: sanitiseError(captured.error, file) });
@@ -468,8 +468,8 @@ function writeReadme(results) {
 }
 
 /**
- * True when this file is the program, false when it was imported — Task 4 imports QUALITY_LIST
- * and COLORS_LIST from this module, which must not trigger a sweep. Mirrors
+ * True when this file is the program, false when it was imported, so the module stays
+ * importable without running a sweep. Mirrors
  * bin/favseed.mjs's isEntryPoint: realpath on both sides so a symlinked invocation still
  * matches, and no import.meta.main (arrived after this repo's Node floor).
  */

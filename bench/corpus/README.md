@@ -34,14 +34,17 @@ Real brand marks never enter this repository (see the project's no-brand-content
 Benchmarks that want to measure against a maintainer's own, unpublished logo concepts read an
 optional second corpus from the `FAVSEED_PRIVATE_CORPUS` environment variable — a local
 directory of SVGs, supplied out of band and never committed, never named file-by-file, and
-reported in benchmark output only as a total (count, byte sums, pass/fail tallies) — the same
-way `.claude/`'s own gitignored notes never reach a commit.
+reported in benchmark output only as a total (count, byte sums, pass/fail tallies).
 
 `benchmarkPath()` only accepts a directory inside this checkout or the OS temporary directory, so
 the variable cannot point directly at a logo source living elsewhere on disk. Copy it into a
 temporary directory first, then point the variable at the copy:
 
 ```sh
-cp -r ~/dev/branding-c/logos/concepts /tmp/favseed-private
-FAVSEED_PRIVATE_CORPUS=/tmp/favseed-private node bench/bench.mjs
+cp -r /path/to/your/svgs /tmp/favseed-private
+FAVSEED_PRIVATE_CORPUS=/tmp/favseed-private node bench/search.mjs
 ```
+
+On macOS the OS temporary directory is not `/tmp`, so make the copy under
+`$(node -p "require('os').tmpdir()")` instead: `benchmarkPath()` accepts only the checkout or
+that directory.
