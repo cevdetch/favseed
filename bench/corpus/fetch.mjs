@@ -113,7 +113,7 @@ async function main() {
   }
 
   // Report the directory actually used, not always the literal default: a maintainer passing
-  // a scratch <dir> (or the private corpus's temporary copy) should see where the files landed.
+  // a scratch <dir> should see where the files landed.
   const rel = relative(ROOT, cache);
   const where = rel && !rel.startsWith('..') ? rel : cache;
   process.stdout.write(`corpus: ${total} icons in ${where}\n`);

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { corpusFiles } from '../bench/corpus/files.mjs';
+import { captureJobs } from '../bench/jobs.mjs';
 import { iconSvg, selectIcons } from '../bench/corpus/sets.mjs';
 
 const set = {
@@ -46,9 +50,6 @@ describe('bench corpus files', () => {
     assert.ok(files.every((f) => f.corpus === 'fixtures'));
   });
   it('names private files by index only', async () => {
-    const { mkdtempSync, writeFileSync } = await import('node:fs');
-    const { join } = await import('node:path');
-    const { tmpdir } = await import('node:os');
     const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
     writeFileSync(join(dir, 'Secret Brand.svg'), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>');
     const files = await corpusFiles({ private: dir, open: false, fixtures: false });
@@ -56,5 +57,21 @@ describe('bench corpus files', () => {
       files.map((f) => [f.corpus, f.name]),
       [['private', 'private-0']],
     );
+  });
+});
+
+describe('bench capture jobs', () => {
+  it("never leaks a private mark's real file name into a build error", async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
+    const path = join(dir, 'Secret Brand.svg');
+    writeFileSync(
+      path,
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="var(--x)"/></svg>',
+    );
+    const result = await captureJobs(path, { name: 'private-0' });
+    assert.equal(result.ok, false);
+    assert.ok(!result.error.includes('Secret'));
+    assert.ok(!result.error.includes('Brand'));
+    assert.ok(result.error.includes('private-0'));
   });
 });

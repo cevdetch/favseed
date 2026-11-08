@@ -18,7 +18,15 @@ import { APPLE_SIZE, ICO_SIZE } from '../lib/core.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
 import { reference } from '../test/lib/accuracy.mjs';
 
-export const captureJobs = async (path) => {
+/**
+ * `name` is what a build failure's FavseedError message names (lib/core.mjs's "unresolved
+ * var(...) in ${name}", "svgo failed on ${name}", lib/pipeline.mjs's "not an SVG: ${name}"), and
+ * that message becomes `error` below. It defaults to the real file's basename, which is correct
+ * for the open and fixture corpora, but callers iterating the private corpus (bench/corpus/
+ * files.mjs's `private-N` entries) MUST pass their corpus label here instead — otherwise a
+ * private mark's actual file name leaks into a build error.
+ */
+export const captureJobs = async (path, { name = basename(path) } = {}) => {
   const engine = await loadEngine();
   const jobs = [];
   const wrapped = {
@@ -40,7 +48,7 @@ export const captureJobs = async (path) => {
     set = await buildSet(readFileSync(path, 'utf8'), normaliseOptions({ input: path, manifest: false }), {
       engine: wrapped,
       optimiseSvg,
-      name: basename(path),
+      name,
     });
   } catch (error) {
     return { ok: false, error: String(error?.message ?? error).split('\n')[0] };
@@ -51,6 +59,10 @@ export const captureJobs = async (path) => {
       job.kind === 'ico'
         ? reference({ source: path, px: job.px, bg: null, vars: {}, fitted: false })
         : reference({ source: path, px: job.px, bg: job.bg, vars: {}, fitted: true });
+    // Created eagerly, for every job, before any caller awaits it: without a handler attached
+    // now, a rejection (a bad reference render) would surface as an unhandled rejection and
+    // crash an unattended sweep. The original promise is still what callers await below.
+    job.reference.catch(() => {});
   }
   return { ok: true, jobs, files: set.files.map((f) => ({ name: f.name, bytes: f.bytes.length })) };
 };
