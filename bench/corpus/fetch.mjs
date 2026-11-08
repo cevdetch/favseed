@@ -16,12 +16,13 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { benchmarkPath } from '../path.mjs';
 import { iconSvg, selectIcons } from './sets.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, '../..');
 
 // Pinned exactly: versions checked on npm on 2026-11-08 (see README.md). A version bump is
 // a deliberate --update, never a silent drift under the fixed table every number is measured
@@ -111,7 +112,11 @@ async function main() {
     writeFileSync(manifestPath, JSON.stringify(next, null, 2) + '\n');
   }
 
-  process.stdout.write(`corpus: ${total} icons in bench/corpus/.cache\n`);
+  // Report the directory actually used, not always the literal default: a maintainer passing
+  // a scratch <dir> (or the private corpus's temporary copy) should see where the files landed.
+  const rel = relative(ROOT, cache);
+  const where = rel && !rel.startsWith('..') ? rel : cache;
+  process.stdout.write(`corpus: ${total} icons in ${where}\n`);
 }
 
 await main();

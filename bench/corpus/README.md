@@ -36,3 +36,12 @@ optional second corpus from the `FAVSEED_PRIVATE_CORPUS` environment variable â€
 directory of SVGs, supplied out of band and never committed, never named file-by-file, and
 reported in benchmark output only as a total (count, byte sums, pass/fail tallies) â€” the same
 way `.claude/`'s own gitignored notes never reach a commit.
+
+`benchmarkPath()` only accepts a directory inside this checkout or the OS temporary directory, so
+the variable cannot point directly at a logo source living elsewhere on disk. Copy it into a
+temporary directory first, then point the variable at the copy:
+
+```sh
+cp -r ~/dev/branding-c/logos/concepts /tmp/favseed-private
+FAVSEED_PRIVATE_CORPUS=/tmp/favseed-private node bench/bench.mjs
+```
