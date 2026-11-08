@@ -33,7 +33,7 @@ import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engineVersions, loadEngine } from '../bin/favseed.mjs';
-import { DEFAULT_COLORS } from '../lib/core.mjs';
+import { DEFAULT_COLORS, DEFAULT_QUALITY } from '../lib/core.mjs';
 import { score, THRESHOLD_PCT } from '../test/lib/accuracy.mjs';
 import { decode } from '../test/lib/png.mjs';
 import { corpusFiles } from './corpus/files.mjs';
@@ -113,15 +113,22 @@ function binaryWinner(qualityCandidates, colourCandidates, fallback) {
  * Both winners from one job's full candidate list (quality group first, colour group second —
  * the same split `measureJob` builds and the same one `candidates` is stored in). Shared with
  * `--summarise`, which recomputes only this from already-measured candidates.
+ *
+ * When nothing on either list passes, both winners are today's own encode — the default
+ * setting, today's bytes and today's pct — since a search that finds no passing candidate
+ * would ship what the default build already ships, not some other failing file.
  */
-function winnersFor(candidates) {
+function winnersFor(candidates, today) {
   const qualityCandidates = candidates.slice(0, QUALITY_LIST.length);
   const colourCandidates = candidates.slice(QUALITY_LIST.length);
-  // The colour list's last entry, quality 100 / colors 256, is the "lossless" fallback both
-  // winners retreat to when no candidate on either list passes.
-  const fallback = colourCandidates[colourCandidates.length - 1];
+  const fallback = {
+    setting: { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS },
+    bytes: today.bytes,
+    pct: today.pct,
+  };
+  const { setting, bytes, pct } = exhaustiveWinner(candidates, fallback);
   return {
-    exhaustive: exhaustiveWinner(candidates, fallback),
+    exhaustive: { setting, bytes, pct },
     binary: binaryWinner(qualityCandidates, colourCandidates, fallback),
   };
 }
@@ -146,12 +153,13 @@ async function measureJob(job, engine) {
   for (const quality of QUALITY_LIST) await measure({ quality, colors: DEFAULT_COLORS });
   for (const colors of COLORS_LIST) await measure({ quality: 100, colors });
 
+  const today = { bytes: job.today.length, pct: todayPct };
   return {
     kind: job.kind,
     px: job.px,
-    today: { bytes: job.today.length, pct: todayPct },
+    today,
     candidates,
-    ...winnersFor(candidates),
+    ...winnersFor(candidates, today),
     timeMs: { quantise: Math.round(quantiseMs), score: Math.round(scoreMs) },
   };
 }
@@ -226,7 +234,7 @@ async function sweep({ privateDir, open }) {
 function summarise(results) {
   for (const mark of results.marks) {
     if (!mark.ok) continue;
-    for (const job of mark.jobs) Object.assign(job, winnersFor(job.candidates));
+    for (const job of mark.jobs) Object.assign(job, winnersFor(job.candidates, job.today));
   }
   return results;
 }
@@ -244,82 +252,162 @@ async function main() {
 
 // ---------------------------------------------------------------- README --
 
+const sortedOf = (values) => values.toSorted((a, b) => a - b);
 const median = (values) => {
-  const sorted = values.toSorted((a, b) => a - b),
+  const sorted = sortedOf(values),
     mid = Math.floor(sorted.length / 2);
   return sorted.length ? (sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2) : 0;
 };
 const p95 = (values) => {
   if (!values.length) return 0;
-  const sorted = values.toSorted((a, b) => a - b);
+  const sorted = sortedOf(values);
   return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)];
 };
+const mean = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 const pct1 = (n) => n.toFixed(1);
+const ms = (n) => Math.round(n).toLocaleString();
 const okMarks = (marks) => marks.filter((m) => m.ok);
 const jobsOf = (marks) => okMarks(marks).flatMap((m) => m.jobs.map((j) => ({ ...j, corpus: m.corpus, name: m.name })));
+const jobLabel = (j) => `${j.corpus}/${j.name} ${j.kind}-${j.px}`;
+const CANDIDATES = QUALITY_LIST.length + COLORS_LIST.length;
 
 function totalsTable(jobs) {
   const today = jobs.reduce((n, j) => n + j.today.bytes, 0);
   const exhaustive = jobs.reduce((n, j) => n + j.exhaustive.bytes, 0);
   const binary = jobs.reduce((n, j) => n + j.binary.bytes, 0);
   const delta = (bytes) => (today ? pct1(((today - bytes) / today) * 100) : '0.0');
-  return { today, exhaustive, binary, exhaustiveDelta: delta(exhaustive), binaryDelta: delta(binary) };
+  return { n: jobs.length, today, exhaustive, binary, exhaustiveDelta: delta(exhaustive), binaryDelta: delta(binary) };
 }
+
+const TOTALS_HEAD = ['| Jobs | Today | Exhaustive | Saved | Binary | Saved |', '|---:|---:|---:|---:|---:|---:|'];
+const totalsRow = (label, t) =>
+  `| ${label} | ${t.n} | ${t.today.toLocaleString()} | ${t.exhaustive.toLocaleString()} | ${t.exhaustiveDelta}% | ` +
+  `${t.binary.toLocaleString()} | ${t.binaryDelta}% |`;
+const totalsLines = (heading, rows) => [
+  `| ${heading} ${TOTALS_HEAD[0]}`,
+  `|---${TOTALS_HEAD[1]}`,
+  ...rows.map(([label, t]) => totalsRow(label, t)),
+  '',
+];
+
+/**
+ * Where a list breaks monotone pass/fail: the first passing value, and every value after it
+ * that fails again. `null` when the list is monotone (or never passes).
+ */
+function monotoneBreak(candidates, key) {
+  const first = candidates.findIndex(passes);
+  if (first < 0) return null;
+  const failsAfter = candidates.slice(first + 1).filter((c) => !passes(c));
+  return failsAfter.length
+    ? { passAt: candidates[first].setting[key], failsAt: failsAfter.map((c) => c.setting[key]) }
+    : null;
+}
+const joinAnd = (values) =>
+  values.length < 2 ? `${values[0]}` : `${values.slice(0, -1).join(', ')} and ${values.at(-1)}`;
+
+const inCorpus = (jobs, corpus) => jobs.filter((j) => j.corpus === corpus);
+
+/** Per-corpus counts as "fixtures A, open B, private C" for the corpora present. */
+const byCorpus = (corpora, jobs) => corpora.map((c) => `${c} ${jobs.filter((j) => j.corpus === c).length}`).join(', ');
 
 function writeReadme(results) {
   const { date, engine, marks } = results;
   const allJobs = jobsOf(marks);
   const failed = marks.filter((m) => !m.ok);
-
   const corpora = ['fixtures', 'open', 'private'].filter((c) => marks.some((m) => m.corpus === c));
-  const perCorpus = corpora.map((corpus) => [corpus, totalsTable(allJobs.filter((j) => j.corpus === corpus))]);
-  const kinds = ['ico', 'apple', 'icon'];
-  const perKind = kinds
-    .filter((k) => allJobs.some((j) => j.kind === k))
-    .map((kind) => [kind, totalsTable(allJobs.filter((j) => j.kind === kind))]);
 
-  const noPassCount = allJobs.filter((j) => j.exhaustive.pct > THRESHOLD_PCT).length;
+  // Today's own encode is the quality-80 candidate, so a job where it passes always has a
+  // passing candidate no larger than today: those totals are pure savings. A job where today
+  // misses the bar either has a passing candidate (which can cost bytes: pay to pass) or keeps
+  // today's bytes, unchanged and still over the bar.
+  const todayIsCandidate = allJobs.filter((j) =>
+    j.candidates.some(
+      (c) => c.setting.quality === DEFAULT_QUALITY && c.bytes === j.today.bytes && c.pct === j.today.pct,
+    ),
+  ).length;
+  const todayPasses = allJobs.filter((j) => passes(j.today));
+  const todayMisses = allJobs.filter((j) => !passes(j.today));
+  const fixed = todayMisses.filter((j) => passes(j.exhaustive));
+  const unfixed = todayMisses.filter((j) => !passes(j.exhaustive));
+  const binaryFixed = todayMisses.filter((j) => passes(j.binary));
+  const fixedTotals = totalsTable(fixed);
 
-  // Today's own (quality 80) encode can miss the bar on more rasters than "no candidate on
-  // either list passes" — some other setting the default build doesn't choose still passes.
-  // Private is reported as a count only, like everywhere else a mark could be singled out.
-  const todayMissByCorpus = {};
-  for (const j of allJobs)
-    if (j.today.pct > THRESHOLD_PCT) todayMissByCorpus[j.corpus] = (todayMissByCorpus[j.corpus] ?? 0) + 1;
-  const todayMissTotal = Object.values(todayMissByCorpus).reduce((a, b) => a + b, 0);
+  const kinds = ['ico', 'apple', 'icon'].filter((k) => allJobs.some((j) => j.kind === k));
+  const perKind = kinds.map((kind) => [kind, totalsTable(allJobs.filter((j) => j.kind === kind))]);
 
-  const encode512 = allJobs.filter((j) => j.px === 512).map((j) => j.timeMs.quantise);
+  // Monotone pass/fail, per list: the binary search assumes it, so say how often it holds.
+  const breaks = (key, slice) =>
+    allJobs.map((j) => ({ job: j, at: monotoneBreak(slice(j.candidates), key) })).filter((b) => b.at);
+  const colourBreaks = breaks('colors', (c) => c.slice(QUALITY_LIST.length));
+  const qualityBreaks = breaks('quality', (c) => c.slice(0, QUALITY_LIST.length));
+  const namedColourBreaks = colourBreaks.filter((b) => b.job.corpus !== 'private');
+  const privateColourBreaks = colourBreaks.length - namedColourBreaks.length;
+
+  // Binary against exhaustive: how often it misses the smallest passing file, by how much, and
+  // what it costs. Private jobs are counted, never named.
+  // Only where both pass: a job binary leaves unfixed is counted with the today-misses instead.
+  const gaps = allJobs
+    .filter((j) => passes(j.binary) && j.binary.bytes !== j.exhaustive.bytes)
+    .map((j) => ({ job: j, gap: (j.binary.bytes - j.exhaustive.bytes) / j.exhaustive.bytes }));
+  const namedGaps = gaps.filter((g) => g.job.corpus !== 'private').toSorted((a, b) => b.gap - a.gap);
+  const worstGap = namedGaps[0];
+  const privateGaps = gaps.filter((g) => g.job.corpus === 'private');
+  const privateAboveWorst = worstGap ? privateGaps.filter((g) => g.gap > worstGap.gap).length : 0;
+  const gapBytes = gaps.reduce((n, g) => n + g.job.binary.bytes - g.job.exhaustive.bytes, 0);
+  const probes = allJobs.map((j) => j.binary.probes);
+
+  // Time per 512px job. results.json stores each job's summed encode and score time over all
+  // its candidates, not per candidate, so one encode (today) and a binary search's probes are
+  // estimated from the per-candidate mean; the exhaustive figures are measured.
+  const at512 = allJobs.filter((j) => j.px === 512);
+  const perCandidate = (j, key) => j.timeMs[key] / CANDIDATES;
+  const timeRows = [
+    ['today (1 encode, estimate)', at512.map((j) => perCandidate(j, 'quantise')), at512.map(() => 0)],
+    [
+      'binary (its probes, estimate)',
+      at512.map((j) => perCandidate(j, 'quantise') * j.binary.probes),
+      at512.map((j) => perCandidate(j, 'score') * j.binary.probes),
+    ],
+    [`exhaustive (all ${CANDIDATES}, measured)`, at512.map((j) => j.timeMs.quantise), at512.map((j) => j.timeMs.score)],
+  ];
 
   // Largest relative savings: today -> exhaustive, per mark (sum over its jobs), open and
   // fixtures only, by name. Private marks are reported as a count of how many would place
   // in that top 10 by the same measure, never by name.
   const perMarkSavings = okMarks(marks).map((m) => {
-    const t = totalsTable(m.jobs.map((j) => ({ ...j, corpus: m.corpus, name: m.name })));
+    const t = totalsTable(m.jobs);
     const relative = t.today ? (t.today - t.exhaustive) / t.today : 0;
     return { corpus: m.corpus, name: m.name, today: t.today, exhaustive: t.exhaustive, relative };
   });
   const named = perMarkSavings.filter((m) => m.corpus !== 'private').toSorted((a, b) => b.relative - a.relative);
   const top10 = named.slice(0, 10);
-  const threshold = top10.length ? top10[top10.length - 1].relative : 0;
+  const threshold = top10.length ? top10.at(-1).relative : 0;
   const privateInTop = perMarkSavings.filter((m) => m.corpus === 'private' && m.relative >= threshold).length;
 
   // Distribution of winning settings at >= 180px: colour-mode wins (quality 100) bucketed by
   // colour count, quality-mode wins (colour budget not actually constrained) bucketed by
   // quality instead, and reported separately so a colour count is never implied where the
-  // winner wasn't actually colour-limited.
+  // winner wasn't actually colour-limited. Jobs with no passing candidate are left out: their
+  // "winner" is today's default setting, not a search result.
   const big = allJobs.filter((j) => j.px >= 180);
+  const bigSearched = big.filter((j) => passes(j.exhaustive));
   const colourWins = new Map(),
     qualityWins = new Map();
-  for (const j of big) {
+  for (const j of bigSearched) {
     const s = j.exhaustive.setting;
     const target = s.quality === 100 ? colourWins : qualityWins;
     const key = s.quality === 100 ? s.colors : s.quality;
     target.set(key, (target.get(key) ?? 0) + 1);
   }
 
+  // The fixture misses, named: they are expected to be the suite's accepted ICO exception.
+  const fixtureMisses = inCorpus(todayMisses, 'fixtures');
+  const acceptedIco = new Set(['grid-1', 'grid-tiny']);
+  const fixtureMissesAccepted =
+    fixtureMisses.length > 0 && fixtureMisses.every((j) => j.kind === 'ico' && acceptedIco.has(j.name));
+
   const lines = [];
-  lines.push('# Search sweep');
-  lines.push('');
+  lines.push('# Search sweep', '');
   lines.push(
     `Measured ${date}, with:`,
     '',
@@ -339,74 +427,137 @@ function writeReadme(results) {
     '- **Exhaustive** — every candidate is tried; the smallest passing one wins, ties going to ' +
       'the less lossy setting (higher quality, then more colours).',
     '- **Binary** — the colour list and the quality list are each searched independently with a ' +
-      'leftmost-passing binary search, assuming the list is monotone (a setting that passes is ' +
-      'assumed to mean every less lossy setting on the same list also passes — a cost model for ' +
-      'the search itself, not a claim either list is actually sorted by file size). The winner ' +
-      'is **the smallest-bytes passing candidate among every candidate either search actually ' +
+      'leftmost-passing binary search, assuming the list is monotone in pass/fail (a setting ' +
+      'that passes is assumed to mean every less lossy setting on the same list also passes — a ' +
+      'cost model for the search itself; see below for how often that holds). The winner is ' +
+      '**the smallest-bytes passing candidate among every candidate either search actually ' +
       'probed** — not "the leftmost passing index" (see the quirk below for why) — tie-broken ' +
       'exactly like the exhaustive winner. `probes` counts those encodes, already measured; no ' +
       'extra encoding happens to pick the winner.',
     '',
-    'The candidate space: quality in `[40, 50, 60, 70, 80, 90, 95, 98, 99]` at the default ' +
-      'colour ceiling (encode ignores colours below quality 100), and quality 100 with colours ' +
-      'in `[2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256]`. If nothing on ' +
-      'either list passes, both winners fall back to quality 100 / colours 256 (the lossless ' +
-      'candidate) and report its measured `pct`, which is then above the bar.',
+    `The candidate space: quality in \`[${QUALITY_LIST.join(', ')}]\` at the default colour ` +
+      'ceiling (encode ignores colours below quality 100), and quality 100 with colours in ' +
+      `\`[${COLORS_LIST.join(', ')}]\`. Every candidate is \`engine.encode\`'s own output, the ` +
+      'smaller of a quantised and a lossless encode, exactly as a build would make it. If ' +
+      "nothing on either list passes, both winners are today's own encode: the default setting " +
+      `(quality ${DEFAULT_QUALITY}, colours ${DEFAULT_COLORS}), today's bytes and today's \`pct\`, ` +
+      'which is then above the bar.',
     '',
-    '**The colours=2 quirk.** `engine.encode` keeps the smaller of a quantised and a lossless ' +
-      'encode, and at colours=2 the quantised (1-bit) PNG can be *several times larger* than ' +
-      'colours=3 — a flat 512px icon measured here: colours=2 is 3,949 B (the lossless path won, ' +
-      'because the 1-bit quantised file was bigger still) against colours=3 at 1,427 B, both ' +
-      'passing the bar. The colour list is therefore not monotone in bytes, only in pass/fail, ' +
-      'and "fewest passing colours" or any other first-match policy on it would report the ' +
-      'colours=2 file as the win — several times the size of a setting right next to it on the ' +
-      'same list. The binary winner rule above exists because of exactly this: it picks the ' +
-      'smallest of what the search actually looked at, not the first thing that passed.',
-    '',
-    'Today is the production default build’s own encode (quality 80), from the same ' +
-      'in-memory run the candidates are measured against, so the comparison needs no second ' +
-      'build.',
+    `Today is the production default build's own encode (quality ${DEFAULT_QUALITY}), from the ` +
+      'same in-memory run the candidates are measured against, so the comparison needs no ' +
+      'second build. ' +
+      (todayIsCandidate === allJobs.length
+        ? `It is also the quality-${DEFAULT_QUALITY} candidate, byte for byte, on all ${allJobs.length} jobs, so ` +
+          'wherever today passes, the exhaustive winner is never larger than today.'
+        : `It matches the quality-${DEFAULT_QUALITY} candidate on only ${todayIsCandidate} of ${allJobs.length} jobs.`),
     '',
   );
+
+  lines.push(
+    '**The colours=2 quirk.** At colours=2 the quantised (1-bit) PNG can be *larger* than the ' +
+      'lossless encode, and the candidate is then the lossless file: a flat 512px icon measured ' +
+      'here is 3,949 B at colours=2 against 1,427 B at colours=3, both passing the bar. The ' +
+      'colour list is therefore not monotone in bytes, and "fewest passing colours" or any other ' +
+      'first-match policy on it would report the colours=2 file as the win — several times the ' +
+      'size of a setting right next to it on the same list. The binary winner rule above exists ' +
+      'because of exactly this: it picks the smallest of what the search actually looked at, not ' +
+      'the first thing that passed.',
+    '',
+    `**Monotone pass/fail.** The quality list is monotone on ${allJobs.length - qualityBreaks.length} ` +
+      `of ${allJobs.length} jobs. The colour list is not quite: on ${colourBreaks.length} of ` +
+      `${allJobs.length} jobs a colour count passes and a higher one fails again ` +
+      `(${byCorpus(
+        corpora,
+        colourBreaks.map((b) => b.job),
+      )}; private by count only):`,
+    '',
+    '| Job | First pass at colours | Fails again at |',
+    '|---|---:|---|',
+    ...namedColourBreaks.map((b) => `| ${jobLabel(b.job)} | ${b.at.passAt} | ${joinAnd(b.at.failsAt)} |`),
+    '',
+  );
+  if (privateColourBreaks) lines.push(`…and ${privateColourBreaks} private job(s), not listed.`, '');
 
   lines.push('## Totals by corpus', '');
-  lines.push('| Corpus | Jobs | Today | Exhaustive | Saved | Binary | Saved |', '|---|---:|---:|---:|---:|---:|---:|');
-  for (const [corpus, t] of perCorpus) {
-    const n = allJobs.filter((j) => j.corpus === corpus).length;
-    lines.push(
-      `| ${corpus} | ${n} | ${t.today.toLocaleString()} | ${t.exhaustive.toLocaleString()} | ${t.exhaustiveDelta}% | ${t.binary.toLocaleString()} | ${t.binaryDelta}% |`,
-    );
-  }
-  lines.push('');
-
-  lines.push('## Totals by raster kind', '');
-  lines.push('| Kind | Jobs | Today | Exhaustive | Saved | Binary | Saved |', '|---|---:|---:|---:|---:|---:|---:|');
-  for (const [kind, t] of perKind) {
-    const n = allJobs.filter((j) => j.kind === kind).length;
-    lines.push(
-      `| ${kind} | ${n} | ${t.today.toLocaleString()} | ${t.exhaustive.toLocaleString()} | ${t.exhaustiveDelta}% | ${t.binary.toLocaleString()} | ${t.binaryDelta}% |`,
-    );
-  }
-  lines.push('');
-
+  lines.push('All jobs, in bytes:', '');
   lines.push(
-    `${noPassCount} of ${allJobs.length} jobs have no passing candidate on either list (the ` +
-      'exhaustive winner is the quality-100/colours-256 fallback, scored above the bar).',
+    ...totalsLines(
+      'Corpus',
+      corpora.map((c) => [c, totalsTable(inCorpus(allJobs, c))]),
+    ),
+  );
+  lines.push(
+    `Jobs where today passes the bar (${todayPasses.length} of ${allJobs.length}) — pure savings, ` +
+      'since a passing today is itself a candidate:',
     '',
   );
-
   lines.push(
-    `Today's default (quality 80) itself misses the bar outright on ${todayMissTotal} of ${allJobs.length} ` +
-      `rasters — fixtures ${todayMissByCorpus.fixtures ?? 0}, open ${todayMissByCorpus.open ?? 0}, ` +
-      `private ${todayMissByCorpus.private ?? 0} (count only). ${noPassCount} of those ${allJobs.length} ` +
-      'rasters also have no passing candidate anywhere on either list (the line above); the ' +
-      "remainder pass under a setting the default build doesn't choose.",
-    '',
+    ...totalsLines(
+      'Corpus',
+      corpora.map((c) => [c, totalsTable(inCorpus(todayPasses, c))]),
+    ),
   );
 
+  lines.push('## Jobs where today misses the bar', '');
   lines.push(
-    `Encode time per 512px job (sum of its ${QUALITY_LIST.length + COLORS_LIST.length} candidate encodes): ` +
-      `median ${Math.round(median(encode512))} ms, p95 ${Math.round(p95(encode512))} ms, over ${encode512.length} jobs.`,
+    `Today's default misses the bar on ${todayMisses.length} of ${allJobs.length} jobs ` +
+      `(${byCorpus(corpora, todayMisses)}; private by count only).`,
+    '',
+    `- **${fixed.length} of those ${todayMisses.length}** have a passing candidate ` +
+      `(${byCorpus(corpora, fixed)}). Passing costs bytes there: today ` +
+      `${fixedTotals.today.toLocaleString()} B against ${fixedTotals.exhaustive.toLocaleString()} B ` +
+      `for the exhaustive winners (${fixedTotals.exhaustive >= fixedTotals.today ? '+' : '−'}` +
+      `${pct1(Math.abs(((fixedTotals.exhaustive - fixedTotals.today) / (fixedTotals.today || 1)) * 100))}%). ` +
+      `The binary search finds a pass on ${binaryFixed.length} of them.`,
+    `- **${unfixed.length} of those ${todayMisses.length}** have no passing candidate on either ` +
+      `list (${byCorpus(corpora, unfixed)}) and keep today's bytes.`,
+    '',
+  );
+  if (fixtureMisses.length) {
+    const described = fixtureMisses.map((j) => `${j.name} ${j.kind} ${j.px}px at ${j.today.pct.toFixed(4)}%`);
+    lines.push(
+      `The ${fixtureMisses.length} fixture miss(es): ${joinAnd(described)}.` +
+        (fixtureMissesAccepted
+          ? ' These are the suite’s accepted exception for those two grids (28 of 2,304 pixels, ' +
+            'test/run.mjs and bench/ico-size/README.md), not a regression.'
+          : ''),
+      '',
+    );
+  }
+
+  lines.push('## Totals by raster kind', '', 'All jobs, in bytes:', '');
+  lines.push(...totalsLines('Kind', perKind));
+
+  lines.push('## Binary against exhaustive', '');
+  lines.push(
+    `Where both pass, the binary winner differs in bytes from the exhaustive one on ${gaps.length} of ` +
+      `${allJobs.length} jobs (${byCorpus(
+        corpora,
+        gaps.map((g) => g.job),
+      )}), ` +
+      `${gapBytes.toLocaleString()} B in all.` +
+      (worstGap
+        ? ` The worst relative gap outside the private corpus is ${jobLabel(worstGap.job)}: ` +
+          `${worstGap.job.binary.bytes.toLocaleString()} B against ` +
+          `${worstGap.job.exhaustive.bytes.toLocaleString()} B (+${pct1(worstGap.gap * 100)}%).`
+        : '') +
+      (privateGaps.length ? ` ${privateAboveWorst} private job(s) have a larger relative gap.` : ''),
+    '',
+    `Probes per job: min ${Math.min(...probes)}, median ${median(probes)}, mean ` +
+      `${mean(probes).toFixed(1)}, max ${Math.max(...probes)} — against ${CANDIDATES} candidates ` +
+      'for the exhaustive sweep.',
+    '',
+    `Time per 512px job, over ${at512.length} jobs. Encode is \`engine.encode\` alone (the zopfli ` +
+      'finish every path pays once, on its winner, is not included); score is the accuracy gate, ' +
+      "which today's default build never runs. results.json stores each job's summed times, so " +
+      'today and binary are estimated from the per-candidate mean of the same job:',
+    '',
+    '| Path | Median encode ms | Median score ms | Median total ms | p95 total ms |',
+    '|---|---:|---:|---:|---:|',
+    ...timeRows.map(([label, encode, scoreTimes]) => {
+      const total = encode.map((e, i) => e + scoreTimes[i]);
+      return `| ${label} | ${ms(median(encode))} | ${ms(median(scoreTimes))} | ${ms(median(total))} | ${ms(p95(total))} |`;
+    }),
     '',
   );
 
@@ -426,15 +577,15 @@ function writeReadme(results) {
   lines.push('## Winning colour counts at >= 180px', '');
   lines.push(
     'Colour-mode wins (quality 100) are bucketed by their winning colour count; quality-mode ' +
-      "wins are bucketed by quality instead, since their colour budget wasn't the constraint.",
+      "wins are bucketed by quality instead, since their colour budget wasn't the constraint. " +
+      `${big.length - bigSearched.length} of the ${big.length} jobs at >= 180px have no passing ` +
+      "candidate and are left out: their winner is today's default setting, not a search result.",
     '',
   );
   lines.push('| Colours | Jobs |', '|---:|---:|');
-  for (const colors of [...colourWins.keys()].toSorted((a, b) => a - b))
-    lines.push(`| ${colors} | ${colourWins.get(colors)} |`);
+  for (const colors of sortedOf([...colourWins.keys()])) lines.push(`| ${colors} | ${colourWins.get(colors)} |`);
   lines.push('', '| Quality (colour-unconstrained) | Jobs |', '|---:|---:|');
-  for (const quality of [...qualityWins.keys()].toSorted((a, b) => a - b))
-    lines.push(`| ${quality} | ${qualityWins.get(quality)} |`);
+  for (const quality of sortedOf([...qualityWins.keys()])) lines.push(`| ${quality} | ${qualityWins.get(quality)} |`);
   lines.push('');
 
   if (failed.length) {
@@ -452,7 +603,9 @@ function writeReadme(results) {
     'node bench/search.mjs --private DIR --write',
     '```',
     '',
-    '`--private` falls back to `FAVSEED_PRIVATE_CORPUS`. Omitting `--private` does **not** mean ' +
+    '`--private` falls back to `FAVSEED_PRIVATE_CORPUS`, and `DIR` must be inside this checkout ' +
+      'or the OS temporary directory (see [the corpus README](../corpus/README.md#the-private-corpus)). ' +
+      'Omitting `--private` does **not** mean ' +
       'fixtures-only: the open corpus still runs by default, and `FAVSEED_PRIVATE_CORPUS` (if ' +
       'set in the environment) is still picked up with no flag at all. A fixtures-only run ' +
       'needs `--no-open` *and* no private corpus available either way (no `--private`, and ' +
