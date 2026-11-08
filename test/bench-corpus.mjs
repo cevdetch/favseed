@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { corpusFiles } from '../bench/corpus/files.mjs';
 import { captureJobs } from '../bench/jobs.mjs';
 import { iconSvg, selectIcons } from '../bench/corpus/sets.mjs';
+
+// realpath, because tmpdir() can itself be a symlink (macOS: /var -> /private/var) and
+// benchmarkPath compares against the resolved OS temp dir.
+const tempDir = () => realpathSync(mkdtempSync(join(tmpdir(), 'favseed-private-')));
 
 const set = {
   prefix: 't',
@@ -50,44 +54,56 @@ describe('bench corpus files', () => {
     assert.ok(files.every((f) => f.corpus === 'fixtures'));
   });
   it('names private files by index only', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
-    writeFileSync(join(dir, 'Secret Brand.svg'), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>');
-    const files = await corpusFiles({ private: dir, open: false, fixtures: false });
-    assert.deepEqual(
-      files.map((f) => [f.corpus, f.name]),
-      [['private', 'private-0']],
-    );
+    const dir = tempDir();
+    try {
+      writeFileSync(join(dir, 'Secret Brand.svg'), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>');
+      const files = await corpusFiles({ private: dir, open: false, fixtures: false });
+      assert.deepEqual(
+        files.map((f) => [f.corpus, f.name]),
+        [['private', 'private-0']],
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
 describe('bench capture jobs', () => {
   it("never leaks a private mark's real file name into a build error", async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
-    const path = join(dir, 'Secret Brand.svg');
-    writeFileSync(
-      path,
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="var(--x)"/></svg>',
-    );
-    const result = await captureJobs(path, { name: 'private-0' });
-    assert.equal(result.ok, false);
-    assert.ok(!result.error.includes('Secret'));
-    assert.ok(!result.error.includes('Brand'));
-    assert.ok(result.error.includes('private-0'));
+    const dir = tempDir();
+    try {
+      const path = join(dir, 'Secret Brand.svg');
+      writeFileSync(
+        path,
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="var(--x)"/></svg>',
+      );
+      const result = await captureJobs(path, { name: 'private-0' });
+      assert.equal(result.ok, false);
+      assert.ok(!result.error.includes('Secret'));
+      assert.ok(!result.error.includes('Brand'));
+      assert.ok(result.error.includes('private-0'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("never leaks a private mark's real path when the file cannot even be read", async () => {
     // No writeFileSync: the file genuinely does not exist, so readFileSync's own ENOENT
     // throws with the full path embedded in its message, before buildSet (and its `name`
-    // override) ever runs. Fix round 2: captureJobs must scrub that path itself, not rely on
-    // buildSet's error message to already say `name`.
-    const dir = mkdtempSync(join(tmpdir(), 'favseed-private-'));
-    const path = join(dir, 'Secret Brand Missing.svg');
-    const result = await captureJobs(path, { name: 'private-99' });
-    assert.equal(result.ok, false);
-    assert.ok(!result.error.includes('Secret'));
-    assert.ok(!result.error.includes('Brand'));
-    assert.ok(!result.error.includes(path));
-    assert.ok(!result.error.includes(dir));
-    assert.ok(result.error.includes('private-99'));
+    // override) ever runs. captureJobs must scrub that path itself, not rely on buildSet's
+    // error message to already say `name`.
+    const dir = tempDir();
+    try {
+      const path = join(dir, 'Secret Brand Missing.svg');
+      const result = await captureJobs(path, { name: 'private-99' });
+      assert.equal(result.ok, false);
+      assert.ok(!result.error.includes('Secret'));
+      assert.ok(!result.error.includes('Brand'));
+      assert.ok(!result.error.includes(path));
+      assert.ok(!result.error.includes(dir));
+      assert.ok(result.error.includes('private-99'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
