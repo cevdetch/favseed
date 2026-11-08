@@ -480,7 +480,7 @@ describe('search', () => {
       assert.deepEqual(fast.setting, { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS });
     });
 
-    it(`${name}: fast accepts a null reference and skips the gate entirely (ruling R3)`, async () => {
+    it(`${name}: fast accepts a null reference and skips the gate entirely`, async () => {
       const fast = await engine.search(raw, null, { effort: 'fast', pinned: null });
       const direct = await engine.encode(raw, { quality: 80 });
       assert.deepEqual([...fast.png], [...direct]);
@@ -550,7 +550,7 @@ describe('search', () => {
   });
 
   for (const effort of ['default', 'max']) {
-    it(`rejects a null reference at effort '${effort}' (ruling R3 covers only 'fast' and pinned)`, async () => {
+    it(`rejects a null reference at effort '${effort}' (only 'fast' and a pinned setting may skip the gate)`, async () => {
       const raw = await engine.render(icon('general'), 32, '#000000');
       await assert.rejects(engine.search(raw, null, { effort, pinned: null }), /needs a reference/);
     });
