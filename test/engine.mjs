@@ -548,4 +548,24 @@ describe('search', () => {
     const raw = await engine.render(icon('general'), 32, '#000000');
     await assert.rejects(engine.search(raw, null, { effort: 'bogus', pinned: null }), /unknown effort/);
   });
+
+  for (const effort of ['default', 'max']) {
+    it(`rejects a null reference at effort '${effort}' (ruling R3 covers only 'fast' and pinned)`, async () => {
+      const raw = await engine.render(icon('general'), 32, '#000000');
+      await assert.rejects(engine.search(raw, null, { effort, pinned: null }), /needs a reference/);
+    });
+  }
+
+  it("a pinned setting accepts a null reference too, gate skipped like effort 'fast'", async () => {
+    const raw = await engine.render(icon('general'), 32, '#000000');
+    const pinned = { quality: 100, colors: 4 };
+    // effort is irrelevant once a setting is pinned — 'max' here on purpose, to show the
+    // reference requirement above is effort's business, not pinned's.
+    const result = await engine.search(raw, null, { effort: 'max', pinned });
+    const direct = await engine.encode(raw, pinned);
+    assert.deepEqual([...result.png], [...direct]);
+    assert.equal(result.probes, 1);
+    assert.deepEqual(result.setting, pinned);
+    assert.deepEqual([result.pct, result.edge, result.pass], [null, null, null]);
+  });
 });
