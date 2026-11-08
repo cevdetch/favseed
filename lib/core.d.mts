@@ -14,6 +14,10 @@ export const ZOPFLI_ITERATIONS: number;
 export const FAST_ZOPFLI_ITERATIONS: number;
 export const MASK_SAFE_RADIUS: number;
 export const SNAP_WINDOW: number;
+export const ACCURACY_PCT: number;
+export const EDGE_GATE: number;
+export const SEARCH_QUALITIES: number[];
+export const SEARCH_COLORS: number[];
 
 export interface SvgOptions {
   /** Explicit static mode: strips motion and accessibility. Default false. */

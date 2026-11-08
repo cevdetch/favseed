@@ -1155,6 +1155,7 @@ describe('the published tarball', () => {
         'lib/core.d.mts',
         'lib/engine.mjs',
         'lib/pipeline.mjs',
+        'lib/quality.mjs',
         'lib/svg-precision.mjs',
         'lib/types.d.mts',
         'lib/zopfli-build.mjs',
