@@ -4,7 +4,7 @@ favseed is one package, `favseed`. Registry commands use pnpm, which keeps its o
 (`pnpm login`, checked with `pnpm whoami`); pnpm 12 has `publish`, `stage`, `view` and
 `deprecate`. No npm token is ever created for this project (decision 23).
 
-- **0.1.0** is published by hand from a packed tarball: npm lets a package use trusted
+- **1.0.0** is published by hand from a packed tarball: npm lets a package use trusted
   publishing only once it exists.
 - **Every later release** starts from a tag. The Release workflow tests, packs, and **stages**
   the tarball on npm through trusted publishing (OIDC, with provenance). Nothing goes live until
@@ -32,7 +32,7 @@ tags are ignored; prerelease candidates follow the same rules against the last s
 version and must advance it. Historical manifests are read as JSON; old package code is
 never executed.
 
-## Before 0.1.0: one-time setup
+## Before 1.0.0: one-time setup
 
 1. **GitHub.** Verify the repository is `cevdetch/favseed`. `package.json`'s `repository` must
    name the repository the workflow runs in, or npm rejects the provenance.
@@ -56,7 +56,7 @@ never executed.
    pnpm is picked up from `packageManager` in `package.json`. Then **Custom domains → Set up a
    domain**: `favseed.cevdet.ch`. The site writes its own `_headers`.
 
-## 0.1.0
+## 1.0.0
 
 On an up-to-date `main` with a clean working tree and CI green:
 
@@ -67,7 +67,7 @@ On an up-to-date `main` with a clean working tree and CI green:
    pnpm view favseed       # must fail with 404
    ```
 
-2. Date the release in `CHANGELOG.md`: the `## [0.1.0] - YYYY-MM-DD` heading carries the day
+2. Date the release in `CHANGELOG.md`: the `## [1.0.0] - YYYY-MM-DD` heading carries the day
    you publish. Commit that on its own.
 
 3. Test and pack. The tarball `npm pack` writes is the file you publish.
@@ -83,15 +83,15 @@ On an up-to-date `main` with a clean working tree and CI green:
 
    ```sh
    cd "$(mktemp -d)" && npm init -y >/dev/null
-   npm install /path/to/favseed/favseed-0.1.0.tgz
-   npx favseed --version                        # 0.1.0
+   npm install /path/to/favseed/favseed-1.0.0.tgz
+   npx favseed --version                        # 1.0.0
    npx favseed /path/to/favseed/test/fixtures/general.svg --out out && ls out
    ```
 
 5. Publish it (pnpm asks for 2FA):
 
    ```sh
-   pnpm publish favseed-0.1.0.tgz --access public
+   pnpm publish favseed-1.0.0.tgz --access public
    ```
 
 6. Set up trusted publishing for every later release, on npmjs.com, under the package:
@@ -101,16 +101,16 @@ On an up-to-date `main` with a clean working tree and CI green:
    - **Settings → Publishing access**: "Require two-factor authentication and disallow
      tokens".
 
-7. Tag and push. The Release workflow runs the full chain, sees 0.1.0 already on npm and skips
+7. Tag and push. The Release workflow runs the full chain, sees 1.0.0 already on npm and skips
    staging, then creates the GitHub Release from the changelog.
 
    ```sh
-   git tag -s v0.1.0 -m v0.1.0
-   git push origin v0.1.0
+   git tag -s v1.0.0 -m v1.0.0
+   git push origin v1.0.0
    ```
 
-8. Check: the package on npmjs.com, and in an empty directory `npx favseed@0.1.0 --version`
-   prints `0.1.0`.
+8. Check: the package on npmjs.com, and in an empty directory `npx favseed@1.0.0 --version`
+   prints `1.0.0`.
 
 9. Submit to the [Astro integrations directory](https://astro.build/integrations/): it indexes
    npm packages carrying the `astro-integration` keyword, which `package.json` has.
