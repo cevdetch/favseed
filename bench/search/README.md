@@ -11,29 +11,33 @@ svgo            4.1.0
 For every raster a default build produces (ICO payload, apple-touch-icon, and the two `icon-<size>.png` sizes), this sweep tries every candidate in the search space and records the smallest one that passes the accuracy bar (`pct <= 1%`, test/lib/accuracy.mjs) two ways:
 
 - **Exhaustive** — every candidate is tried; the smallest passing one wins, ties going to the less lossy setting (higher quality, then more colours).
-- **Binary** — the colour list and the quality list are each searched independently for the fewest colours / lowest quality that passes, assuming the list is monotone (a setting that passes is assumed to mean every less lossy setting on the same list also passes). The smaller of the two results wins; `probes` counts the encodes either search actually needed.
+- **Binary** — the colour list and the quality list are each searched independently with a leftmost-passing binary search, assuming the list is monotone (a setting that passes is assumed to mean every less lossy setting on the same list also passes — a cost model for the search itself, not a claim either list is actually sorted by file size). The winner is **the smallest-bytes passing candidate among every candidate either search actually probed** — not "the leftmost passing index" (see the quirk below for why) — tie-broken exactly like the exhaustive winner. `probes` counts those encodes, already measured; no extra encoding happens to pick the winner.
 
 The candidate space: quality in `[40, 50, 60, 70, 80, 90, 95, 98, 99]` at the default colour ceiling (encode ignores colours below quality 100), and quality 100 with colours in `[2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256]`. If nothing on either list passes, both winners fall back to quality 100 / colours 256 (the lossless candidate) and report its measured `pct`, which is then above the bar.
+
+**The colours=2 quirk.** `engine.encode` keeps the smaller of a quantised and a lossless encode, and at colours=2 the quantised (1-bit) PNG can be *several times larger* than colours=3 — a flat 512px icon measured here: colours=2 is 3,949 B (the lossless path won, because the 1-bit quantised file was bigger still) against colours=3 at 1,427 B, both passing the bar. The colour list is therefore not monotone in bytes, only in pass/fail, and "fewest passing colours" or any other first-match policy on it would report the colours=2 file as the win — several times the size of a setting right next to it on the same list. The binary winner rule above exists because of exactly this: it picks the smallest of what the search actually looked at, not the first thing that passed.
 
 Today is the production default build’s own encode (quality 80), from the same in-memory run the candidates are measured against, so the comparison needs no second build.
 
 ## Totals by corpus
 
-| Corpus | Jobs | Today | Exhaustive | Δ | Binary | Δ |
+| Corpus | Jobs | Today | Exhaustive | Saved | Binary | Saved |
 |---|---:|---:|---:|---:|---:|---:|
-| fixtures | 92 | 129,398 | 77,417 | 40.2% | 95,166 | 26.5% |
-| open | 320 | 829,568 | 729,860 | 12.0% | 737,035 | 11.2% |
-| private | 156 | 183,489 | 110,818 | 39.6% | 111,138 | 39.4% |
+| fixtures | 92 | 129,398 | 77,417 | 40.2% | 77,542 | 40.1% |
+| open | 320 | 829,568 | 729,860 | 12.0% | 731,324 | 11.8% |
+| private | 156 | 183,489 | 110,818 | 39.6% | 111,096 | 39.5% |
 
 ## Totals by raster kind
 
-| Kind | Jobs | Today | Exhaustive | Δ | Binary | Δ |
+| Kind | Jobs | Today | Exhaustive | Saved | Binary | Saved |
 |---|---:|---:|---:|---:|---:|---:|
-| ico | 142 | 92,143 | 86,093 | 6.6% | 86,095 | 6.6% |
-| apple | 142 | 194,440 | 160,355 | 17.5% | 161,106 | 17.1% |
-| icon | 284 | 855,872 | 671,647 | 21.5% | 696,138 | 18.7% |
+| ico | 142 | 92,143 | 86,093 | 6.6% | 86,093 | 6.6% |
+| apple | 142 | 194,440 | 160,355 | 17.5% | 160,579 | 17.4% |
+| icon | 284 | 855,872 | 671,647 | 21.5% | 673,290 | 21.3% |
 
 41 of 568 jobs have no passing candidate on either list (the exhaustive winner is the quality-100/colours-256 fallback, scored above the bar).
+
+Today's default (quality 80) itself misses the bar outright on 66 of 568 rasters — fixtures 2, open 64, private 0 (count only). 41 of those 568 rasters also have no passing candidate anywhere on either list (the line above); the remainder pass under a setting the default build doesn't choose.
 
 Encode time per 512px job (sum of its 26 candidate encodes): median 2458 ms, p95 6352 ms, over 142 jobs.
 
@@ -95,4 +99,4 @@ node bench/corpus/fetch.mjs
 node bench/search.mjs --private DIR --write
 ```
 
-`--private` falls back to `FAVSEED_PRIVATE_CORPUS`; omit it (or pass `--no-open`) for a fixtures-only run. Raw per-candidate results are in the gitignored `bench/out/search/results.json`; this file is the committed summary.
+`--private` falls back to `FAVSEED_PRIVATE_CORPUS`. Omitting `--private` does **not** mean fixtures-only: the open corpus still runs by default, and `FAVSEED_PRIVATE_CORPUS` (if set in the environment) is still picked up with no flag at all. A fixtures-only run needs `--no-open` *and* no private corpus available either way (no `--private`, and `FAVSEED_PRIVATE_CORPUS` unset). Raw per-candidate results are in the gitignored `bench/out/search/results.json`; this file is the committed summary. `node bench/search.mjs --summarise --write` rewrites both of those from the stored candidates alone — no corpus, no engine, no re-encoding — for when only the winner rule changes.
