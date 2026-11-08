@@ -1,4 +1,4 @@
-import type { ImageOptions, Placement, RgbaImage } from '../lib/types.mjs';
+import type { Effort, ImageOptions, Placement, RgbaImage } from '../lib/types.mjs';
 import type { SvgStage } from '../lib/core.mjs';
 export type { Effort, ImageOptions, Placement, RgbaImage, SvgVariables } from '../lib/types.mjs';
 export type { SvgOptions, SvgResult, SafeZonePlacement } from '../lib/core.mjs';
@@ -78,12 +78,38 @@ export function engineVersions(): { '@napi-rs/image': string; zopfli: string; sv
 /** One synchronous SVG pass; does not run the full build's measured accuracy selection. */
 export const optimiseSvg: SvgStage['optimiseSvg'];
 
+/** One quality/colour setting a raster was (or could be) encoded at. */
+export type RasterSetting = RasterQuality['setting'];
+
+/** A search's outcome: the winning encode, its setting and its accuracy-bar measurement. */
+export interface SearchResult {
+  png: Uint8Array;
+  setting: RasterSetting;
+  pct: number | null;
+  edge: number | null;
+  pass: boolean | null;
+  /** How many distinct settings the search actually encoded. */
+  probes: number;
+}
+
 /** The lazily loaded Node engine. Inputs are square SVGs with a valid viewBox or PNG bytes. */
 export interface RasterEngine {
   render(svgText: string, px: number, background?: string | null): Promise<Uint8Array>;
-  renderRgba(svgText: string, px: number): Promise<RgbaImage & { rgba: Uint8Array }>;
+  renderRgba(svgText: string, px: number, background?: string | null): Promise<RgbaImage & { rgba: Uint8Array }>;
   probe(background: string): Promise<number[]>;
   encode(png: Uint8Array, options: { colors?: number; quality?: number }): Promise<Uint8Array>;
+  /** Decodes any PNG this engine produced to its raw pixels. */
+  decode(png: Uint8Array): Promise<RgbaImage>;
+  /**
+   * The smallest-passing encode of `raw`, gated against `reference` (required unless `effort`
+   * is `'fast'` or `pinned` is given). `pinned` skips the search: one encode of exactly that
+   * setting.
+   */
+  search(
+    raw: Uint8Array,
+    reference: RgbaImage | null,
+    options: { effort: Effort; pinned?: RasterSetting | null },
+  ): Promise<SearchResult>;
   finish(png: Uint8Array, options: { iterations: number }): Promise<Uint8Array>;
 }
 
