@@ -23,7 +23,7 @@ const marks = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles'
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 for (const mark of marks) {
   const source = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-  await buildSet(source, normaliseOptions({}), {
+  await buildSet(source, normaliseOptions({ effort: 'fast' }), {
     optimiseSvg,
     engine: {
       ...engine,

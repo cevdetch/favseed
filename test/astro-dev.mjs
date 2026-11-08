@@ -106,14 +106,14 @@ const project = async (t, options = {}, root = mkdtempSync(join(tmpdir(), 'favse
 };
 
 describe('Astro development assets', () => {
-  it('serves every configured size in fast mode on first request, without creating public assets', async (t) => {
+  it("serves every configured size at effort 'fast' on first request, without creating public assets", async (t) => {
     const p = await project(t, { manifest: true });
     p.dev();
     assert.equal(existsSync(p.cache), false, 'the dev server built before any request');
     const expected = await buildFiles({
       input: join(p.root, 'logo.svg'),
       sizes: [48],
-      mode: 'fast',
+      effort: 'fast',
       base: '/blog/',
       manifest: true,
     });
@@ -139,7 +139,7 @@ describe('Astro development assets', () => {
     const expected = await buildFiles({
       input: join(p.root, 'logo.svg'),
       sizes: [48],
-      mode: 'fast',
+      effort: 'fast',
       manifest: true,
       base: '/blog/',
     });

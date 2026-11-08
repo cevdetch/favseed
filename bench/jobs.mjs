@@ -47,7 +47,7 @@ export const captureJobs = async (path, { name = basename(path) } = {}) => {
   };
   let set;
   try {
-    const options = { ...normaliseOptions({ input: path, manifest: false }), effort: 'fast' };
+    const options = normaliseOptions({ input: path, manifest: false, effort: 'fast' });
     set = await buildSet(readFileSync(path, 'utf8'), options, { engine: wrapped, optimiseSvg, name });
   } catch (error) {
     // buildSet's own errors already say `name` (it was passed the override above), but

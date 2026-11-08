@@ -62,8 +62,12 @@ for (const mark of marks) {
     mark,
     await oldBuild(source, oldOptions({ manifest: true }), { engine: oldEngine, optimiseSvg: oldSvg }),
   );
-  await buildSet(source, normaliseOptions({ manifest: true }), { engine, optimiseSvg, name: mark + '.svg' });
-  await buildSet(source, normaliseOptions({ manifest: true }), {
+  await buildSet(source, normaliseOptions({ manifest: true, effort: 'fast' }), {
+    engine,
+    optimiseSvg,
+    name: mark + '.svg',
+  });
+  await buildSet(source, normaliseOptions({ manifest: true, effort: 'fast' }), {
     optimiseSvg,
     engine: {
       ...engine,
@@ -87,7 +91,7 @@ for (let rep = 0; rep < 3; rep++)
     for (const quality of order) {
       const start = performance.now(),
         source = readFileSync(new URL('../test/fixtures/' + mark + '.svg', import.meta.url), 'utf8');
-      const result = await buildSet(source, normaliseOptions({ quality, manifest: true }), {
+      const result = await buildSet(source, normaliseOptions({ quality, manifest: true, effort: 'fast' }), {
         engine,
         optimiseSvg,
         name: mark + '.svg',

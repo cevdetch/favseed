@@ -194,7 +194,7 @@ describe('lazy build dependencies', () => {
       guard(true) +
         `
       const {default:favseed} = await import(${JSON.stringify(ASTRO)});
-      for (const options of [{imput:'logo.svg'}, {sizes:[33]}, {quality:0}, {dev:'fast'}, {mode:'slow'}]) {
+      for (const options of [{imput:'logo.svg'}, {sizes:[33]}, {quality:0}, {dev:'fast'}, {mode:'fast'}, {zopfli:true}, {effort:'slow'}]) {
         assert.throws(() => favseed(options), /favseed:/);
       }
       const root = new URL('../', ${JSON.stringify(ASTRO)});

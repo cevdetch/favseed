@@ -13,6 +13,7 @@ import {
   nestForMask,
   placeInSafeZone,
   type BuildOptions,
+  type Effort,
   type Placement,
 } from 'favseed';
 import * as core from 'favseed/core';
@@ -89,11 +90,15 @@ const defaults: number[] = [
   core.APPLE_SIZE,
   core.DEFAULT_QUALITY,
   core.DEFAULT_COLORS,
-  core.ZOPFLI_ITERATIONS,
-  core.FAST_ZOPFLI_ITERATIONS,
+  core.EFFORT_ITERATIONS.fast,
+  core.EFFORT_ITERATIONS.default,
+  core.EFFORT_ITERATIONS.max,
   core.MASK_SAFE_RADIUS,
   core.SNAP_WINDOW,
 ];
+const effort: Effort = core.DEFAULT_EFFORT;
+// @ts-expect-error The table has the three efforts only.
+void core.EFFORT_ITERATIONS.release;
 const sizes: number[] = core.DEFAULT_SIZES;
 const bg: string = core.DEFAULT_BG;
 const squared = core.squareIconSvg(source);
@@ -115,6 +120,7 @@ const syncNames: string[] = await core.mapImages([48], (size) => size, String);
 void mapped[0].missing;
 // @ts-expect-error Canvas sizing must produce a number.
 core.mapImages([48], String, String);
+await core.mapImages([48], (size) => size, String, { serial: true, extraBytes: (size) => size * size * 42 });
 // @ts-expect-error Manifest sizes are numeric.
 core.manifestIcons({ sizes: ['48'] });
 
@@ -140,6 +146,7 @@ export {
   rawQuality,
   defaults,
   bg,
+  effort,
   normalized,
   warning,
   hasIcon,

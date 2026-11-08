@@ -24,13 +24,13 @@ const fails = (fn, re) => assert.throws(fn, (e) => e instanceof FavseedError && 
 describe('normaliseOptions', () => {
   it('fills the defaults', () => {
     const o = normaliseOptions({});
-    assert.equal(o.colors, 256);
-    assert.equal(o.quality, 80);
+    assert.equal(o.effort, 'default');
+    assert.equal(o.iterations, 15);
+    assert.equal(o.pinned, null);
     assert.deepEqual(o.sizes, [192, 512]);
     assert.equal(o.bg, '#000000');
     assert.equal(o.padding, 'auto');
     assert.equal(o.base, '/');
-    assert.equal(o.iterations, 0);
     assert.equal(o.out, '.');
   });
 
@@ -38,27 +38,44 @@ describe('normaliseOptions', () => {
     fails(() => normaliseOptions({ colors: '0x10' }), /^--colors must be an integer 2-256, got '0x10'$/);
     fails(() => normaliseOptions({ sizes: '33' }), /^--sizes takes even pixel sizes, got '33'$/);
     fails(() => normaliseOptions({ padding: 50 }), /^--padding must be 'auto' or a percentage 0-45$/);
-    fails(() => normaliseOptions({ mode: 'slow' }), /^mode must be 'release' or 'fast', got 'slow'$/);
   });
 
-  it('requires an explicit opt-in before either mode runs Zopfli', () => {
-    assert.equal(normaliseOptions({ mode: 'fast' }).iterations, 0);
-    assert.equal(normaliseOptions({ zopfli: true }).iterations, 120);
-    assert.equal(normaliseOptions({ mode: 'fast', zopfli: true }).iterations, 15);
-    assert.equal(normaliseOptions({ zopfli: false }).iterations, 0);
-    for (const zopfli of ['yes', 1, null]) fails(() => normaliseOptions({ zopfli }), /^zopfli must be true or false/);
+  it('maps each effort to its Zopfli iterations', () => {
+    assert.equal(normaliseOptions({ effort: 'fast' }).iterations, 0);
+    assert.equal(normaliseOptions({ effort: 'default' }).iterations, 15);
+    assert.equal(normaliseOptions({ effort: 'max' }).iterations, 120);
+    assert.equal(normaliseOptions({ effort: 'max' }).effort, 'max');
+    fails(() => normaliseOptions({ effort: 'slow' }), /^effort must be 'fast', 'default' or 'max', got 'slow'$/);
+    for (const effort of [true, 1, ['fast'], 'Fast', 'toString']) {
+      fails(() => normaliseOptions({ effort }), /^effort must be 'fast', 'default' or 'max', got /);
+    }
+  });
+
+  it('pins exactly what was given, and nothing when neither control was', () => {
+    assert.deepEqual(normaliseOptions({ colors: 16 }).pinned, { quality: 100, colors: 16 });
+    assert.deepEqual(normaliseOptions({ colors: '16' }).pinned, { quality: 100, colors: 16 });
+    assert.deepEqual(normaliseOptions({ quality: 70 }).pinned, { quality: 70, colors: 256 });
+    // An explicit quality 80 is a pin too: one encode at 80, no search.
+    assert.deepEqual(normaliseOptions({ quality: 80 }).pinned, { quality: 80, colors: 256 });
+    assert.deepEqual(normaliseOptions({ quality: 100 }).pinned, { quality: 100, colors: 256 });
+    assert.deepEqual(normaliseOptions({ quality: 100, colors: 32 }).pinned, { quality: 100, colors: 32 });
+    assert.equal(normaliseOptions({ quality: undefined, colors: undefined }).pinned, null);
+    // A pin skips the search, not the effort's Zopfli pass.
+    assert.equal(normaliseOptions({ colors: 16, effort: 'max' }).iterations, 120);
   });
 
   it('validates PNG quality and refuses a palette that would override it', () => {
-    for (const quality of [1, 60, 80, 100, '80']) assert.equal(normaliseOptions({ quality }).quality, Number(quality));
+    for (const quality of [1, 60, 80, 100, '80']) {
+      assert.equal(normaliseOptions({ quality }).pinned.quality, Number(quality));
+    }
     for (const quality of [0, 101, 1.5, true, null, '', '0x50', '80px', [80], 80n, new Number(80), Symbol(80)]) {
       fails(() => normaliseOptions({ quality }), /^--quality must be an integer 1-100/);
     }
+    for (const colors of [1, 257, '0x10', null, true]) {
+      fails(() => normaliseOptions({ colors }), /^--colors must be an integer 2-256/);
+    }
     fails(() => normaliseOptions({ quality: 80, colors: 256 }), /quality.*colors/);
     fails(() => normaliseOptions({ quality: 80, colors: 32 }), /quality.*colors/);
-    assert.equal(normaliseOptions({ quality: 100, colors: 32 }).colors, 32);
-    assert.equal(normaliseOptions({ colors: 32 }).quality, 100);
-    assert.equal(normaliseOptions({ colors: 256 }).quality, 100);
   });
 
   it('turns bg none and bg null into a transparent set', () => {
@@ -103,11 +120,19 @@ describe('buildIdentity', () => {
   it('is equal for spellings of the same build', () => {
     assert.equal(id({ vars: { brand: '#fff' } }), id({ vars: new Map([['--brand', '#fff']]) }));
     assert.equal(id({}), id({ bg: '#000000', sizes: [192, 512], padding: 'auto' }));
+    assert.equal(id({}), id({ effort: 'default' }));
+    assert.equal(id({ colors: 32 }), id({ quality: 100, colors: 32 }));
+    assert.equal(id({ quality: '70' }), id({ quality: 70 }));
   });
   it('differs when the bytes would', () => {
     assert.notEqual(id({}), id({ bg: 'none' }));
     assert.notEqual(id({ sizes: [192, 512] }), id({ sizes: [512, 192] })); // manifest order
-    assert.notEqual(id({}), id({ zopfli: true }));
+    assert.notEqual(id({}), id({ effort: 'fast' }));
+    assert.notEqual(id({}), id({ effort: 'max' }));
+    assert.notEqual(id({ effort: 'fast' }), id({ effort: 'max' }));
+    assert.notEqual(id({}), id({ quality: 80 })); // a pin is one encode; the default searches
+    assert.notEqual(id({ colors: 16 }), id({ colors: 32 }));
+    assert.notEqual(id({ quality: 70 }), id({ colors: 16 }));
     assert.notEqual(id({ manifest: true }), id({ manifest: { name: 'x' } }));
     assert.notEqual(id({}), id({ base: '/blog/', manifest: true }));
   });
@@ -159,8 +184,7 @@ describe('checkConfig', () => {
       'vars',
       'animation',
       'manifest',
-      'mode',
-      'zopfli',
+      'effort',
       'base',
     ]);
   });
@@ -177,8 +201,17 @@ describe('checkConfig', () => {
   it('names every unknown key and the keys it accepts', () => {
     fails(
       () => checkConfig({ colours: 8, quiet: true }, 'favseed.config.mjs'),
-      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, mode, zopfli, base$/,
+      /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, effort, base$/,
     );
+  });
+
+  it('refuses zopfli and mode, naming effort among the options', () => {
+    for (const key of ['zopfli', 'mode']) {
+      fails(
+        () => checkConfig({ [key]: true }, 'favseed.config.mjs'),
+        new RegExp(`^favseed\\.config\\.mjs: unknown option '${key}'; the options are .*\\beffort\\b`),
+      );
+    }
   });
 
   it('defineConfig returns what it was given', () => {
@@ -213,13 +246,13 @@ const run = async (cwd, args = []) => {
   }
 };
 
-const FAST = "input: 'logo.svg', out: 'public', sizes: [32], mode: 'fast', bg: '#000000'";
+const FAST = "input: 'logo.svg', out: 'public', sizes: [32], effort: 'fast', bg: '#000000'";
 const read = (dir, f) => readFileSync(join(dir, 'public', f), 'utf8');
 const noStack = (r) => assert.ok(!/at .*\.m?[jt]s:\d+/.test(r.stderr), `a stack trace leaked:\n${r.stderr}`);
 
 describe('CLI argument boundaries', () => {
   it('rejects a missing option value before loading config or writing output', async () => {
-    for (const flag of ['-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var']) {
+    for (const flag of ['-o', '--out', '--colors', '--quality', '--effort', '--sizes', '--bg', '--padding', '--var']) {
       const dir = project({ 'favseed.config.mjs': "throw new Error('config must not load');" });
       const r = await run(dir, [flag, '--manifest', 'logo.svg']);
       assert.equal(r.code, 1, flag);
@@ -242,8 +275,7 @@ describe('CLI argument boundaries', () => {
       '--padding',
       '--var',
       '--no-animation',
-      '--zopfli',
-      '--no-zopfli',
+      '--effort',
       '--manifest',
       '--html',
       '-q',
@@ -365,14 +397,14 @@ describe('the CLI with a config file', () => {
     noStack(bad);
   });
 
-  it('builds from the config alone and names the mode', async () => {
+  it('builds from the config alone and names the effort', async () => {
     const dir = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
     const r = await run(dir);
     assert.equal(r.code, 0, r.stderr);
     for (const f of ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
       assert.ok(existsSync(join(dir, 'public', f)), f);
     }
-    assert.match(r.stdout, /^standard build \(Zopfli disabled\)$/m);
+    assert.match(r.stdout, /^effort fast: one encode at quality 80, no search; no Zopfli$/m);
     assert.ok(!/--bg not given/.test(r.stderr), 'the config gave bg, so no warning');
   });
 
@@ -418,7 +450,7 @@ describe('the CLI with a config file', () => {
 
   it('loads a .ts config through type stripping', async () => {
     const dir = project({
-      'favseed.config.ts': `const sizes: number[] = [32];\nexport default { input: 'logo.svg', out: 'public', sizes, mode: 'fast' as const, bg: '#000000' };`,
+      'favseed.config.ts': `const sizes: number[] = [32];\nexport default { input: 'logo.svg', out: 'public', sizes, effort: 'fast' as const, bg: '#000000' };`,
     });
     const r = await run(dir);
     assert.equal(r.code, 0, r.stderr);
@@ -485,21 +517,45 @@ describe('the CLI with a config file', () => {
     }
   });
 
-  it('skips Zopfli in the summary by default', async () => {
+  it('names the default effort in the summary, and the setting each raster kept', async () => {
     const dir = project({});
     const r = await run(dir, ['--sizes', '32', '--bg', '#000', '-o', 'public', 'logo.svg']);
     assert.equal(r.code, 0, r.stderr);
-    assert.match(r.stdout, /^standard build \(Zopfli disabled\)$/m);
+    assert.match(
+      r.stdout,
+      /^effort default: the smallest encode that passes the accuracy bar; Zopfli at 15 iterations$/m,
+    );
+    assert.match(r.stdout, /^favicon\.ico +\d+ B {2}(quality \d+|colors \d+)$/m);
+    assert.match(r.stdout, /^icon-32\.png +\d+ B {2}mark at .*; (quality \d+|colors \d+)$/m);
   });
 
-  it('lets --zopfli opt in and --no-zopfli override an enabled config', async () => {
-    const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, zopfli: true };` });
-    const enabled = await run(dir, ['--zopfli']);
-    assert.equal(enabled.code, 0, enabled.stderr);
-    assert.match(enabled.stdout, /fast build \(zopfli at 15 iterations/);
-    const disabled = await run(dir, ['--no-zopfli']);
-    assert.equal(disabled.code, 0, disabled.stderr);
-    assert.match(disabled.stdout, /standard build \(Zopfli disabled\)/);
+  it('lets --effort override a config, and names a pinned setting once', async () => {
+    const dir = project({ 'favseed.config.mjs': `export default { ${FAST}, colors: 16 };` });
+    const fast = await run(dir);
+    assert.equal(fast.code, 0, fast.stderr);
+    assert.match(fast.stdout, /^effort fast: pinned at colors 16, no search; no Zopfli$/m);
+    assert.match(fast.stdout, /^favicon\.ico +\d+ B$/m);
+    const max = await run(dir, ['--effort', 'max']);
+    assert.equal(max.code, 0, max.stderr);
+    assert.match(max.stdout, /^effort max: pinned at colors 16, no search; Zopfli at 120 iterations$/m);
+    const unpinned = project({ 'favseed.config.mjs': `export default { ${FAST} };` });
+    const r = await run(unpinned);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /^effort fast: one encode at quality 80, no search; no Zopfli$/m);
+  });
+
+  it('refuses an unknown effort and the removed Zopfli flags', async () => {
+    const dir = project({});
+    const bad = await run(dir, ['--effort', 'slow', '-o', 'public', 'logo.svg']);
+    assert.equal(bad.code, 1);
+    assert.match(bad.stderr, /^favseed: effort must be 'fast', 'default' or 'max', got 'slow'$/m);
+    assert.ok(!existsSync(join(dir, 'public')));
+    noStack(bad);
+    for (const flag of ['--zopfli', '--no-zopfli']) {
+      const r = await run(dir, [flag, 'logo.svg']);
+      assert.equal(r.code, 1, flag);
+      assert.match(r.stderr, new RegExp(`^favseed: unknown option: ${flag}$`, 'm'));
+    }
   });
 });
 
@@ -530,7 +586,7 @@ describe('defineConfig from favseed', () => {
     const spec = JSON.stringify(CLI.replace(/\\/g, '/'));
     writeFileSync(
       join(dir, 'good.mts'),
-      `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, mode: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`,
+      `import { defineConfig } from ${spec};\nexport default defineConfig({ input: 'logo.svg', sizes: [192, 512], bg: null, effort: 'fast', base: '/blog/', manifest: { name: 'x' } });\n`,
     );
     writeFileSync(
       join(dir, 'bad.mts'),
@@ -557,5 +613,15 @@ describe('defineConfig from favseed', () => {
     const bad = check('bad.mts');
     assert.notEqual(bad.status, 0, 'a misspelt key type-checked');
     assert.match(bad.stdout, /colours/);
+    for (const [name, body, word] of [
+      ['effort.mts', "{ effort: 'slow' }", /slow/],
+      ['zopfli.mts', '{ zopfli: true }', /zopfli/],
+      ['mode.mts', "{ mode: 'fast' }", /mode/],
+    ]) {
+      writeFileSync(join(dir, name), `import { defineConfig } from ${spec};\nexport default defineConfig(${body});\n`);
+      const r = check(name);
+      assert.notEqual(r.status, 0, `${body} type-checked`);
+      assert.match(r.stdout, word);
+    }
   });
 });

@@ -15,10 +15,11 @@ import { framingCases } from './lib/framing.mjs';
 
 const read = (n) => readFileSync(new URL(`./fixtures/${n}.svg`, import.meta.url), 'utf8');
 const engine = await loadEngine();
-const opts = ({ iterations = 0, effort, ...extra } = {}) => ({
-  ...normaliseOptions({ sizes: [32], ...extra }),
+// Effort 'fast' and no Zopfli unless a test asks: most tests here are about the set, not the
+// search, and zero iterations leave finish() returning the search's own bytes.
+const opts = ({ iterations = 0, effort = 'fast', ...extra } = {}) => ({
+  ...normaliseOptions({ sizes: [32], effort, ...extra }),
   iterations,
-  ...(effort === undefined ? {} : { effort }),
 });
 const run = (name, extra) => buildSet(read(name), opts(extra), { engine, optimiseSvg, name: `${name}.svg` });
 const rendered = async (svg) => {
@@ -200,11 +201,19 @@ describe('buildSet', () => {
     );
   });
 
-  it('default quality 80 matches its explicit setting and quality 100 restores higher fidelity', async () => {
+  it("effort 'fast' encodes as a pinned quality 80 does, and quality 100 restores higher fidelity", async () => {
     const defaults = await run('gradient'),
       full = await run('gradient', { quality: 100 }),
       low = await run('gradient', { quality: 80 });
-    assert.deepEqual(low, defaults);
+    // The same bytes; only the pin is scored against the bar.
+    const { quality: scored, ...pinned } = low,
+      { quality: unscored, ...fast } = defaults;
+    assert.deepEqual(pinned, fast);
+    for (const [file, q] of Object.entries(scored)) {
+      assert.deepEqual(q.setting, unscored[file].setting, file);
+      assert.equal(unscored[file].pass, null, file);
+      assert.equal(typeof q.pass, 'boolean', file);
+    }
     assert.deepEqual(low.fit, full.fit);
     assert.deepEqual(
       low.files.find((f) => f.name === 'icon.svg'),
@@ -287,6 +296,35 @@ describe('buildSet', () => {
       assert.equal(peak > 1, concurrent);
       assert.equal(set.files.filter((f) => f.name.endsWith('.png')).length, sizes.length + 1);
     }
+  });
+
+  it("counts a gated job's reference memory against the batch budget", async () => {
+    const peakFor = async (extra) => {
+      let active = 0,
+        peak = 0;
+      const counted = {
+        ...engine,
+        render: async (...args) => {
+          peak = Math.max(peak, ++active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          return engine.render(...args);
+        },
+        finish: async (...args) => {
+          const out = await engine.finish(...args);
+          active--;
+          return out;
+        },
+      };
+      await buildSet(read('tiles'), opts({ sizes: [192, 512], padding: 20, ...extra }), {
+        engine: counted,
+        optimiseSvg,
+      });
+      return peak;
+    };
+    // Ungated, the four jobs' canvases fit one batch. Gated, the 512 px job's 42 B/px of
+    // reference (11 MB) leaves room for one sibling in each batch of the 16 MB budget.
+    assert.equal(await peakFor({}), 4);
+    assert.equal(await peakFor({ quality: 80 }), 2);
   });
 
   it('drains sibling raster jobs before reporting a failed batch', async () => {

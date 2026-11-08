@@ -75,7 +75,7 @@ export async function icoSizeSweep(out) {
       for (const arm of (rep + index) % 2 ? arms.toReversed() : arms) {
         const old = arm === 'before32',
           px = old ? 32 : 48;
-        const options = (old ? oldOptions : normaliseOptions)({ manifest: true });
+        const options = (old ? oldOptions : normaliseOptions)({ manifest: true, effort: 'fast' });
         const start = performance.now();
         const result = await (old ? oldBuild : buildSet)(sources.get(mark), options, {
           engine,

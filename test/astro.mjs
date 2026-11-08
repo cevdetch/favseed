@@ -171,7 +171,7 @@ const cliSet = async (p, fast = false) => {
     out = join(root, 'icons');
   await writeFile(
     join(root, 'favseed.config.mjs'),
-    `export default ${JSON.stringify({ base: '/blog/', mode: fast ? 'fast' : 'release' })};`,
+    `export default ${JSON.stringify({ base: '/blog/', effort: fast ? 'fast' : 'default' })};`,
   );
   await command(
     process.execPath,
@@ -239,6 +239,8 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
           ['base', 1],
           ['imput', 1],
           ['dev', 1],
+          ['zopfli', 1],
+          ['mode', 1],
         ]) {
           assert.equal(propertyErrors.filter((line) => line.includes(`'${property}'`)).length, count, error.stdout);
         }
@@ -249,7 +251,10 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
           error.stdout,
         );
         assert.match(error.stdout, /error TS2322:.*'string'.*'number'/);
-        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 12, error.stdout);
+        for (const effort of ['release', 'slow']) {
+          assert.match(error.stdout, new RegExp(`error TS2322:.*'"${effort}"'.*'Effort`), error.stdout);
+        }
+        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 16, error.stdout);
         return true;
       });
     });
@@ -505,7 +510,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     checkHead(await readFile(join(p.root, 'dist/manual/index.html'), 'utf8'));
   });
 
-  it('serves the configured set in fast mode with exact routes, HEAD and no public writes', async (t) => {
+  it("serves the configured set at effort 'fast' with exact routes, HEAD and no public writes", async (t) => {
     const p = await project(),
       before = await snapshot(p.pub);
     let server = await dev(t, p);

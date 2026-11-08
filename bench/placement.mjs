@@ -98,7 +98,7 @@ export async function placementSweep(out) {
             return engine.renderRgba(svg, px);
           },
         };
-        const options = (old ? oldOptions : normaliseOptions)({ manifest: true });
+        const options = (old ? oldOptions : normaliseOptions)({ manifest: true, effort: 'fast' });
         const start = performance.now();
         const result = await (old ? oldBuild : buildSet)(sources.get(mark), options, {
           engine: counted,

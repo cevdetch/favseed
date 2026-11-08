@@ -94,6 +94,7 @@ export async function precisionSweep(out) {
         const options = (old ? beforeOptions : normaliseOptions)({
           manifest: true,
           quality: arm === 'selective-q100' ? 100 : 80,
+          effort: 'fast',
         });
         const svg = (source, o) => {
           const output = (old ? beforeSvg : optimiseSvg)(source, o);

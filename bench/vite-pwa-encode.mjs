@@ -48,7 +48,7 @@ const engine = await loadEngine(),
   samples = [];
 for (const mark of ['tiles', 'general', 'heavy', 'gradient']) {
   const source = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-  await buildSet(source, normaliseOptions({ mode: 'release', zopfli: true }), {
+  await buildSet(source, normaliseOptions({ effort: 'fast' }), {
     optimiseSvg,
     engine: {
       ...engine,

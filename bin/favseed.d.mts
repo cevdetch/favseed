@@ -1,6 +1,6 @@
 import type { ImageOptions, Placement, RgbaImage } from '../lib/types.mjs';
 import type { SvgStage } from '../lib/core.mjs';
-export type { ImageOptions, Placement, RgbaImage, SvgVariables } from '../lib/types.mjs';
+export type { Effort, ImageOptions, Placement, RgbaImage, SvgVariables } from '../lib/types.mjs';
 export type { SvgOptions, SvgResult, SafeZonePlacement } from '../lib/core.mjs';
 export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone } from '../lib/core.mjs';
 

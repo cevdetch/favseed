@@ -1,11 +1,18 @@
 /** Variable input for builds and normaliseVars; low-level SVG Maps must already be normalized. */
 export type SvgVariables = Record<string, string | number> | Map<string, string | number>;
 
+/**
+ * How hard a build works on each raster. `'fast'`: one encode at quality 80, no search, no
+ * Zopfli. `'default'`: a binary search for the smallest encode that passes the accuracy bar,
+ * then Zopfli at 15 iterations. `'max'`: every candidate, then Zopfli at 120 iterations.
+ */
+export type Effort = 'fast' | 'default' | 'max';
+
 /** Image options shared by Node, Vite and Astro. Ranges are checked at runtime. */
 export interface ImageOptions {
-  /** Explicit palette ceiling, 2-256. Selects quality 100 when quality is omitted. */
+  /** Pins a palette ceiling, 2-256, at quality 100: one encode, no search. Default: chosen per raster by the search. */
   colors?: number;
-  /** PNG quality target, integer 1-100. Default 80, or 100 when colors is supplied alone. Below 100 cannot combine with colors; not an error percentage or a file-size guarantee. */
+  /** Pins a PNG quality, integer 1-100, at the full palette: one encode, no search. Below 100 cannot combine with colors. Default: chosen per raster by the search. */
   quality?: number;
   /** Padded "any maskable" PNG sizes, even pixel counts. Default: `[192, 512]`. */
   sizes?: number[];
@@ -19,10 +26,8 @@ export interface ImageOptions {
   animation?: boolean;
   /** `true` writes an icons-only site.webmanifest; an object's members are merged in ahead of the icons. */
   manifest?: boolean | Record<string, unknown>;
-  /** Zopfli effort when enabled: `'release'` uses 120 iterations; `'fast'` uses 15. */
-  mode?: 'release' | 'fast';
-  /** Extra lossless PNG compression. Slower; disabled by default. */
-  zopfli?: boolean;
+  /** How hard to work on each raster. Default: `'default'`. Dev builds in Vite and Astro use `'fast'`. */
+  effort?: Effort;
 }
 
 /** Decoded pixels in row-major RGBA order, four bytes per pixel. */

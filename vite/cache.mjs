@@ -23,8 +23,8 @@ export const favseedVersion = () =>
 export const cacheKey = ({ version, source, options, engine }) =>
   sha256(
     JSON.stringify({
-      // 3: options are keyed through buildIdentity; older slots simply miss.
-      schema: 3,
+      // 4: buildIdentity keys the effort and the pinned setting; older slots simply miss.
+      schema: 4,
       version,
       source: sha256(source),
       engine,

@@ -21,6 +21,9 @@ const selectArms = (available) => {
   assert.ok(!selectedArms || selectedArms.every((arm) => available.includes(arm)), 'Unknown arm');
   return selectedArms ?? available;
 };
+// Each favseed arm is one effort level: the default build, 'fast', and 'max' for the release
+// arm and the 5- and 0-iteration arms, which then override max's Zopfli iterations.
+const armEffort = (arm) => (arm === 'favseed-default' ? 'default' : arm === 'favseed-fast' ? 'fast' : 'max');
 const marks = (process.argv[5] ?? (section === 'generator' ? 'tiles,general,heavy,gradient' : 'general')).split(',');
 assert.ok(marks.every((m) => ['tiles', 'general', 'heavy', 'gradient'].includes(m)));
 mkdirSync(out, { recursive: true });
@@ -171,11 +174,7 @@ if (section === 'generator') {
             JSON.stringify(generateManifestIconsEntry('object', plan)),
           );
         } else {
-          const options = normaliseOptions({
-            mode: arm === 'favseed-fast' ? 'fast' : 'release',
-            zopfli: arm !== 'favseed-default',
-            manifest: true,
-          });
+          const options = normaliseOptions({ effort: armEffort(arm), manifest: true });
           if (arm === 'favseed-5' || arm === 'favseed-0') options.iterations = Number(arm.slice(8));
           const result = await buildSet(source.toString(), options, { engine, optimiseSvg });
           for (const file of result.files) writeFileSync(join(directory, file.name), file.bytes);
@@ -239,8 +238,7 @@ if (section === 'generator') {
             favseed({
               input: 'src/logo.svg',
               bg: '#000000',
-              mode: arm === 'favseed-fast' ? 'fast' : 'release',
-              zopfli: arm !== 'favseed-default',
+              effort: armEffort(arm),
             }),
           );
         plugins.push(
