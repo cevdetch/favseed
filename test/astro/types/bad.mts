@@ -11,5 +11,6 @@ favseedAstro({ base: '/other/' });
 favseedAstro({ imput: 'logo.svg' });
 favseedAstro({ head: 'maybe' });
 favseedAstro({ quality: 'small' });
+favseedAstro({ dev: 'full' });
 favseed({ out: 'public' });
 favseed({ head: 'maybe' });

@@ -1,14 +1,14 @@
 // favseed/vite: the favicon set as a Vite plugin. In dev it is built on the first request for
 // an icon and served from memory; in a build it is emitted at the output root. Nothing is
 // written to public/, and a file there with a name favseed emits is never shadowed.
-import { existsSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 
 import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
-import { normaliseOptions, resolveOptions } from '../lib/config.mjs';
+import { configurationError, normaliseOptions, resolveOptions } from '../lib/config.mjs';
 import { declaresIcon, DEFAULT_BG, manifestIcons, manifestPurpose } from '../lib/core.mjs';
-import { cacheKey, favseedVersion, readSlot, writeSlot } from './cache.mjs';
+import { cacheKey, favseedVersion, pruneCache, readSlot, writeSlot } from './cache.mjs';
 
 /**
  * The icon entries favseed's manifest would list, for vite-plugin-pwa's `manifest.icons`.
@@ -24,7 +24,9 @@ const VIRTUAL = 'virtual:favseed';
 const RESOLVED = '\0virtual:favseed';
 const PWA = 'vite-plugin-pwa';
 const TYPES = { ico: 'image/x-icon', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json' };
-const message = (e) => (e instanceof FavseedError ? `favseed: ${e.message}` : String(e?.message ?? e));
+// Options are an object here, so an error names `vars`, not the CLI's `--var`.
+const message = (e) =>
+  e instanceof FavseedError ? `favseed: ${configurationError(e).message}` : String(e?.message ?? e);
 
 /**
  * Only a real build's client environment emits. Astro also runs a `client` environment in
@@ -113,19 +115,56 @@ export default function favseed(options = {}) {
         throw new FavseedError(`no such file: ${merged.input}`);
       });
       const key = cacheKey({ version: favseedVersion(), source, options: merged, engine: engineVersions() });
+      // Pruned on a hit too: it marks the slot as used, so the eight kept are the most recently
+      // used rather than the most recently built.
+      const prune = () =>
+        pruneCache(cacheDir, key).catch((e) => warnOnce(`favseed: could not prune the icon cache: ${e.message}`));
       const hit = await readSlot(cacheDir, key);
-      if (hit) return hit;
+      if (hit) {
+        await prune();
+        return hit;
+      }
       const fresh = await buildFiles({ ...merged, onWarn: (m) => warnOnce(`favseed: ${m}`) });
       await writeSlot(cacheDir, key, fresh.files);
+      await prune();
       return fresh.files;
     })());
 
-  /** True when public/ holds a different file under a name favseed emits. */
+  /**
+   * True when public/ holds anything but favseed's bytes under a name favseed emits: a
+   * different file, a directory, or a broken symlink, which existsSync reports as absent.
+   */
   const clash = (f) => {
     if (!publicDir) return false;
     const p = join(publicDir, f.name);
-    return existsSync(p) && !Buffer.from(f.bytes).equals(readFileSync(p));
+    try {
+      lstatSync(p);
+    } catch {
+      return false;
+    }
+    try {
+      return !Buffer.from(f.bytes).equals(readFileSync(p));
+    } catch {
+      return true;
+    }
   };
+
+  // Vite's configResolved realpaths `root` but takes an already-absolute `publicDir` (e.g.
+  // Astro's) as given, so a symlinked project directory (macOS puts the temp dir behind
+  // /var -> /private/var) makes the two diverge; resolve both the same way before comparing.
+  const toReal = (p) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+
+  /** Where the clashing file is, from the root: public/ for Vite, often static/ for Astro. */
+  const publicPath = (f) =>
+    relative(toReal(root), join(toReal(publicDir), f.name))
+      .split(sep)
+      .join('/');
 
   return {
     name: 'favseed',
@@ -140,17 +179,20 @@ export default function favseed(options = {}) {
     },
 
     configureServer(server) {
-      const base = server.config.base;
-
       // Registered here, not returned: as a post hook, public/ and a framework's router
       // answer first.
       server.middlewares.use(async (req, res, next) => {
-        const path = (req.url ?? '').split('?')[0];
-        if (!path.startsWith(base)) return next();
-        const name = path.slice(base.length);
-        let files;
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        // Astro strips its base from req.url before later middleware; Connect keeps the original.
+        const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
+        let name, files;
         try {
-          if (!(await settingsFor('dev')).names.includes(name)) return next();
+          // favseed's base, not Vite's: the icons are served where the links point. Astro
+          // leaves Vite's base at '/' in dev and handles its own base in a middleware.
+          const { names, o } = await settingsFor('dev');
+          if (!path.startsWith(o.base)) return next();
+          name = path.slice(o.base.length);
+          if (!names.includes(name)) return next();
           files = await setFor('dev');
         } catch (e) {
           sets.dev = null; // try again on the next request or change
@@ -160,12 +202,13 @@ export default function favseed(options = {}) {
         const f = files.find((x) => x.name === name);
         if (!f) return next();
         if (clash(f)) {
-          warnOnce(`favseed: public/${f.name} exists and is not the file favseed builds; serving yours`);
+          warnOnce(`favseed: ${publicPath(f)} exists and is not the file favseed builds; serving yours`);
           return next();
         }
         res.setHeader('Content-Type', TYPES[name.split('.').pop()]);
+        res.setHeader('Content-Length', f.bytes.byteLength);
         res.setHeader('Cache-Control', 'no-cache');
-        res.end(Buffer.from(f.bytes));
+        res.end(req.method === 'HEAD' ? undefined : Buffer.from(f.bytes));
       });
 
       // The mark and the config file can sit outside the module graph, and outside the root.
@@ -211,7 +254,7 @@ export default function favseed(options = {}) {
       for (const f of built) {
         if (clash(f)) {
           this.error(
-            `favseed: public/${f.name} exists and is not the file favseed builds. ` +
+            `favseed: ${publicPath(f)} exists and is not the file favseed builds. ` +
               "Delete it to use favseed's, or remove the favseed plugin to keep yours.",
           );
         }

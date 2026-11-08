@@ -42,8 +42,8 @@
 //     each documented where it sits.
 //
 // This file is both the CLI and the library: `build()` throws, `cli()` exits. Nothing
-// below the build/cli split writes to stdout, so the Astro integration can call build()
-// without a CLI's opinions about output.
+// below the build/cli split writes to stdout, so the Vite plugin (and the Astro integration
+// through it) can call buildFiles() without a CLI's opinions about output.
 //
 
 import {

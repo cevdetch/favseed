@@ -130,7 +130,6 @@ const project = async (settings = {}) => {
     root,
     pub,
     cache,
-    stamp: join(cache, 'written.json'),
     build: async () => {
       const previous = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
@@ -182,7 +181,7 @@ const cliSet = async (p, fast = false) => {
       '--out',
       out,
       '--sizes',
-      fast ? '256' : '48',
+      '48',
       '--manifest',
       '--bg',
       '#000000',
@@ -239,6 +238,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
           ['out', 3],
           ['base', 1],
           ['imput', 1],
+          ['dev', 1],
         ]) {
           assert.equal(propertyErrors.filter((line) => line.includes(`'${property}'`)).length, count, error.stdout);
         }
@@ -249,7 +249,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
           error.stdout,
         );
         assert.match(error.stdout, /error TS2322:.*'string'.*'number'/);
-        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 11, error.stdout);
+        assert.equal((error.stdout.match(/: error TS\d+:/g) ?? []).length, 12, error.stdout);
         return true;
       });
     });
@@ -267,7 +267,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       import favseed, { build, defineConfig, type BuildResult } from 'favseed';
       const config = defineConfig({input:'logo.svg',sizes:[48]});
       const result: Promise<BuildResult> = build({ ...config, input: 'logo.svg' });
-      const integration = favseed({dev:'skip'});
+      const integration = favseed({sizes:[48]});
       export {result, integration};
     `,
     );
@@ -397,7 +397,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     assert.match(config, /integrations:\s*\[favseed\(\)\]/);
     await command(process.execPath, [cli, 'build'], root);
     const names = ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg'];
-    assert.deepEqual((await readdir(join(root, 'public'))).sort(), names);
+    await assert.rejects(readdir(join(root, 'public')), { code: 'ENOENT' });
     await command(
       process.execPath,
       [join(freshInstalled, 'bin/favseed.mjs'), 'src/logo.svg', '--out', 'cli-output', '--quiet'],
@@ -437,7 +437,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     await configure({ manifest: false });
     const withoutManifest = await build(true, false);
     assert.notEqual(withoutManifest, first, 'manifest link changes must render fresh HTML');
-    await assert.rejects(readFile(join(p.pub, 'site.webmanifest')), { code: 'ENOENT' });
+    await assert.rejects(readFile(join(p.root, 'dist/site.webmanifest')), { code: 'ENOENT' });
     assert.equal(await build(true, false), withoutManifest, 'new head must be reusable');
     await configure({ manifest: true });
     const withManifest = await build();
@@ -452,22 +452,21 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     await configure({ manifest: true, head: 'inject' });
     const automatic = await build();
     assert.notEqual(automatic, manual);
-    const oldSvg = await readFile(join(p.pub, 'icon.svg'));
+    const oldSvg = await readFile(join(p.root, 'dist/icon.svg'));
     await cp(join(repo, 'test/fixtures/second.svg'), join(p.root, 'src/logo.svg'));
     assert.equal(await build(), automatic, 'changed icon bytes with identical head URLs must retain cached HTML');
-    assert.notDeepEqual(await readFile(join(p.pub, 'icon.svg')), oldSvg);
+    assert.notDeepEqual(await readFile(join(p.root, 'dist/icon.svg')), oldSvg);
   });
 
   it('builds the packed CLI bytes, resolves both head paths and reuses/prunes cache through Astro', async () => {
     const p = await project();
     await p.build();
     const files = await cliSet(p);
-    assert.deepEqual((await readdir(p.pub)).sort(), [...generated, 'notes.txt'].sort());
+    assert.deepEqual(await readdir(p.pub), ['notes.txt']);
     for (const [name, bytes] of Object.entries(files)) {
-      assert.deepEqual(await readFile(join(p.pub, name)), bytes, name);
       assert.deepEqual(await readFile(join(p.root, 'dist', name)), bytes, `dist ${name}`);
     }
-    const manifest = await json(join(p.pub, 'site.webmanifest'));
+    const manifest = await json(join(p.root, 'dist/site.webmanifest'));
     assert.deepEqual(
       manifest.icons.map((icon) => icon.src),
       ['/blog/icon-48.png'],
@@ -481,7 +480,6 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       index = join(p.cache, current, 'index.json');
     await utimes(index, new Date(1000), new Date(1000));
     const mtime = (await stat(index)).mtimeMs;
-    const stamp = await readFile(p.stamp);
     for (let n = 0; n < 9; n++) {
       const slot = join(p.cache, String(n).padStart(64, '0'));
       await mkdir(slot);
@@ -497,7 +495,6 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     assert.equal((await stat(index)).mtimeMs, mtime, 'warm build rewrote its completed cache slot');
     assert.equal((await slots(p)).length, 8);
     assert.ok((await slots(p)).includes(current));
-    assert.deepEqual(await readFile(p.stamp), stamp);
     assert.equal(await readFile(join(p.pub, 'notes.txt'), 'utf8'), 'author file');
   });
 
@@ -508,95 +505,84 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     checkHead(await readFile(join(p.root, 'dist/manual/index.html'), 'utf8'));
   });
 
-  it('serves fast/full/skip dev modes with exact routes, HEAD and no public or stamp writes', async (t) => {
-    for (const mode of ['fast', 'full', 'skip']) {
-      const p = await project({ dev: mode }),
-        before = await snapshot(p.pub);
-      let server = await dev(t, p);
-      try {
-        assert.deepEqual(await snapshot(p.pub), before);
-        await assert.rejects(readFile(p.stamp), { code: 'ENOENT' });
-        if (mode === 'skip') {
-          assert.equal((await get(server.origin, '/blog/favicon.ico')).status, 404);
-          await assert.rejects(readdir(p.cache), { code: 'ENOENT' });
-          continue;
-        }
-        const files = await cliSet(p, mode === 'fast');
-        for (const [name, bytes] of Object.entries(files)) {
-          const response = await get(server.origin, '/blog/' + name + '?v=1');
-          assert.equal(response.status, 200, name);
-          assert.equal(response.headers.get('cache-control'), 'no-cache');
-          assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes, name);
-        }
-        const head = await get(server.origin, '/blog/favicon.ico', { method: 'HEAD' });
-        assert.equal(head.status, 200);
-        assert.equal(head.headers.get('content-type'), 'image/x-icon');
-        assert.equal(Number(head.headers.get('content-length')), files['favicon.ico'].length);
-        assert.equal((await head.arrayBuffer()).byteLength, 0);
-        for (const path of ['/favicon.ico', '/blogger/favicon.ico', '/blog/nested/favicon.ico']) {
-          assert.equal((await get(server.origin, path)).status, 404, path);
-        }
-        await server.stop();
-        server = await dev(t, p); // Disk-cache-backed restart.
-        assert.deepEqual(await snapshot(p.pub), before);
-        await assert.rejects(readFile(p.stamp), { code: 'ENOENT' });
-        const icon = await get(server.origin, '/blog/favicon.ico');
-        assert.deepEqual(Buffer.from(await icon.arrayBuffer()), files['favicon.ico']);
-        await rm(p.cache, { recursive: true }); // The active snapshot owns its bytes.
-        assert.equal((await get(server.origin, '/blog/favicon.ico')).status, 200);
-        await writeFile(join(p.pub, 'favicon.ico'), 'author replacement');
-        // Vite's public-file allowlist updates asynchronously after an add event.
-        const until = Date.now() + 15000;
-        let served;
-        do {
-          served = await (await get(server.origin, '/blog/favicon.ico')).text();
-          if (served === 'author replacement') break;
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        } while (Date.now() < until);
-        assert.equal(served, 'author replacement');
-        assert.equal(await readFile(join(p.pub, 'favicon.ico'), 'utf8'), 'author replacement');
-        await rm(join(p.pub, 'favicon.ico'));
-      } finally {
-        await server.stop();
-      }
+  it('serves the configured set in fast mode with exact routes, HEAD and no public writes', async (t) => {
+    const p = await project(),
+      before = await snapshot(p.pub);
+    let server = await dev(t, p);
+    try {
       assert.deepEqual(await snapshot(p.pub), before);
-      await assert.rejects(readFile(p.stamp), { code: 'ENOENT' });
+      const files = await cliSet(p, true);
+      for (const [name, bytes] of Object.entries(files)) {
+        const response = await get(server.origin, '/blog/' + name + '?v=1');
+        assert.equal(response.status, 200, name);
+        assert.equal(response.headers.get('cache-control'), 'no-cache');
+        assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes, name);
+      }
+      const head = await get(server.origin, '/blog/favicon.ico', { method: 'HEAD' });
+      assert.equal(head.status, 200);
+      assert.equal(head.headers.get('content-type'), 'image/x-icon');
+      assert.equal(Number(head.headers.get('content-length')), files['favicon.ico'].length);
+      assert.equal((await head.arrayBuffer()).byteLength, 0);
+      for (const path of ['/favicon.ico', '/blogger/favicon.ico', '/blog/nested/favicon.ico']) {
+        assert.equal((await get(server.origin, path)).status, 404, path);
+      }
+      await server.stop();
+      server = await dev(t, p); // Disk-cache-backed restart.
+      assert.deepEqual(await snapshot(p.pub), before);
+      const icon = await get(server.origin, '/blog/favicon.ico');
+      assert.deepEqual(Buffer.from(await icon.arrayBuffer()), files['favicon.ico']);
+      await rm(p.cache, { recursive: true }); // The active snapshot owns its bytes.
+      assert.equal((await get(server.origin, '/blog/favicon.ico')).status, 200);
+      await writeFile(join(p.pub, 'favicon.ico'), 'author replacement');
+      // Vite's public-file allowlist updates asynchronously after an add event.
+      const until = Date.now() + 15000;
+      let served;
+      do {
+        served = await (await get(server.origin, '/blog/favicon.ico')).text();
+        if (served === 'author replacement') break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } while (Date.now() < until);
+      assert.equal(served, 'author replacement');
+      assert.equal(await readFile(join(p.pub, 'favicon.ico'), 'utf8'), 'author replacement');
+      await rm(join(p.pub, 'favicon.ico'));
+    } finally {
+      await server.stop();
     }
+    assert.deepEqual(await snapshot(p.pub), before);
   });
 
-  it('keeps dev separate from production ownership and refuses a foreign public asset', async (t) => {
+  it('keeps dev separate from the build and refuses a foreign public asset', async (t) => {
     const p = await project(),
       before = await snapshot(p.pub);
     const first = await dev(t, p);
-    assert.equal((await get(first.origin, '/blog/icon-256.png')).status, 200);
+    assert.equal((await get(first.origin, '/blog/icon-48.png')).status, 200);
     await first.stop();
     assert.deepEqual(await snapshot(p.pub), before);
     await p.build();
-    assert.deepEqual((await readdir(p.pub)).sort(), [...generated, 'notes.txt'].sort());
-    assert.equal((await readdir(join(p.root, 'dist'))).includes('icon-256.png'), false);
-    assert.equal((await json(p.stamp))['icon-256.png'], undefined);
-    const published = await snapshot(p.pub),
-      stamp = await readFile(p.stamp);
+    assert.deepEqual(await snapshot(p.pub), before);
+    for (const name of generated) await stat(join(p.root, 'dist', name));
     await cp(join(repo, 'test/fixtures/general.svg'), join(p.root, 'src/logo.svg'));
     const second = await dev(t, p);
-    assert.equal((await get(second.origin, '/blog/icon-256.png')).status, 200);
+    assert.equal((await get(second.origin, '/blog/icon-48.png')).status, 200);
     await second.stop();
-    assert.deepEqual(await snapshot(p.pub), published);
-    assert.deepEqual(await readFile(p.stamp), stamp);
+    assert.deepEqual(await snapshot(p.pub), before);
     const foreign = await project();
     await writeFile(join(foreign.pub, 'favicon.ico'), 'foreign asset');
     const preserved = await snapshot(foreign.pub);
-    await assert.rejects(foreign.build(), /cannot verify ownership/);
+    // The fixture sets publicDir to ./static, and the message names the real path.
+    await assert.rejects(foreign.build(), /static\/favicon\.ico exists and is not the file favseed builds/);
     assert.deepEqual(await snapshot(foreign.pub), preserved);
-    await assert.rejects(readFile(foreign.stamp), { code: 'ENOENT' });
   });
 
   it('preserves SSR streaming, status, headers and cookies through the real Node adapter', async (t) => {
     const p = await project({ ssr: true });
     await p.build();
+    const files = await cliSet(p);
     for (const name of generated) {
-      assert.deepEqual(await readFile(join(p.root, 'dist/client', name)), await readFile(join(p.pub, name)));
+      assert.deepEqual(await readFile(join(p.root, 'dist/client', name)), files[name], name);
+      await assert.rejects(stat(join(p.root, 'dist/server', name)), { code: 'ENOENT' });
     }
+    assert.deepEqual(await readdir(p.pub), ['notes.txt']);
     const { handler } = await import(pathToFileURL(join(p.root, 'dist/server/entry.mjs')));
     const server = createServer(handler);
     await new Promise((resolve, reject) => {

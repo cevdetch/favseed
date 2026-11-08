@@ -25,10 +25,12 @@ contain.
   and `mode`; flags win over it, and `defineConfig` is exported with types.
 - `favseed/vite`, a Vite plugin that serves the set from memory in dev and writes it at build
   time, with `favseedIcons()` for projects that also use vite-plugin-pwa.
-- `favseed/astro`, an Astro integration installed by `astro add favseed`, building during
-  `astro build` and serving from memory in `astro dev`. It injects `<link>` tags by default,
-  by middleware or a `<Head />` component, and refuses to overwrite a `public/` file it did
-  not write itself.
+- `favseed/astro`, an Astro integration installed by `astro add favseed`, built on
+  `favseed/vite`: the set is served from memory in `astro dev` and emitted with the client
+  build (`dist/`, or `dist/client/` with an SSR adapter). A different file of yours in
+  `public/` under a favseed name wins in dev and fails the build. It reads `favseed.config.*`
+  (integration options win) and injects `<link>` tags by default, by middleware or a
+  `<Head />` component.
 - A content-addressed build cache shared by the Vite and Astro integrations, keyed on
   favseed's version, the input, the options and the versions of the image engine, SVGO and
   the Zopfli build, so an engine upgrade invalidates it instead of serving stale bytes.
