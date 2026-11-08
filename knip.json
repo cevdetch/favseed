@@ -1,0 +1,22 @@
+{
+  "workspaces": {
+    ".": {
+      "entry": [
+        "bin/favseed.mjs",
+        "bin/index.mjs",
+        "lib/core.mjs",
+        "vite/index.mjs",
+        "astro/index.mjs",
+        "astro/middleware.mjs",
+        "test/*.mjs",
+        "bench/**/*.mjs"
+      ],
+      "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"],
+      "ignore": ["lib/zopfli-build.mjs"]
+    },
+    "site": {
+      "entry": ["src/pages/**/*.astro", "src/lib/engine-worker.mjs", "test/*.mjs", "astro.config.mjs", "headers.mjs"],
+      "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"]
+    }
+  }
+}

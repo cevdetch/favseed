@@ -32,7 +32,8 @@ const crc32 = (bytes) => {
  */
 export const zip = (files) => {
   const enc = new TextEncoder();
-  const DOS_TIME = 0x0000, DOS_DATE = 0x0021;   // 1 Jan 1980, midnight
+  const DOS_TIME = 0x0000,
+    DOS_DATE = 0x0021; // 1 Jan 1980, midnight
   const locals = [];
   const central = [];
   let offset = 0;
@@ -44,32 +45,32 @@ export const zip = (files) => {
 
     const local = new Uint8Array(30 + nameBytes.length);
     const lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true);          // local file header signature
-    lv.setUint16(4, 20, true);                  // version needed: 2.0
-    lv.setUint16(6, 0, true);                   // flags: none (no data descriptor, no UTF-8 bit
-    lv.setUint16(8, 0, true);                   //        needed: every name here is ASCII)
+    lv.setUint32(0, 0x04034b50, true); // local file header signature
+    lv.setUint16(4, 20, true); // version needed: 2.0
+    lv.setUint16(6, 0, true); // flags: none (no data descriptor, no UTF-8 bit
+    lv.setUint16(8, 0, true); //        needed: every name here is ASCII)
     lv.setUint16(10, DOS_TIME, true);
     lv.setUint16(12, DOS_DATE, true);
     lv.setUint32(14, sum, true);
-    lv.setUint32(18, bytes.length, true);       // compressed == uncompressed under STORE
+    lv.setUint32(18, bytes.length, true); // compressed == uncompressed under STORE
     lv.setUint32(22, bytes.length, true);
     lv.setUint16(26, nameBytes.length, true);
-    lv.setUint16(28, 0, true);                  // extra field length
+    lv.setUint16(28, 0, true); // extra field length
     local.set(nameBytes, 30);
     locals.push(local, bytes);
 
     const dir = new Uint8Array(46 + nameBytes.length);
     const dv = new DataView(dir.buffer);
-    dv.setUint32(0, 0x02014b50, true);          // central directory signature
-    dv.setUint16(4, 20, true);                  // version made by
-    dv.setUint16(6, 20, true);                  // version needed
+    dv.setUint32(0, 0x02014b50, true); // central directory signature
+    dv.setUint16(4, 20, true); // version made by
+    dv.setUint16(6, 20, true); // version needed
     dv.setUint16(10, DOS_TIME, true);
     dv.setUint16(12, DOS_DATE, true);
     dv.setUint32(16, sum, true);
     dv.setUint32(20, bytes.length, true);
     dv.setUint32(24, bytes.length, true);
     dv.setUint16(28, nameBytes.length, true);
-    dv.setUint32(42, offset, true);             // where this entry's local header starts
+    dv.setUint32(42, offset, true); // where this entry's local header starts
     dir.set(nameBytes, 46);
     central.push(dir);
 
@@ -79,16 +80,19 @@ export const zip = (files) => {
   const centralSize = central.reduce((n, d) => n + d.length, 0);
   const end = new Uint8Array(22);
   const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);            // end of central directory
-  ev.setUint16(8, files.length, true);          // entries on this disk
-  ev.setUint16(10, files.length, true);         // entries total
+  ev.setUint32(0, 0x06054b50, true); // end of central directory
+  ev.setUint16(8, files.length, true); // entries on this disk
+  ev.setUint16(10, files.length, true); // entries total
   ev.setUint32(12, centralSize, true);
-  ev.setUint32(16, offset, true);               // where the central directory starts
+  ev.setUint32(16, offset, true); // where the central directory starts
 
   const parts = [...locals, ...central, end];
   const total = parts.reduce((n, p) => n + p.length, 0);
   const out = new Uint8Array(total);
   let at = 0;
-  for (const p of parts) { out.set(p, at); at += p.length; }
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
   return out;
 };

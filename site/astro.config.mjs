@@ -33,17 +33,19 @@ export default defineConfig({
       name: 'favseed-host',
       hooks: {
         'astro:config:setup': ({ command, updateConfig }) => {
-          if (command === 'dev') updateConfig({
-            server: { headers: developmentHeaders },
-            vite: { server: { headers: developmentHeaders } },
-          });
+          if (command === 'dev')
+            updateConfig({
+              server: { headers: developmentHeaders },
+              vite: { server: { headers: developmentHeaders } },
+            });
         },
         // Hashed build assets never change under the same name; everything else is revalidated.
         'astro:build:done': async ({ dir }) => {
           await writeFile(new URL('_headers', dir), productionHeaders);
           const vendor = new URL('./vendor/image-wasm32-wasip1/', import.meta.url);
-          const notices = await Promise.all(['LICENSE', 'THIRD-PARTY-NOTICES.txt']
-            .map((name) => readFile(new URL(name, vendor), 'utf8')));
+          const notices = await Promise.all(
+            ['LICENSE', 'THIRD-PARTY-NOTICES.txt'].map((name) => readFile(new URL(name, vendor), 'utf8')),
+          );
           await writeFile(new URL('engine-licenses.txt', dir), notices.join('\n\n'));
         },
       },
@@ -60,7 +62,7 @@ export default defineConfig({
       target: 'esnext',
       // Keep executable scripts external even if a future bundle falls below Vite's limit.
       // Other assets retain Vite's default, and Astro still inlines the stylesheet above.
-      assetsInlineLimit: (file) => /\.m?js$/.test(file) ? false : undefined,
+      assetsInlineLimit: (file) => (/\.m?js$/.test(file) ? false : undefined),
     },
     worker: { format: 'es', plugins: () => [wasiRuntime()] },
     optimizeDeps: { exclude: ['@napi-rs/image-wasm32-wasi'] },

@@ -47,8 +47,17 @@
 //
 
 import {
-  copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
-  renameSync, rmSync, statSync, writeFileSync,
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
@@ -58,8 +67,16 @@ import { inflateSync } from 'node:zlib';
 // The isomorphic half of favseed, shared verbatim with the website. lib/core.mjs explains why
 // it is a second file and what the three seams are.
 import {
-  createSvgStage, DEFAULT_BG, FAST_ZOPFLI_ITERATIONS, FavseedError,
-  icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone, ZOPFLI_ITERATIONS,
+  createSvgStage,
+  DEFAULT_BG,
+  FAST_ZOPFLI_ITERATIONS,
+  FavseedError,
+  icoWrap,
+  linkTags,
+  maskableFit,
+  nestForMask,
+  placeInSafeZone,
+  ZOPFLI_ITERATIONS,
 } from '../lib/core.mjs';
 import { checkConfig, defineConfig, normaliseOptions, resolveOptions, resolveQuality } from '../lib/config.mjs';
 import { createEngine } from '../lib/engine.mjs';
@@ -84,19 +101,20 @@ export { defineConfig };
 // The engine's libraries load on first use, inside build(), so a platform without a prebuilt
 // fails with a favseed: message, not an import-time stack trace.
 let enginePromise = null;
-export const loadEngine = () => (enginePromise ??= (async () => {
-  try {
-    const image = await import('@napi-rs/image');
-    const zopfli = createZopfli({ loadWasm: () => readFileSync(new URL('../lib/zopfli.wasm', import.meta.url)) });
-    return createEngine({ image, zopfli, inflate: (bytes) => inflateSync(bytes) });
-  } catch (e) {
-    enginePromise = null;
-    throw new FavseedError(
-      `the image engine did not load on ${process.platform}-${process.arch}: ${e.message}\n` +
-      `       @napi-rs/image ships prebuilt binaries for Linux, macOS, Windows and FreeBSD`,
-    );
-  }
-})());
+export const loadEngine = () =>
+  (enginePromise ??= (async () => {
+    try {
+      const image = await import('@napi-rs/image');
+      const zopfli = createZopfli({ loadWasm: () => readFileSync(new URL('../lib/zopfli.wasm', import.meta.url)) });
+      return createEngine({ image, zopfli, inflate: (bytes) => inflateSync(bytes) });
+    } catch (e) {
+      enginePromise = null;
+      throw new FavseedError(
+        `the image engine did not load on ${process.platform}-${process.arch}: ${e.message}\n` +
+          `       @napi-rs/image ships prebuilt binaries for Linux, macOS, Windows and FreeBSD`,
+      );
+    }
+  })());
 
 /** Package versions and compression build identity: inputs to the integration cache key. */
 export const engineVersions = () => ({
@@ -115,7 +133,13 @@ const PROG = 'favseed';
 const LIVE = new Set();
 let sweepRegistered = false;
 const sweep = () => {
-  for (const d of LIVE) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } }
+  for (const d of LIVE) {
+    try {
+      rmSync(d, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
+  }
   LIVE.clear();
 };
 const registerSweep = () => {
@@ -143,7 +167,9 @@ const normalise = (options) => {
 const buildFilesWithOptions = async (o, onWarn) => {
   const warn = onWarn ?? (() => {});
   let source;
-  try { source = readFileSync(o.input, 'utf8'); } catch (e) {
+  try {
+    source = readFileSync(o.input, 'utf8');
+  } catch (e) {
     throw new FavseedError(`cannot read ${o.input}: ${e.message}`);
   }
   if (!/<svg[\s>]/i.test(source)) {
@@ -159,7 +185,7 @@ const buildFilesWithOptions = async (o, onWarn) => {
     if (e instanceof FavseedError) throw e;
     throw new FavseedError(e.message);
   }
-}
+};
 
 /**
  * The set in memory: validated like build(), nothing written. The Vite plugin serves and
@@ -185,16 +211,23 @@ export async function build(options = {}) {
 // is per-file publishing with rollback, not a crash-safe directory transaction.
 const publishSet = (set, out) => {
   registerSweep();
-  let stage = null, retain = false, failure, result;
+  let stage = null,
+    retain = false,
+    failure,
+    result;
   try {
     // The set exists in memory, so it is now safe to touch the output directory: a run that
     // fails on an unresolvable var() or a bad --bg leaves nothing behind.
-    try { mkdirSync(out, { recursive: true }); } catch (e) {
+    try {
+      mkdirSync(out, { recursive: true });
+    } catch (e) {
       throw new FavseedError(`cannot create output directory ${out}: ${e.message}`);
     }
     const outDir = realpathSync(out);
     // Stage inside $out so the final move is a same-filesystem rename, which is atomic.
-    try { stage = mkdtempSync(join(outDir, `.${PROG}.`)); } catch (e) {
+    try {
+      stage = mkdtempSync(join(outDir, `.${PROG}.`));
+    } catch (e) {
       throw new FavseedError(`cannot create a staging directory in ${outDir}: ${e.message}`);
     }
     LIVE.add(stage);
@@ -203,14 +236,20 @@ const publishSet = (set, out) => {
     // Validate the complete staged set before backing up or changing destinations.
     for (const f of files) {
       const from = join(stage, f);
-      if (!existsSync(from) || statSync(from).size === 0) throw new FavseedError(`internal error: ${f} was not produced`);
+      if (!existsSync(from) || statSync(from).size === 0)
+        throw new FavseedError(`internal error: ${f} was not produced`);
     }
     const previous = join(stage, 'previous');
     mkdirSync(previous);
     const entries = files.map((name) => {
-      const target = join(outDir, name), backup = join(previous, name);
+      const target = join(outDir, name),
+        backup = join(previous, name);
       let stat;
-      try { stat = lstatSync(target); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      try {
+        stat = lstatSync(target);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
       if (stat && !stat.isFile() && !stat.isSymbolicLink()) {
         throw new FavseedError(`cannot replace ${target}: destination is not a file or symlink`);
       }
@@ -239,11 +278,15 @@ const publishSet = (set, out) => {
         try {
           if (entry.existed) renameSync(entry.backup, entry.target);
           else rmSync(entry.target, { force: true });
-        } catch (restore) { restorationErrors.push(`${entry.name}: ${restore.message}`); }
+        } catch (restore) {
+          restorationErrors.push(`${entry.name}: ${restore.message}`);
+        }
       }
       if (restorationErrors.length) {
         retain = true;
-        throw new FavseedError(`${error.message}\nCould not restore previous output:\n${restorationErrors.join('\n')}\nRecovery files kept at ${previous}`);
+        throw new FavseedError(
+          `${error.message}\nCould not restore previous output:\n${restorationErrors.join('\n')}\nRecovery files kept at ${previous}`,
+        );
       }
       throw error;
     }
@@ -257,9 +300,12 @@ const publishSet = (set, out) => {
       // finally nor the exit sweeper may erase them.
       LIVE.delete(stage);
       if (!retain) {
-        try { rmSync(stage, { recursive: true, force: true }); }
-        catch (error) {
-          failure = new FavseedError(`${failure ? failure.message : 'Output files were written'}\nCannot remove staging directory ${stage}: ${error.message}`);
+        try {
+          rmSync(stage, { recursive: true, force: true });
+        } catch (error) {
+          failure = new FavseedError(
+            `${failure ? failure.message : 'Output files were written'}\nCannot remove staging directory ${stage}: ${error.message}`,
+          );
         }
       }
     }
@@ -289,20 +335,43 @@ export const loadConfigFile = async (dir = process.cwd()) => {
     mod = await import(pathToFileURL(join(dir, file)).href);
   } catch (e) {
     const first = String(e?.message ?? e).split('\n')[0];
-    throw new FavseedError(`${file} could not be loaded: ${first}` +
-      (file.endsWith('.ts') ? '\n       Node strips types but does not transform them; write favseed.config.mjs instead' : ''));
+    throw new FavseedError(
+      `${file} could not be loaded: ${first}` +
+        (file.endsWith('.ts')
+          ? '\n       Node strips types but does not transform them; write favseed.config.mjs instead'
+          : ''),
+    );
   }
   return { config: checkConfig(mod.default, file), file, ignored };
 };
 
 // ====================================================================== CLI ==
 
-const die = (msg) => { process.stderr.write(`${PROG}: ${msg}\n`); process.exit(1); };
+const die = (msg) => {
+  process.stderr.write(`${PROG}: ${msg}\n`);
+  process.exit(1);
+};
 const warn = (msg) => process.stderr.write(`${PROG}: warning: ${msg}\n`);
 const CLI_FLAGS = new Set([
-  '-o', '--out', '--colors', '--quality', '--sizes', '--bg', '--padding', '--var',
-  '--no-animation', '--zopfli', '--no-zopfli', '--manifest', '--html',
-  '-q', '--quiet', '-V', '--version', '-h', '--help',
+  '-o',
+  '--out',
+  '--colors',
+  '--quality',
+  '--sizes',
+  '--bg',
+  '--padding',
+  '--var',
+  '--no-animation',
+  '--zopfli',
+  '--no-zopfli',
+  '--manifest',
+  '--html',
+  '-q',
+  '--quiet',
+  '-V',
+  '--version',
+  '-h',
+  '--help',
 ]);
 
 const USAGE = `Usage:
@@ -350,13 +419,25 @@ Outputs: icon.svg  favicon.ico  apple-touch-icon.png  icon-<size>.png
 const readVersion = () => {
   try {
     return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
-  } catch { return 'unknown'; }
+  } catch {
+    return 'unknown';
+  }
 };
 
 export async function cli(argv) {
   const opts = {
-    out: undefined, colors: undefined, quality: undefined, sizes: undefined, bg: undefined, padding: undefined,
-    vars: new Map(), animation: undefined, manifest: undefined, zopfli: undefined, html: false, quiet: false,
+    out: undefined,
+    colors: undefined,
+    quality: undefined,
+    sizes: undefined,
+    bg: undefined,
+    padding: undefined,
+    vars: new Map(),
+    animation: undefined,
+    manifest: undefined,
+    zopfli: undefined,
+    html: false,
+    quiet: false,
   };
   let input = null;
 
@@ -385,12 +466,25 @@ export async function cli(argv) {
     };
 
     switch (flag) {
-      case '-o': case '--out':   opts.out = need(); break;
-      case '--colors':           opts.colors = need(); break;
-      case '--quality':          opts.quality = need(); break;
-      case '--sizes':            opts.sizes = need(); break;
-      case '--bg':               opts.bg = need(); break;
-      case '--padding':          opts.padding = need(); break;
+      case '-o':
+      case '--out':
+        opts.out = need();
+        break;
+      case '--colors':
+        opts.colors = need();
+        break;
+      case '--quality':
+        opts.quality = need();
+        break;
+      case '--sizes':
+        opts.sizes = need();
+        break;
+      case '--bg':
+        opts.bg = need();
+        break;
+      case '--padding':
+        opts.padding = need();
+        break;
       case '--var': {
         const kv = need();
         const eq = kv.indexOf('=');
@@ -398,18 +492,37 @@ export async function cli(argv) {
         opts.vars.set(kv.slice(0, eq).trim(), kv.slice(eq + 1));
         break;
       }
-      case '--no-animation':     opts.animation = false; break;
-      case '--zopfli':           opts.zopfli = true; break;
-      case '--no-zopfli':        opts.zopfli = false; break;
-      case '--manifest':         opts.manifest = true; break;
-      case '--html':             opts.html = true; break;
-      case '-q': case '--quiet': opts.quiet = true; break;
-      case '-V': case '--version': {
+      case '--no-animation':
+        opts.animation = false;
+        break;
+      case '--zopfli':
+        opts.zopfli = true;
+        break;
+      case '--no-zopfli':
+        opts.zopfli = false;
+        break;
+      case '--manifest':
+        opts.manifest = true;
+        break;
+      case '--html':
+        opts.html = true;
+        break;
+      case '-q':
+      case '--quiet':
+        opts.quiet = true;
+        break;
+      case '-V':
+      case '--version': {
         const v = engineVersions();
-        process.stdout.write(`${PROG} ${readVersion()} (@napi-rs/image ${v['@napi-rs/image']}, @gfx/zopfli ${v['@gfx/zopfli']})\n`);
+        process.stdout.write(
+          `${PROG} ${readVersion()} (@napi-rs/image ${v['@napi-rs/image']}, @gfx/zopfli ${v['@gfx/zopfli']})\n`,
+        );
         return 0;
       }
-      case '-h': case '--help':  process.stdout.write(USAGE + '\n'); return 0;
+      case '-h':
+      case '--help':
+        process.stdout.write(USAGE + '\n');
+        return 0;
       case '--':
         // End of options, POSIX-style: everything after is an operand, so an input whose
         // name begins with a dash can still be passed.
@@ -421,7 +534,10 @@ export async function cli(argv) {
         break;
       default: {
         const a = argv[i];
-        if (a.startsWith('-') && a !== '-') { process.stderr.write(USAGE + '\n'); die(`unknown option: ${flag}`); }
+        if (a.startsWith('-') && a !== '-') {
+          process.stderr.write(USAGE + '\n');
+          die(`unknown option: ${flag}`);
+        }
         if (input !== null) die('only one input file may be given');
         input = a;
       }
@@ -430,25 +546,46 @@ export async function cli(argv) {
   }
 
   let loaded;
-  try { loaded = await loadConfigFile(); } catch (e) { die(e.message); }
+  try {
+    loaded = await loadConfigFile();
+  } catch (e) {
+    die(e.message);
+  }
   for (const f of loaded.ignored) warn(`${f} ignored: ${loaded.file} is the config file in use`);
 
   const options = resolveOptions({}, loaded.config, {
-    input: input ?? undefined, out: opts.out, colors: opts.colors, quality: opts.quality, sizes: opts.sizes, bg: opts.bg,
-    padding: opts.padding, vars: opts.vars.size ? opts.vars : undefined,
-    animation: opts.animation, manifest: opts.manifest, zopfli: opts.zopfli,
+    input: input ?? undefined,
+    out: opts.out,
+    colors: opts.colors,
+    quality: opts.quality,
+    sizes: opts.sizes,
+    bg: opts.bg,
+    padding: opts.padding,
+    vars: opts.vars.size ? opts.vars : undefined,
+    animation: opts.animation,
+    manifest: opts.manifest,
+    zopfli: opts.zopfli,
   });
 
-  if (options.input === undefined) { process.stderr.write(USAGE + '\n'); die('no input file given'); }
+  if (options.input === undefined) {
+    process.stderr.write(USAGE + '\n');
+    die('no input file given');
+  }
 
   if (options.bg === undefined) {
-    warn(`--bg not given, using ${DEFAULT_BG} for the padded icons ` +
-         `(iOS composites transparent icons onto black)`);
+    warn(`--bg not given, using ${DEFAULT_BG} for the padded icons ` + `(iOS composites transparent icons onto black)`);
   }
 
   // 128 + signal number, the common convention.
-  for (const [sig, n] of [['SIGINT', 2], ['SIGTERM', 15], ['SIGHUP', 1]]) {
-    process.on(sig, () => { sweep(); process.exit(128 + n); });
+  for (const [sig, n] of [
+    ['SIGINT', 2],
+    ['SIGTERM', 15],
+    ['SIGHUP', 1],
+  ]) {
+    process.on(sig, () => {
+      sweep();
+      process.exit(128 + n);
+    });
   }
 
   let result;
@@ -469,18 +606,24 @@ export async function cli(argv) {
       else if (f === 'apple-touch-icon.png' || f.startsWith('icon-')) {
         const where = f === 'apple-touch-icon.png' ? result.fit.apple : result.fit.icons[Number(f.slice(5, -4))];
         // Under --bg none the size icons are transparent and unpadded, so there is no fit.
-        note = !where ? '  transparent, unpadded (--bg none)'
-          : where.fullBleed ? '  full-bleed source, used as it is'
-          : `  mark at ${where.box}px of ${where.canvas} in the safe zone${where.snapped ? ', on whole pixels' : ''}`;
+        note = !where
+          ? '  transparent, unpadded (--bg none)'
+          : where.fullBleed
+            ? '  full-bleed source, used as it is'
+            : `  mark at ${where.box}px of ${where.canvas} in the safe zone${where.snapped ? ', on whole pixels' : ''}`;
       }
       process.stdout.write(`${f.padEnd(22)} ${String(result.bytes[f]).padStart(6)} B${note}\n`);
     }
     const mode = options.mode ?? 'release';
     const quality = Number(resolveQuality(options));
     if (quality < 100) process.stdout.write(`PNG quality target: ${quality}\n`);
-    process.stdout.write(!options.zopfli ? 'standard build (Zopfli disabled)\n' : mode === 'fast'
-      ? `fast build (zopfli at ${FAST_ZOPFLI_ITERATIONS} iterations; not the release bytes)\n`
-      : `release build (zopfli at ${ZOPFLI_ITERATIONS} iterations)\n`);
+    process.stdout.write(
+      !options.zopfli
+        ? 'standard build (Zopfli disabled)\n'
+        : mode === 'fast'
+          ? `fast build (zopfli at ${FAST_ZOPFLI_ITERATIONS} iterations; not the release bytes)\n`
+          : `release build (zopfli at ${ZOPFLI_ITERATIONS} iterations)\n`,
+    );
   }
   if (opts.html) process.stdout.write('\n' + result.links);
   return 0;
@@ -494,12 +637,19 @@ export async function cli(argv) {
 const isEntryPoint = (url) => {
   try {
     return process.argv[1] != null && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(url));
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 };
 
 // Not awaited: a config file may import defineConfig from this module, and a top-level await
 // here would keep the module evaluating while cli() imports that file, a cycle that never
 // settles.
 if (isEntryPoint(import.meta.url)) {
-  cli(process.argv.slice(2)).then((code) => { process.exitCode = code; }, (e) => die(e?.message ?? String(e)));
+  cli(process.argv.slice(2)).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (e) => die(e?.message ?? String(e)),
+  );
 }

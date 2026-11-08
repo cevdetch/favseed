@@ -6,10 +6,21 @@
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { after, before, describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -48,7 +59,10 @@ const buildOnce = (key, options) => {
     // The key is a memo key, not a file name: JSON in it puts " and : into the path, which
     // Windows refuses. A counter keeps the directory unique, the slug keeps it readable.
     const out = join(scratch, `build-${builds.size}-${key.replace(/[^\w-]+/g, '_')}`);
-    builds.set(key, build({ out, ...options }).then((r) => ({ ...r, out })));
+    builds.set(
+      key,
+      build({ out, ...options }).then((r) => ({ ...r, out })),
+    );
   }
   return builds.get(key);
 };
@@ -58,9 +72,13 @@ const SMALL = (name, extra = {}) =>
   buildOnce(`small-${name}${JSON.stringify(extra)}`, { input: fixture(`${name}.svg`), sizes: [32], ...extra });
 
 const haveIcotool = (() => {
-  try { execFileSync('icotool', ['--version'], { stdio: 'ignore' }); return true; } catch { return false; }
+  try {
+    execFileSync('icotool', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
 })();
-
 
 // ---------------------------------------------------------------- 1, 2, 9 --
 
@@ -76,10 +94,14 @@ describe('SVG input diagnostics in the CLI', () => {
   });
 
   it('reports how to fix percentage-only dimensions and writes nothing', async () => {
-    const root = freshDir(), out = join(root, 'out');
+    const root = freshDir(),
+      out = join(root, 'out');
     mkdirSync(root, { recursive: true });
     const input = join(root, 'unsized.svg');
-    writeFileSync(input, '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>');
+    writeFileSync(
+      input,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><circle cx="32" cy="32" r="20"/></svg>',
+    );
     const r = await cli(['--bg', '#fff', '-o', out, input]);
     assert.equal(r.code, 1);
     assert.match(r.stderr, /unsized\.svg.*viewBox.*width.*height/i);
@@ -90,8 +112,12 @@ describe('SVG input diagnostics in the CLI', () => {
     const root = freshDir();
     mkdirSync(root, { recursive: true });
     for (const [i, box] of [',0 64 64', '0 0 0x40 64', '0 0 64,,64'].entries()) {
-      const input = join(root, `malformed-${i}.svg`), out = join(root, `out-${i}`);
-      writeFileSync(input, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`);
+      const input = join(root, `malformed-${i}.svg`),
+        out = join(root, `out-${i}`);
+      writeFileSync(
+        input,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"><circle cx="32" cy="32" r="20"/></svg>`,
+      );
       const r = await cli(['--bg', '#fff', '-o', out, input]);
       assert.equal(r.code, 1, box);
       assert.match(r.stderr, /viewBox.*width.*height/i);
@@ -103,13 +129,22 @@ describe('SVG input diagnostics in the CLI', () => {
 describe('the output set', () => {
   it('produces exactly the promised files and nothing else', async () => {
     const { out } = await DEFAULT_BUILD();
-    assert.deepEqual(readdirSync(out).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg']);
+    assert.deepEqual(readdirSync(out).sort(), [
+      'apple-touch-icon.png',
+      'favicon.ico',
+      'icon-192.png',
+      'icon-512.png',
+      'icon.svg',
+    ]);
   });
 
   it('renders every size exactly', async () => {
     const { out } = await DEFAULT_BUILD();
-    for (const [file, px] of [['apple-touch-icon.png', 180], ['icon-192.png', 192], ['icon-512.png', 512]]) {
+    for (const [file, px] of [
+      ['apple-touch-icon.png', 180],
+      ['icon-192.png', 192],
+      ['icon-512.png', 512],
+    ]) {
       const h = header(readFileSync(join(out, file)));
       assert.equal(h.width, px, `${file} width`);
       assert.equal(h.height, px, `${file} height`);
@@ -139,8 +174,10 @@ describe('the output set', () => {
   it('keeps the alpha when --bg none is asked for', async () => {
     const { out } = await buildOnce('bgnone', { input: fixture('flat.svg'), sizes: [32], bg: null });
     const img = decode(readFileSync(join(out, 'apple-touch-icon.png')));
-    assert.ok([...img.data.filter((_, i) => i % 4 === 3)].some((a) => a === 0),
-      'flat.svg has a wide transparent margin; none of it survived');
+    assert.ok(
+      img.data.filter((_, i) => i % 4 === 3).some((a) => a === 0),
+      'flat.svg has a wide transparent margin; none of it survived',
+    );
   });
 });
 
@@ -148,15 +185,26 @@ describe('the output set', () => {
 
 describe('explicit static SVG optimization', () => {
   const forbidden = [
-    [/\srole=/, 'role'], [/\saria-/, 'aria-*'], [/\sclass=/, 'class'], [/\sstyle=/, 'style='],
-    [/<style/, '<style>'], [/<defs/, '<defs'], [/var\(/, 'var('],
+    [/\srole=/, 'role'],
+    [/\saria-/, 'aria-*'],
+    [/\sclass=/, 'class'],
+    [/\sstyle=/, 'style='],
+    [/<style/, '<style>'],
+    [/<defs/, '<defs'],
+    [/var\(/, 'var('],
     // A favicon has no reader for its text: <desc> and <title> are bytes no browser shows.
-    [/<desc/, '<desc>'], [/<title/, '<title>'],
+    [/<desc/, '<desc>'],
+    [/<title/, '<title>'],
   ];
 
   for (const [name, extra] of [
-    ['general', {}], ['animated', {}], ['animated', { animation: false }],
-    ['mask', {}], ['smil', {}], ['heavy', {}], ['tiles', {}],
+    ['general', {}],
+    ['animated', {}],
+    ['animated', { animation: false }],
+    ['mask', {}],
+    ['smil', {}],
+    ['heavy', {}],
+    ['tiles', {}],
   ]) {
     const label = `${name}${extra.animation === false ? ' --no-animation' : ''}`;
     it(`strips everything unrenderable from ${label}`, async () => {
@@ -205,8 +253,10 @@ describe('explicit static SVG optimization', () => {
     assert.ok(used.length > 0, 'the mask reference itself was lost');
     for (const id of used) assert.ok(svg.includes(`id="${id}"`), `url(#${id}) points at nothing`);
     const general = await DEFAULT_BUILD();
-    assert.ok(!readFileSync(join(general.out, 'icon.svg'), 'utf8').includes('never-referenced'),
-      'the general fixture kept its unused id');
+    assert.ok(
+      !readFileSync(join(general.out, 'icon.svg'), 'utf8').includes('never-referenced'),
+      'the general fixture kept its unused id',
+    );
   });
 
   it('preserves SMIL event references and removes motion only when requested', async () => {
@@ -237,7 +287,8 @@ describe('custom properties', () => {
   });
 
   it('accepts a name given with or without the leading dashes', async () => {
-    const a = freshDir(), b = freshDir();
+    const a = freshDir(),
+      b = freshDir();
     await build({ input: fixture('general.svg'), out: a, sizes: [32], vars: { ground: '#123456' } });
     await build({ input: fixture('general.svg'), out: b, sizes: [32], vars: { '--ground': '#123456' } });
     assert.equal(readFileSync(join(a, 'icon.svg'), 'utf8'), readFileSync(join(b, 'icon.svg'), 'utf8'));
@@ -266,7 +317,11 @@ describe('the ICO container', () => {
   });
 
   // Known pixels in both encodings, including transparent and partially opaque entries.
-  const palette = [[12, 34, 56, 255], [0, 0, 0, 0], [90, 120, 150, 128]];
+  const palette = [
+    [12, 34, 56, 255],
+    [0, 0, 0, 0],
+    [90, 120, 150, 128],
+  ];
   const indices = new Uint8Array([0, 1, 2, 0]);
   const rgba = new Uint8Array([...indices].flatMap((index) => palette[index]));
   for (const [name, colorType, png] of [
@@ -287,7 +342,8 @@ describe('the ICO container', () => {
 
     it(`matches icotool -c -r for ${name} PNG`, { skip: haveIcotool ? false : 'icotool not installed' }, () => {
       assert.equal(header(png).colorType, colorType);
-      const payload = join(scratch, `payload-${name}.png`), ref = join(scratch, `icotool-${name}.ico`);
+      const payload = join(scratch, `payload-${name}.png`),
+        ref = join(scratch, `icotool-${name}.ico`);
       writeFileSync(payload, png);
       execFileSync('icotool', ['-c', '-r', payload, '-o', ref]);
       assert.deepEqual(Buffer.from(icoWrap(png, 2)), readFileSync(ref));
@@ -309,27 +365,25 @@ describe('the ICO container', () => {
     assert.throws(() => icoWrap(Buffer.from('not a png'), 32), /not a PNG/);
   });
 
-  it('is byte-identical to icotool -c -r', { skip: haveIcotool ? false : 'icotool not installed' },
-    async () => {
-      const { out } = await DEFAULT_BUILD();
-      const payload = join(scratch, 'payload.png');
-      const ico = readFileSync(join(out, 'favicon.ico'));
-      writeFileSync(payload, ico.subarray(22));
-      const ref = join(scratch, 'icotool.ico');
-      execFileSync('icotool', ['-c', '-r', payload, '-o', ref]);
-      assert.deepEqual([...ico], [...readFileSync(ref)]);
-    });
+  it('is byte-identical to icotool -c -r', { skip: haveIcotool ? false : 'icotool not installed' }, async () => {
+    const { out } = await DEFAULT_BUILD();
+    const payload = join(scratch, 'payload.png');
+    const ico = readFileSync(join(out, 'favicon.ico'));
+    writeFileSync(payload, ico.subarray(22));
+    const ref = join(scratch, 'icotool.ico');
+    execFileSync('icotool', ['-c', '-r', payload, '-o', ref]);
+    assert.deepEqual([...ico], [...readFileSync(ref)]);
+  });
 });
 
 // -------------------------------------------------------------------- 8 --
 
 describe('accuracy', () => {
-
   // Padded default outputs retain the 1% source-error bar. Tiny ICOs have their own
   // accepted limits below; SVG's 512px precision budget is not an all-size guarantee.
   const CHECKS = [
-    ['apple-touch-icon.png', 180, '#000000', true],   // background-matched and placed: the
-    ['icon-192.png', 192, '#000000', true],            // ground and the placement are not error
+    ['apple-touch-icon.png', 180, '#000000', true], // background-matched and placed: the
+    ['icon-192.png', 192, '#000000', true], // ground and the placement are not error
     ['icon-512.png', 512, '#000000', true],
   ];
 
@@ -342,26 +396,48 @@ describe('accuracy', () => {
     const without = await SMALL('second', { zopfli: false, mode: 'fast' });
     let saved = 0;
     for (const file of ['favicon.ico', 'apple-touch-icon.png', 'icon-32.png']) {
-      const a = readFileSync(join(withZopfli.out, file)), b = readFileSync(join(without.out, file));
+      const a = readFileSync(join(withZopfli.out, file)),
+        b = readFileSync(join(without.out, file));
       assert.ok(a.length <= b.length, `${file}: zopfli made the file larger`);
       saved += b.length - a.length;
-      const payload = (bytes) => file.endsWith('.ico') ? bytes.subarray(22) : bytes;
+      const payload = (bytes) => (file.endsWith('.ico') ? bytes.subarray(22) : bytes);
       assert.deepEqual(decode(payload(a)), decode(payload(b)), `${file}: zopfli changed pixels`);
     }
     assert.ok(saved > 0, 'opt-in Zopfli did not reduce the fixture');
   });
 
-  for (const name of ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'wide', 'smil', 'tiles',
-    'gradient', 'grid-1', 'grid-16', 'grid-24', 'grid-tiny', 'grid-fallback',
-    'aspect-wide', 'aspect-tall', 'aspect-offset', 'aspect-percent', 'dark']) {
+  for (const name of [
+    'general',
+    'flat',
+    'second',
+    'mask',
+    'heavy',
+    'animated',
+    'wide',
+    'smil',
+    'tiles',
+    'gradient',
+    'grid-1',
+    'grid-16',
+    'grid-24',
+    'grid-tiny',
+    'grid-fallback',
+    'aspect-wide',
+    'aspect-tall',
+    'aspect-offset',
+    'aspect-percent',
+    'dark',
+  ]) {
     it(`${name}: padded rasters are inside the bar`, async () => {
       const { out } = await accuracyBuild(name);
       const source = fixture(`${name}.svg`);
       for (const [file, px, bg, fitted] of CHECKS) {
         const ref = await reference({ source, px, bg, vars: {}, fitted });
         const s = score(decode(readFileSync(join(out, file))), ref);
-        assert.ok(s.pct <= THRESHOLD_PCT,
-          `${name}/${file}: pct ${s.pct.toFixed(4)}% > ${THRESHOLD_PCT}% (rmse ${s.rmse.toFixed(2)})`);
+        assert.ok(
+          s.pct <= THRESHOLD_PCT,
+          `${name}/${file}: pct ${s.pct.toFixed(4)}% > ${THRESHOLD_PCT}% (rmse ${s.rmse.toFixed(2)})`,
+        );
       }
     });
 
@@ -373,12 +449,15 @@ describe('accuracy', () => {
       const image = decode(ico.subarray(ico.readUInt32LE(18)));
       const original = await reference({ source: fixture(`${name}.svg`), px: 48 });
       const selected = await reference({ source: join(out, 'icon.svg'), px: 48 });
-      const sourceError = score(image, original), encodingError = score(image, selected);
+      const sourceError = score(image, original),
+        encodingError = score(image, selected);
       // bench/ico-size/README.md accepts 28 of 2304 pixels (1.2153%) on these two
       // grids. Other corpus members stay within 1%; encoding adds no errors >8/255.
-      const limit = ['grid-1', 'grid-tiny'].includes(name) ? 28 / (48 * 48) * 100 : THRESHOLD_PCT;
-      assert.ok(sourceError.pct <= limit,
-        `${name}/ICO source error ${sourceError.pct.toFixed(4)}% > ${limit.toFixed(4)}%`);
+      const limit = ['grid-1', 'grid-tiny'].includes(name) ? (28 / (48 * 48)) * 100 : THRESHOLD_PCT;
+      assert.ok(
+        sourceError.pct <= limit,
+        `${name}/ICO source error ${sourceError.pct.toFixed(4)}% > ${limit.toFixed(4)}%`,
+      );
       assert.equal(encodingError.pct, 0, `${name}/ICO encoding error vs selected SVG`);
     });
   }
@@ -387,16 +466,26 @@ describe('accuracy', () => {
     // On this fixture quality80 matches explicit colors256; this does not make
     // the default encoder policy a fixed 256-color palette.
     const dflt = await buildOnce('dflt-colors', { input: fixture('flat.svg'), sizes: [32], zopfli: false });
-    const full = await buildOnce('full-colors', { input: fixture('flat.svg'), sizes: [32], colors: 256, zopfli: false });
+    const full = await buildOnce('full-colors', {
+      input: fixture('flat.svg'),
+      sizes: [32],
+      colors: 256,
+      zopfli: false,
+    });
     for (const f of ['icon-32.png', 'apple-touch-icon.png']) {
-      assert.deepEqual([...readFileSync(join(dflt.out, f))], [...readFileSync(join(full.out, f))],
-        `default quality and colors256 differ on flat (${f})`);
+      assert.deepEqual(
+        [...readFileSync(join(dflt.out, f))],
+        [...readFileSync(join(full.out, f))],
+        `default quality and colors256 differ on flat (${f})`,
+      );
     }
     const { out } = await buildOnce('flat-8', { input: fixture('flat.svg'), sizes: [192], colors: 8, zopfli: false });
     const ref = await reference({ source: fixture('flat.svg'), px: 180, bg: '#000000', vars: {}, fitted: true });
     const s = score(decode(readFileSync(join(out, 'apple-touch-icon.png'))), ref);
-    assert.ok(s.pct > THRESHOLD_PCT,
-      `flat at --colors 8 scored ${s.pct.toFixed(3)}%, inside the bar - decision 24's reason needs re-stating`);
+    assert.ok(
+      s.pct > THRESHOLD_PCT,
+      `flat at --colors 8 scored ${s.pct.toFixed(3)}%, inside the bar - decision 24's reason needs re-stating`,
+    );
   });
 
   it('the gradient needs a palette big enough for it, and says so by failing at 8', async () => {
@@ -405,16 +494,20 @@ describe('accuracy', () => {
     const source = fixture('gradient.svg');
     const ref = await reference({ source, px: 192, bg: '#000000', vars: {}, fitted: true });
     const at = async (colors) => {
-      const { out } = await buildOnce(`grad-${colors}`,
-        { input: source, sizes: [192], colors, zopfli: false });
+      const { out } = await buildOnce(`grad-${colors}`, { input: source, sizes: [192], colors, zopfli: false });
       return score(decode(readFileSync(join(out, 'icon-192.png'))), ref).pct;
     };
-    assert.ok(await at(8) > THRESHOLD_PCT, '8 colours should not be enough for a gradient');
-    assert.ok(await at(256) < await at(8), 'a bigger palette should help');
+    assert.ok((await at(8)) > THRESHOLD_PCT, '8 colours should not be enough for a gradient');
+    assert.ok((await at(256)) < (await at(8)), 'a bigger palette should help');
   });
 
   it('scores a padded icon against an identically padded reference', async () => {
-    const { out } = await buildOnce('pad-20', { input: fixture('general.svg'), sizes: [192], padding: 20, zopfli: false });
+    const { out } = await buildOnce('pad-20', {
+      input: fixture('general.svg'),
+      sizes: [192],
+      padding: 20,
+      zopfli: false,
+    });
     const ref = await reference({ source: fixture('general.svg'), px: 192, bg: '#000000', fitted: true, padding: 20 });
     const s = score(decode(readFileSync(join(out, 'icon-192.png'))), ref);
     assert.ok(s.pct <= THRESHOLD_PCT, `pct ${s.pct.toFixed(4)}% - the reference is placed differently`);
@@ -429,10 +522,13 @@ describe('optional outputs and option syntax', () => {
     const r = await cli(['--bg', '#fff', '--manifest', '--sizes', '32 64', '-o', out, fixture('flat.svg')]);
     assert.equal(r.code, 0, r.stderr);
     const m = JSON.parse(readFileSync(join(out, 'site.webmanifest'), 'utf8'));
-    assert.deepEqual(m.icons.map((i) => [i.src, i.sizes, i.purpose]), [
-      ['/icon-32.png', '32x32', 'any maskable'],
-      ['/icon-64.png', '64x64', 'any maskable'],
-    ]);
+    assert.deepEqual(
+      m.icons.map((i) => [i.src, i.sizes, i.purpose]),
+      [
+        ['/icon-32.png', '32x32', 'any maskable'],
+        ['/icon-64.png', '64x64', 'any maskable'],
+      ],
+    );
     for (const i of m.icons) assert.equal(i.type, 'image/png');
   });
 
@@ -440,13 +536,21 @@ describe('optional outputs and option syntax', () => {
     // The CLI writes icons only because a CLI cannot know the app's name. The API can be
     // told, which is what the Astro integration passes through.
     const out = freshDir();
-    await build({ input: fixture('flat.svg'), out, sizes: [32], bg: '#ffffff',
-                  manifest: { name: 'Example', short_name: 'Ex', theme_color: '#0E7C68' } });
+    await build({
+      input: fixture('flat.svg'),
+      out,
+      sizes: [32],
+      bg: '#ffffff',
+      manifest: { name: 'Example', short_name: 'Ex', theme_color: '#0E7C68' },
+    });
     const m = JSON.parse(readFileSync(join(out, 'site.webmanifest'), 'utf8'));
     assert.equal(m.name, 'Example');
     assert.equal(m.short_name, 'Ex');
     assert.equal(m.theme_color, '#0E7C68');
-    assert.deepEqual(m.icons.map((i) => i.sizes), ['32x32']);
+    assert.deepEqual(
+      m.icons.map((i) => i.sizes),
+      ['32x32'],
+    );
   });
 
   it('--html prints the link set with sizes="48x48" on the ICO', async () => {
@@ -464,8 +568,14 @@ describe('optional outputs and option syntax', () => {
 
   it('accepts --opt=value', async () => {
     const out = freshDir();
-    const r = await cli([`--out=${out}`, '--bg=#fff', '--sizes=32', '--colors=16',
-                         `--var=ground=#654321`, fixture('general.svg')]);
+    const r = await cli([
+      `--out=${out}`,
+      '--bg=#fff',
+      '--sizes=32',
+      '--colors=16',
+      `--var=ground=#654321`,
+      fixture('general.svg'),
+    ]);
     assert.equal(r.code, 0, r.stderr);
     assert.ok(readFileSync(join(out, 'icon.svg'), 'utf8').includes('#654321'));
   });
@@ -483,18 +593,25 @@ describe('optional outputs and option syntax', () => {
   });
 });
 
-
 // ------------------------------------------------------------ masked icons --
 
 describe('the masked icons', () => {
   const BG = '#123456';
   const MASKED = (name, extra = {}) =>
-    buildOnce(`masked-${name}${JSON.stringify(extra)}`, { input: fixture(`${name}.svg`), sizes: [32, 64, 192, 512], bg: BG, zopfli: false, ...extra });
+    buildOnce(`masked-${name}${JSON.stringify(extra)}`, {
+      input: fixture(`${name}.svg`),
+      sizes: [32, 64, 192, 512],
+      bg: BG,
+      zopfli: false,
+      ...extra,
+    });
 
   // Distance from the icon's centre to the FAR corner of a pixel, so the whole pixel counts.
-  const reach = (x, y, px) => Math.hypot(
-    Math.max(Math.abs(x - px / 2), Math.abs(x + 1 - px / 2)),
-    Math.max(Math.abs(y - px / 2), Math.abs(y + 1 - px / 2)));
+  const reach = (x, y, px) =>
+    Math.hypot(
+      Math.max(Math.abs(x - px / 2), Math.abs(x + 1 - px / 2)),
+      Math.max(Math.abs(y - px / 2), Math.abs(y + 1 - px / 2)),
+    );
   // Everything that is not the ground. Quantisation may nudge the ground by a few levels, so
   // the test is "far from it" rather than "equal to it".
   const markPixels = (img, [r, g, b]) => {
@@ -502,7 +619,8 @@ describe('the masked icons', () => {
     for (let y = 0; y < img.height; y++) {
       for (let x = 0; x < img.width; x++) {
         const o = (y * img.width + x) * 4;
-        if (Math.abs(img.data[o] - r) + Math.abs(img.data[o + 1] - g) + Math.abs(img.data[o + 2] - b) > 24) out.push([x, y]);
+        if (Math.abs(img.data[o] - r) + Math.abs(img.data[o + 1] - g) + Math.abs(img.data[o + 2] - b) > 24)
+          out.push([x, y]);
       }
     }
     return out;
@@ -513,15 +631,26 @@ describe('the masked icons', () => {
     assert.ok(pts.length > 0, `no mark pixels found in ${file}`);
     return Math.max(...pts.map(([x, y]) => reach(x, y, px)));
   };
-  const ICONS = [['apple-touch-icon.png', 180, 'apple'], ['icon-64.png', 64, 64],
-    ['icon-192.png', 192, 192], ['icon-512.png', 512, 512]];
+  const ICONS = [
+    ['apple-touch-icon.png', 180, 'apple'],
+    ['icon-64.png', 64, 64],
+    ['icon-192.png', 192, 192],
+    ['icon-512.png', 512, 512],
+  ];
   // fit is { apple, icons: { [size]: fit } }: the apple icon plus one entry per size.
-  const placed = (fit, key) => key === 'apple' ? fit.apple : fit.icons[key];
+  const placed = (fit, key) => (key === 'apple' ? fit.apple : fit.icons[key]);
 
   it('are a 180px apple-touch-icon and padded size icons, all opaque', async () => {
     const { out } = await MASKED('general');
-    assert.deepEqual(readdirSync(out).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-32.png', 'icon-512.png', 'icon-64.png', 'icon.svg']);
+    assert.deepEqual(readdirSync(out).sort(), [
+      'apple-touch-icon.png',
+      'favicon.ico',
+      'icon-192.png',
+      'icon-32.png',
+      'icon-512.png',
+      'icon-64.png',
+      'icon.svg',
+    ]);
     for (const [file, px] of ICONS) {
       const buf = readFileSync(join(out, file));
       assert.equal(header(buf).width, px, `${file} width`);
@@ -536,9 +665,17 @@ describe('the masked icons', () => {
   it('keep a curved mark at its exact fit: every pixel inside the safe circle, and filling it', async () => {
     const { out, fit } = await MASKED('general');
     for (const [file, px, key] of ICONS) {
-      assert.equal(placed(fit, key).snapped, false, `${file}: a curved mark was shrunk to snap to pixels it never lands on`);
-      const far = farthest(out, file, px), safe = 0.4 * px;
-      assert.ok(far <= safe + 1.5, `${file}: a mark pixel reaches ${far.toFixed(1)} px; the safe circle ends at ${safe}`);
+      assert.equal(
+        placed(fit, key).snapped,
+        false,
+        `${file}: a curved mark was shrunk to snap to pixels it never lands on`,
+      );
+      const far = farthest(out, file, px),
+        safe = 0.4 * px;
+      assert.ok(
+        far <= safe + 1.5,
+        `${file}: a mark pixel reaches ${far.toFixed(1)} px; the safe circle ends at ${safe}`,
+      );
       assert.ok(far >= safe - 3, `${file}: the mark stops ${(safe - far).toFixed(1)} px short of the safe circle`);
     }
   });
@@ -547,21 +684,26 @@ describe('the masked icons', () => {
     // tiles.svg is drawn on a grid: at its exact fit every edge falls between pixels.
     const { out, fit } = await MASKED('tiles');
     assert.equal(placed(fit, 512).snapped, true, `not snapped (box ${placed(fit, 512).box})`);
-    const far = farthest(out, 'icon-512.png', 512), safe = 0.4 * 512;
+    const far = farthest(out, 'icon-512.png', 512),
+      safe = 0.4 * 512;
     assert.ok(far <= safe + 1.5, `a mark pixel reaches ${far.toFixed(1)} px`);
-    assert.ok(far >= safe * 0.9 - 2, `snapped ${(100 - far / safe * 100).toFixed(1)}% below the fit; the window is 10%`);
+    assert.ok(
+      far >= safe * 0.9 - 2,
+      `snapped ${(100 - (far / safe) * 100).toFixed(1)}% below the fit; the window is 10%`,
+    );
     const colours = (buf, opaqueOnly) => {
       const img = decode(buf);
       const set = new Set();
       for (let i = 0; i < img.data.length; i += 4) {
-        if (!opaqueOnly || img.data[i + 3] === 255) set.add((img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2]);
+        if (!opaqueOnly || img.data[i + 3] === 255)
+          set.add((img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2]);
       }
       return set.size;
     };
     // The padded icon against the unpadded ICO payload: the same mark, one snapped
     // to whole pixels at 512 and one rendered at its native 48.
     const masked = colours(readFileSync(join(out, 'icon-512.png')), false),
-          source = colours(readFileSync(join(out, 'favicon.ico')).subarray(22), true);
+      source = colours(readFileSync(join(out, 'favicon.ico')).subarray(22), true);
     assert.ok(masked <= source + 1, `${masked} colours: the snapped icon still carries edge blends`);
   });
 
@@ -579,7 +721,7 @@ describe('the masked icons', () => {
     const out = freshDir();
     const r = await build({ input: fixture('tiles.svg'), out, sizes: [512], padding: 20, zopfli: false });
     assert.equal(r.fit.apple.padding, 20);
-    assert.equal(r.fit.apple.box, 108);          // 180 * 0.6 = 108, already even
+    assert.equal(r.fit.apple.box, 108); // 180 * 0.6 = 108, already even
     assert.equal(r.fit.apple.snapped, false, 'an explicit padding must not be snapped away');
   });
 
@@ -593,8 +735,13 @@ describe('the masked icons', () => {
   it('writes one padded set and no separate maskable icon', async () => {
     const out = freshDir();
     await build({ input: fixture('general.svg'), out, sizes: [192, 512], zopfli: false });
-    assert.deepEqual(readdirSync(out).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg']);
+    assert.deepEqual(readdirSync(out).sort(), [
+      'apple-touch-icon.png',
+      'favicon.ico',
+      'icon-192.png',
+      'icon-512.png',
+      'icon.svg',
+    ]);
   });
 
   it('declares the padded icons "any maskable", and "any" alone when transparent', async () => {
@@ -618,8 +765,7 @@ describe('the masked icons', () => {
     await build({ input: fixture('tiles.svg'), out, sizes: [32], zopfli: false });
     const icon32 = readFileSync(join(out, 'icon-32.png'));
     const payload = readFileSync(join(out, 'favicon.ico')).subarray(22);
-    assert.notDeepEqual([...icon32], [...payload],
-      'icon-32.png is padded now, so it can no longer be the ICO payload');
+    assert.notDeepEqual([...icon32], [...payload], 'icon-32.png is padded now, so it can no longer be the ICO payload');
   });
 
   it('are inside the accuracy bar against references placed the same way', async () => {
@@ -636,8 +782,10 @@ describe('the masked icons', () => {
     const r = await cli(['--bg', '#fff', '--manifest', '--sizes', '32', '-o', out, fixture('flat.svg')]);
     assert.equal(r.code, 0, r.stderr);
     const m = JSON.parse(readFileSync(join(out, 'site.webmanifest'), 'utf8'));
-    assert.deepEqual(m.icons.map((i) => [i.src, i.sizes, i.purpose]),
-      [['/icon-32.png', '32x32', 'any maskable']]);
+    assert.deepEqual(
+      m.icons.map((i) => [i.src, i.sizes, i.purpose]),
+      [['/icon-32.png', '32x32', 'any maskable']],
+    );
     assert.ok(!m.icons.some((i) => i.src.endsWith('.svg')), 'an SVG entry breaks Android WebAPK installs');
     assert.match(r.stdout, /apple-touch-icon\.png .* mark at \d+px of 180 in the safe zone/);
     assert.match(r.stdout, /icon-32\.png .* mark at \d+px of 32 in the safe zone/);
@@ -648,20 +796,29 @@ describe('the masked icons', () => {
     const r = await cli(['--bg', 'none', '--manifest', '--sizes', '32', '-o', out, fixture('flat.svg')]);
     assert.equal(r.code, 0, r.stderr);
     const m = JSON.parse(readFileSync(join(out, 'site.webmanifest'), 'utf8'));
-    assert.deepEqual(m.icons.map((i) => [i.src, i.sizes, i.purpose]),
-      [['/icon-32.png', '32x32', undefined]]);
+    assert.deepEqual(
+      m.icons.map((i) => [i.src, i.sizes, i.purpose]),
+      [['/icon-32.png', '32x32', undefined]],
+    );
     // A requested32px PNG keeps its size independently of the48px ICO default.
-    assert.deepEqual([header(readFileSync(join(out, 'icon-32.png'))).width,
-      header(readFileSync(join(out, 'icon-32.png'))).height], [32, 32]);
-    assert.notDeepEqual([...readFileSync(join(out, 'icon-32.png'))],
+    assert.deepEqual(
+      [header(readFileSync(join(out, 'icon-32.png'))).width, header(readFileSync(join(out, 'icon-32.png'))).height],
+      [32, 32],
+    );
+    assert.notDeepEqual(
+      [...readFileSync(join(out, 'icon-32.png'))],
       [...readFileSync(join(out, 'favicon.ico')).subarray(22)],
-      'a requested32px PNG is separate from the48px ICO payload');
+      'a requested32px PNG is separate from the48px ICO payload',
+    );
   });
 
   it('use a full-bleed source as it is', async () => {
     const svg = join(scratch, 'bleed.svg');
-    writeFileSync(svg, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
-      '<rect width="64" height="64" fill="#0E7C68"/><circle cx="32" cy="32" r="20" fill="#F4F1EA"/></svg>');
+    writeFileSync(
+      svg,
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+        '<rect width="64" height="64" fill="#0E7C68"/><circle cx="32" cy="32" r="20" fill="#F4F1EA"/></svg>',
+    );
     const out = freshDir();
     const r = await build({ input: svg, out, sizes: [32, 64, 192, 512], bg: '#000000', zopfli: false });
     for (const [file, px, key] of ICONS) {
@@ -669,8 +826,10 @@ describe('the masked icons', () => {
       assert.equal(placed(r.fit, key).box, px, key);
       // The --bg ground never shows: the corner is the source's own ground, not black.
       const img = decode(readFileSync(join(out, file)));
-      assert.ok(Math.abs(img.data[0] - 0x0E) + Math.abs(img.data[1] - 0x7C) + Math.abs(img.data[2] - 0x68) < 24,
-        `${file}: corner pixel is ${[...img.data.slice(0, 3)]}, expected the source's own ground`);
+      assert.ok(
+        Math.abs(img.data[0] - 0x0e) + Math.abs(img.data[1] - 0x7c) + Math.abs(img.data[2] - 0x68) < 24,
+        `${file}: corner pixel is ${img.data.slice(0, 3)}, expected the source's own ground`,
+      );
     }
   });
 });
@@ -679,7 +838,8 @@ describe('the masked icons', () => {
 
 describe('determinism and atomicity', () => {
   it('re-running with the same inputs produces the same bytes', async () => {
-    const a = freshDir(), b = freshDir();
+    const a = freshDir(),
+      b = freshDir();
     const opts = { input: fixture('general.svg'), sizes: [32], bg: '#ffffff', manifest: true };
     await build({ ...opts, out: a });
     await build({ ...opts, out: b });
@@ -692,7 +852,10 @@ describe('determinism and atomicity', () => {
     const out = freshDir();
     await build({ input: fixture('flat.svg'), out, sizes: [32] });
     await assert.rejects(build({ input: fixture('unresolved.svg'), out, sizes: [32] }), FavseedError);
-    assert.deepEqual(readdirSync(out).filter((f) => f.startsWith('.favseed')), []);
+    assert.deepEqual(
+      readdirSync(out).filter((f) => f.startsWith('.favseed')),
+      [],
+    );
   });
 
   it('leaves a previous output set intact when a later run fails', async () => {
@@ -719,7 +882,8 @@ describe('determinism and atomicity', () => {
       await assert.rejects(build({ input: fixture('unresolved.svg'), out: freshDir(), sizes: [32] }));
     } finally {
       for (const [k, v] of Object.entries(saved)) {
-        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
       }
     }
     assert.deepEqual(readdirSync(priv), [], 'a temp directory outlived the build');
@@ -853,8 +1017,11 @@ describe('the single SVG preserves animation', () => {
     const a = await SMALL('animated');
     const b = await SMALL('animated', { animation: false });
     for (const f of ['icon-32.png', 'apple-touch-icon.png', 'favicon.ico']) {
-      assert.deepEqual([...readFileSync(join(a.out, f))], [...readFileSync(join(b.out, f))],
-        `${f} differs between the default and --no-animation builds`);
+      assert.deepEqual(
+        [...readFileSync(join(a.out, f))],
+        [...readFileSync(join(b.out, f))],
+        `${f} differs between the default and --no-animation builds`,
+      );
     }
   });
 
@@ -898,20 +1065,34 @@ describe('rendering', () => {
     // Below 1 % the mark used to be left unsquared, and resvg then derived the second side:
     // 100x101 failed with "ICO payload is 32x33", and 101x100 under --bg none wrote a
     // 512x507 icon-512.png that the manifest declared 512x512.
-    for (const [w, h] of [[100, 101], [101, 100]]) {
+    for (const [w, h] of [
+      [100, 101],
+      [101, 100],
+    ]) {
       const src = join(scratch, `near-${w}x${h}.svg`);
-      writeFileSync(src, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">` +
-        `<rect x="10" y="10" width="${w - 20}" height="${h - 20}" fill="#1f3a5f"/></svg>`);
+      writeFileSync(
+        src,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">` +
+          `<rect x="10" y="10" width="${w - 20}" height="${h - 20}" fill="#1f3a5f"/></svg>`,
+      );
       const out = freshDir();
       const r = await cli(['--bg', 'none', '--sizes', '192 512', '-o', out, src]);
       assert.equal(r.code, 0, `${w}x${h}: ${r.stderr}`);
       assert.ok(!/not square/.test(r.stderr), `${w}x${h} warned: ${r.stderr}`);
-      for (const [file, px] of [['icon-192.png', 192], ['icon-512.png', 512], ['apple-touch-icon.png', 180]]) {
+      for (const [file, px] of [
+        ['icon-192.png', 192],
+        ['icon-512.png', 512],
+        ['apple-touch-icon.png', 180],
+      ]) {
         const hd = header(readFileSync(join(out, file)));
         assert.deepEqual([hd.width, hd.height], [px, px], `${w}x${h}: ${file}`);
       }
       const ico = readFileSync(join(out, 'favicon.ico'));
-      assert.deepEqual([header(ico.subarray(22)).width, header(ico.subarray(22)).height], [48, 48], `${w}x${h}: ICO payload`);
+      assert.deepEqual(
+        [header(ico.subarray(22)).width, header(ico.subarray(22)).height],
+        [48, 48],
+        `${w}x${h}: ICO payload`,
+      );
     }
   });
 
@@ -941,23 +1122,51 @@ describe('the published tarball', () => {
     // On Windows `npm` is npm.cmd, which Node refuses to spawn without a shell since the
     // CVE-2024-27980 fix, so the Windows job would fail here with ENOENT. The arguments are
     // constants, so the shell has nothing to misquote.
-    const raw = execFileSync('npm', ['pack', '--dry-run', '--json'],
-      { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
+    const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      shell: process.platform === 'win32',
+    });
     // npm <= 11 prints an array of packages; npm 12 prints an object keyed by name.
     const parsed = JSON.parse(raw);
     const pkg = Array.isArray(parsed) ? parsed[0] : Object.values(parsed)[0];
     // Explicit allowlist catches new accidental files inside shipped directories too.
     // Intentional package additions must update this list in the same change.
-    assert.deepEqual(pkg.files.map((f) => f.path).sort(), [
-      'CHANGELOG.md', 'LICENSE', 'README.md', 'package.json',
-      'astro/Head.astro', 'astro/cache.mjs', 'astro/index.d.ts', 'astro/index.mjs',
-      'astro/middleware.mjs', 'astro/options.mjs', 'astro/types.d.mts',
-      'bin/favseed.d.mts', 'bin/favseed.mjs', 'bin/index.d.mts', 'bin/index.mjs',
-      'lib/WASI-LICENSE', 'lib/ZOPFLI-LICENSE', 'lib/config.mjs', 'lib/core.mjs', 'lib/core.d.mts',
-      'lib/engine.mjs', 'lib/pipeline.mjs', 'lib/svg-precision.mjs',
-      'lib/types.d.mts', 'lib/zopfli-build.mjs', 'lib/zopfli.mjs', 'lib/zopfli.wasm',
-      'vite/cache.mjs', 'vite/index.d.mts', 'vite/index.mjs',
-    ].sort());
+    assert.deepEqual(
+      pkg.files.map((f) => f.path).sort(),
+      [
+        'CHANGELOG.md',
+        'LICENSE',
+        'README.md',
+        'package.json',
+        'astro/Head.astro',
+        'astro/cache.mjs',
+        'astro/index.d.ts',
+        'astro/index.mjs',
+        'astro/middleware.mjs',
+        'astro/options.mjs',
+        'astro/types.d.mts',
+        'bin/favseed.d.mts',
+        'bin/favseed.mjs',
+        'bin/index.d.mts',
+        'bin/index.mjs',
+        'lib/WASI-LICENSE',
+        'lib/ZOPFLI-LICENSE',
+        'lib/config.mjs',
+        'lib/core.mjs',
+        'lib/core.d.mts',
+        'lib/engine.mjs',
+        'lib/pipeline.mjs',
+        'lib/svg-precision.mjs',
+        'lib/types.d.mts',
+        'lib/zopfli-build.mjs',
+        'lib/zopfli.mjs',
+        'lib/zopfli.wasm',
+        'vite/cache.mjs',
+        'vite/index.d.mts',
+        'vite/index.mjs',
+      ].sort(),
+    );
     const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
     assert.deepEqual(manifest.bin, { favseed: 'bin/favseed.mjs' });
     const bin = pkg.files.find((f) => f.path === manifest.bin.favseed);
@@ -1011,22 +1220,28 @@ describe('the svg stage on its own', () => {
   });
 
   it('throws FavseedError on a var() with no fallback, in the icon pass', () => {
-    assert.throws(() => optimiseSvg(read('unresolved'), { icon: true }), (e) => {
-      assert.ok(e instanceof FavseedError);
-      assert.match(e.message, /unresolved var\(--brand\)/);
-      return true;
-    });
+    assert.throws(
+      () => optimiseSvg(read('unresolved'), { icon: true }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--brand\)/);
+        return true;
+      },
+    );
   });
 
   it('throws FavseedError, naming --no-animation only for the logo pass', () => {
     const src = read('animvar');
     assert.doesNotThrow(() => optimiseSvg(src, { icon: true }));
-    assert.throws(() => optimiseSvg(src, { icon: false }), (e) => {
-      assert.ok(e instanceof FavseedError);
-      assert.match(e.message, /unresolved var\(--beat\)/);
-      assert.match(e.message, /--no-animation/);
-      return true;
-    });
+    assert.throws(
+      () => optimiseSvg(src, { icon: false }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--beat\)/);
+        assert.match(e.message, /--no-animation/);
+        return true;
+      },
+    );
   });
 
   it('keeps a non-motion declaration when it strips a motion one beside it', () => {
@@ -1038,10 +1253,12 @@ describe('the svg stage on its own', () => {
 
   for (const style of ['', '<style>.mark{animation:pulse 1s}@keyframes pulse{to{opacity:.5}}</style>']) {
     it(`preserves accessibility ID references ${style ? 'with' : 'without'} a stylesheet`, () => {
-      const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" '
-        + 'aria-labelledby="label other" aria-describedby="description">'
-        + '<title id="label">Company mark</title><desc id="description">Description</desc>'
-        + style + '<path id="other" class="mark" d="M0 0h10v10H0z"/></svg>';
+      const source =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" ' +
+        'aria-labelledby="label other" aria-describedby="description">' +
+        '<title id="label">Company mark</title><desc id="description">Description</desc>' +
+        style +
+        '<path id="other" class="mark" d="M0 0h10v10H0z"/></svg>';
       const out = optimiseSvg(source).data;
       for (const id of ['label', 'other', 'description']) assert.ok(out.includes(`id="${id}"`), out);
       assert.match(out, /aria-labelledby="label other"/);
@@ -1062,10 +1279,14 @@ describe('the svg stage on its own', () => {
     // right, but that it is the same file you would get from a source that never had any.
     const src = read('animated');
     const at = src.indexOf('@media');
-    let depth = 0, end = -1;
+    let depth = 0,
+      end = -1;
     for (let i = src.indexOf('{', at); i < src.length; i++) {
       if (src[i] === '{') depth++;
-      else if (src[i] === '}' && --depth === 0) { end = i; break; }
+      else if (src[i] === '}' && --depth === 0) {
+        end = i;
+        break;
+      }
     }
     assert.ok(end > at, 'the fixture no longer has a @media block to remove');
     const byHand = src.slice(0, at) + src.slice(end + 1);
@@ -1147,20 +1368,24 @@ describe('the astro integration', () => {
   };
 
   const linksFrom = (calls) => {
-    const plugin = calls.configs.flatMap((c) => c.vite?.plugins ?? [])
-      .find((p) => p.name === 'favseed:virtual');
+    const plugin = calls.configs.flatMap((c) => c.vite?.plugins ?? []).find((p) => p.name === 'favseed:virtual');
     return plugin.load('\0virtual:favseed');
   };
 
   const project = async (options = {}, root = freshDir()) => {
     mkdirSync(root, { recursive: true });
     copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
-    const s = stub(root), integration = favseedAstro({ input: 'logo.svg', ...options });
+    const s = stub(root),
+      integration = favseedAstro({ input: 'logo.svg', ...options });
     await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
-    return { root, pub: join(root, 'public'), stamp: join(root, 'node_modules/.cache/favseed/written.json'),
+    return {
+      root,
+      pub: join(root, 'public'),
+      stamp: join(root, 'node_modules/.cache/favseed/written.json'),
       logs: s.calls.logs,
       build: () => integration.hooks['astro:build:start']({ logger: s.args.logger }),
-      dev: () => integration.hooks['astro:server:setup']({ logger: s.args.logger }) };
+      dev: () => integration.hooks['astro:server:setup']({ logger: s.args.logger }),
+    };
   };
 
   it('rejects unknown and CLI-only options before any Astro hook runs', () => {
@@ -1169,17 +1394,21 @@ describe('the astro integration', () => {
       [{ out: 'icons' }, /out.*publicDir/],
       [{ base: '/other/' }, /base.*Astro/],
     ]) {
-      assert.throws(() => favseedAstro(options), (error) => {
-        assert.ok(error instanceof FavseedError);
-        assert.match(error.message, expected);
-        return true;
-      });
+      assert.throws(
+        () => favseedAstro(options),
+        (error) => {
+          assert.ok(error instanceof FavseedError);
+          assert.match(error.message, expected);
+          return true;
+        },
+      );
     }
   });
 
   it('reports malformed option shapes instead of path or coercion errors', () => {
     for (const [options, expected] of [
-      [null, /options must be an object/], [[], /options must be an object/],
+      [null, /options must be an object/],
+      [[], /options must be an object/],
       ['logo.svg', /options must be an object/],
       [{ input: 3 }, /input must be a non-empty string/],
       [{ input: ' ' }, /input must be a non-empty string/],
@@ -1187,7 +1416,8 @@ describe('the astro integration', () => {
       [{ bg: '' }, /bg must be a non-empty string or null/],
       [{ vars: 'brand=red' }, /vars must be an object or Map/],
       [{ vars: [] }, /vars must be an object or Map/],
-    ]) assert.throws(() => favseedAstro(options), expected);
+    ])
+      assert.throws(() => favseedAstro(options), expected);
   });
 
   it('validates original production values before fast or skipped development can hide them', () => {
@@ -1205,20 +1435,32 @@ describe('the astro integration', () => {
         [{ manifest: [] }, /manifest must be true, false or an object/],
         [{ vars: { 'bad name': 'red' } }, /vars name must be a CSS custom property/],
       ]) {
-        assert.throws(() => favseedAstro({ dev, ...options }), (error) => {
-          assert.ok(error instanceof FavseedError);
-          assert.match(error.message, expected);
-          assert.doesNotMatch(error.message, /--(?:colors|quality|sizes|padding|var)\b/);
-          return true;
-        });
+        assert.throws(
+          () => favseedAstro({ dev, ...options }),
+          (error) => {
+            assert.ok(error instanceof FavseedError);
+            assert.match(error.message, expected);
+            assert.doesNotMatch(error.message, /--(?:colors|quality|sizes|padding|var)\b/);
+            return true;
+          },
+        );
       }
     }
   });
 
   it('preserves compatible shared option forms and does not mutate caller settings', async () => {
     const vars = new Map([['brand', '#123456']]);
-    const options = { sizes: '32,48', quality: '100', colors: '16', padding: '0', bg: 'none', vars,
-      head: true, dev: 'full', manifest: { name: 'Example' } };
+    const options = {
+      sizes: '32,48',
+      quality: '100',
+      colors: '16',
+      padding: '0',
+      bg: 'none',
+      vars,
+      head: true,
+      dev: 'full',
+      manifest: { name: 'Example' },
+    };
     const p = await project(options);
     await p.build();
     assert.ok(existsSync(join(p.pub, 'icon-32.png')));
@@ -1229,17 +1471,22 @@ describe('the astro integration', () => {
   });
 
   it('preserves user values that resemble flags in configuration errors', () => {
-    assert.throws(() => favseedAstro({ quality: '--colors' }), (error) => {
-      assert.match(error.message, /quality must be an integer 1-100/);
-      assert.match(error.message, /got '--colors'/);
-      return true;
-    });
+    assert.throws(
+      () => favseedAstro({ quality: '--colors' }),
+      (error) => {
+        assert.match(error.message, /quality must be an integer 1-100/);
+        assert.match(error.message, /got '--colors'/);
+        return true;
+      },
+    );
   });
 
   it('rechecks mutable values before cache lookup without changing published files on failure', async () => {
-    const sizes = [32], p = await project({ sizes });
+    const sizes = [32],
+      p = await project({ sizes });
     await p.build();
-    const stamp = readFileSync(p.stamp), ico = readFileSync(join(p.pub, 'favicon.ico'));
+    const stamp = readFileSync(p.stamp),
+      ico = readFileSync(join(p.pub, 'favicon.ico'));
     sizes[0] = 33;
     await assert.rejects(p.build(), /^FavseedError: sizes takes even pixel sizes/);
     assert.deepEqual(readFileSync(p.stamp), stamp);
@@ -1251,7 +1498,8 @@ describe('the astro integration', () => {
       const p = await project({ sizes: [32] });
       const input = 'supply it with --var name=value --no-animation.svg';
       copyFileSync(fixture(name), join(p.root, input));
-      const s = stub(p.root), integration = favseedAstro({ input, sizes: [32] });
+      const s = stub(p.root),
+        integration = favseedAstro({ input, sizes: [32] });
       await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
       await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }), (error) => {
         assert.match(error.message, name === 'unresolved.svg' ? /var\(--brand\)/ : /var\(--beat\)/);
@@ -1284,8 +1532,13 @@ describe('the astro integration', () => {
     await p.build();
     assert.ok(existsSync(join(p.pub, 'icon-256.png')));
     await (await project({}, p.root)).build();
-    assert.deepEqual(readdirSync(p.pub).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg']);
+    assert.deepEqual(readdirSync(p.pub).sort(), [
+      'apple-touch-icon.png',
+      'favicon.ico',
+      'icon-192.png',
+      'icon-512.png',
+      'icon.svg',
+    ]);
     assert.ok(!('icon-256.png' in JSON.parse(readFileSync(p.stamp, 'utf8'))));
   });
 
@@ -1304,8 +1557,12 @@ describe('the astro integration', () => {
     second.logs.length = 0;
     await second.build();
     assert.ok(second.logs.some(([, m]) => m.startsWith('cache hit')));
-    assert.deepEqual(readdirSync(second.pub).sort(),
-      ['apple-touch-icon.png', 'favicon.ico', 'icon-64.png', 'icon.svg']);
+    assert.deepEqual(readdirSync(second.pub).sort(), [
+      'apple-touch-icon.png',
+      'favicon.ico',
+      'icon-64.png',
+      'icon.svg',
+    ]);
   });
 
   it('cleans owned legacy assets while preserving edited and unrelated files', async () => {
@@ -1339,7 +1596,7 @@ describe('the astro integration', () => {
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
-    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'user-edited icon');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1349,8 +1606,15 @@ describe('the astro integration', () => {
     const first = await project({ sizes: [32] });
     await first.build();
     const cache = join(first.root, 'node_modules/.cache/favseed');
-    const legacy = join(cache, cacheKey({ version: '0.5.0', source: readFileSync(join(first.root, 'logo.svg')),
-      options: { sizes: [32], base: '/' }, engine: engineVersions() }));
+    const legacy = join(
+      cache,
+      cacheKey({
+        version: '0.5.0',
+        source: readFileSync(join(first.root, 'logo.svg')),
+        options: { sizes: [32], base: '/' },
+        engine: engineVersions(),
+      }),
+    );
     const files = ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-32.png'];
     const original = files.map((name) => [name, readFileSync(join(first.pub, name))]);
     mkdirSync(legacy, { recursive: true });
@@ -1362,7 +1626,7 @@ describe('the astro integration', () => {
     writeFileSync(edited, 'legacy user edit');
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
-    await assert.rejects(first.build(), /public[\\\/]icon-32\.png already exists/);
+    await assert.rejects(first.build(), /public[\\/]icon-32\.png already exists/);
     await second.build();
     assert.equal(readFileSync(edited, 'utf8'), 'legacy user edit');
     assert.ok(!('icon-32.png' in JSON.parse(readFileSync(second.stamp, 'utf8'))));
@@ -1372,11 +1636,18 @@ describe('the astro integration', () => {
     const first = await project({ sizes: [32], manifest: true });
     await first.build();
     writeFileSync(join(first.pub, 'icon-64.png'), 'hand-tuned icon');
-    const before = readdirSync(first.pub).sort().map((name) => [name, readFileSync(join(first.pub, name))]);
+    const before = readdirSync(first.pub)
+      .sort()
+      .map((name) => [name, readFileSync(join(first.pub, name))]);
     const stamp = readFileSync(first.stamp);
     const second = await project({ sizes: [64] }, first.root);
-    await assert.rejects(second.build(), /public[\\\/]icon-64\.png already exists/);
-    assert.deepEqual(readdirSync(second.pub).sort().map((name) => [name, readFileSync(join(second.pub, name))]), before);
+    await assert.rejects(second.build(), /public[\\/]icon-64\.png already exists/);
+    assert.deepEqual(
+      readdirSync(second.pub)
+        .sort()
+        .map((name) => [name, readFileSync(join(second.pub, name))]),
+      before,
+    );
     assert.deepEqual(readFileSync(second.stamp), stamp);
   });
 
@@ -1397,14 +1668,20 @@ describe('the astro integration', () => {
   it('ignores hostile stamp paths, unrelated names and generated-name directories', async () => {
     const first = await project({ sizes: [32] });
     await first.build();
-    const outside = join(first.root, 'outside.txt'), notes = join(first.pub, 'notes.txt');
-    writeFileSync(outside, 'outside'); writeFileSync(notes, 'notes');
+    const outside = join(first.root, 'outside.txt'),
+      notes = join(first.pub, 'notes.txt');
+    writeFileSync(outside, 'outside');
+    writeFileSync(notes, 'notes');
     mkdirSync(join(first.pub, 'logo.svg'));
     writeFileSync(join(first.pub, 'logo.svg', 'keep.txt'), 'directory content');
     const stamp = JSON.parse(readFileSync(first.stamp, 'utf8'));
     const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
-    Object.assign(stamp, { '../outside.txt': digest(outside), [outside]: digest(outside),
-      'notes.txt': digest(notes), 'logo.svg': digest(notes) });
+    Object.assign(stamp, {
+      '../outside.txt': digest(outside),
+      [outside]: digest(outside),
+      'notes.txt': digest(notes),
+      'logo.svg': digest(notes),
+    });
     writeFileSync(first.stamp, JSON.stringify(stamp));
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
@@ -1417,13 +1694,17 @@ describe('the astro integration', () => {
   it('preserves a discontinued asset replaced by a symlink even when target bytes match', async (t) => {
     const first = await project({ sizes: [32] });
     await first.build();
-    const stale = join(first.pub, 'icon-32.png'), outside = join(first.root, 'outside.png');
+    const stale = join(first.pub, 'icon-32.png'),
+      outside = join(first.root, 'outside.png');
     const bytes = readFileSync(stale);
-    writeFileSync(outside, bytes); rmSync(stale);
-    try { symlinkSync(outside, stale, 'file'); }
-    catch (error) {
+    writeFileSync(outside, bytes);
+    rmSync(stale);
+    try {
+      symlinkSync(outside, stale, 'file');
+    } catch (error) {
       if (process.platform !== 'win32' || error.code !== 'EPERM') throw error;
-      t.skip('Creating file symlinks requires Windows privileges'); return;
+      t.skip('Creating file symlinks requires Windows privileges');
+      return;
     }
     const second = await project({ sizes: [64] }, first.root);
     await second.build();
@@ -1466,9 +1747,12 @@ describe('the astro integration', () => {
   });
 
   it('keeps virtual middleware transformed in server environments while respecting client and bundle-all settings', async () => {
-    const root = freshDir(), s = stub(root);
+    const root = freshDir(),
+      s = stub(root);
     await favseedAstro().hooks['astro:config:setup']({ command: 'build', ...s.args });
-    const plugin = s.calls.configs.flatMap((config) => config.vite?.plugins ?? []).find((item) => item.name === 'favseed:virtual');
+    const plugin = s.calls.configs
+      .flatMap((config) => config.vite?.plugins ?? [])
+      .find((item) => item.name === 'favseed:virtual');
     for (const name of ['astro', 'prerender', 'ssr']) {
       const config = { consumer: 'server', resolve: { noExternal: ['author-package'] } };
       const update = plugin.configEnvironment(name, config);
@@ -1522,7 +1806,10 @@ describe('the astro integration', () => {
     const s = stub(root);
     await favseedAstro({ head: false }).hooks['astro:config:setup']({ command: 'build', ...s.args });
     assert.deepEqual(s.calls.middleware, []);
-    assert.ok(s.calls.logs.some(([, m]) => m.includes('rel="icon"')), 'the block was not logged');
+    assert.ok(
+      s.calls.logs.some(([, m]) => m.includes('rel="icon"')),
+      'the block was not logged',
+    );
   });
 
   it('rejects an option it cannot honour', () => {
@@ -1530,28 +1817,30 @@ describe('the astro integration', () => {
     assert.throws(() => favseedAstro({ head: 'maybe' }), /head must be/);
   });
 
-  it('builds into public/ and hits the cache the second time',
-    async () => {
-      const root = freshDir();
-      const s = stub(root);
-      const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
-      copyFileSync(fixture('flat.svg'), (mkdirSync(root, { recursive: true }), join(root, 'logo.svg')));
-      await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
-      await integration.hooks['astro:build:start']({ logger: s.args.logger });
+  it('builds into public/ and hits the cache the second time', async () => {
+    const root = freshDir();
+    const s = stub(root);
+    const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
+    copyFileSync(fixture('flat.svg'), (mkdirSync(root, { recursive: true }), join(root, 'logo.svg')));
+    await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
+    await integration.hooks['astro:build:start']({ logger: s.args.logger });
 
-      const pub = join(root, 'public');
-      assert.deepEqual(readdirSync(pub).sort(),
-        ['apple-touch-icon.png', 'favicon.ico', 'icon-32.png', 'icon.svg']);
+    const pub = join(root, 'public');
+    assert.deepEqual(readdirSync(pub).sort(), ['apple-touch-icon.png', 'favicon.ico', 'icon-32.png', 'icon.svg']);
 
-      const before = readFileSync(join(pub, 'favicon.ico'));
-      s.calls.logs.length = 0;
-      await integration.hooks['astro:build:start']({ logger: s.args.logger });
-      assert.ok(s.calls.logs.some(([, m]) => m.startsWith('cache hit')), 'the second run rebuilt');
-      assert.deepEqual([...readFileSync(join(pub, 'favicon.ico'))], [...before]);
-    });
+    const before = readFileSync(join(pub, 'favicon.ico'));
+    s.calls.logs.length = 0;
+    await integration.hooks['astro:build:start']({ logger: s.args.logger });
+    assert.ok(
+      s.calls.logs.some(([, m]) => m.startsWith('cache hit')),
+      'the second run rebuilt',
+    );
+    assert.deepEqual([...readFileSync(join(pub, 'favicon.ico'))], [...before]);
+  });
 
   it('rejects invalid configuration before consulting a populated cache with the same raw key', async () => {
-    const root = freshDir(), s = stub(root);
+    const root = freshDir(),
+      s = stub(root);
     mkdirSync(root, { recursive: true });
     copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
     for (const zopfli of [false, null]) {
@@ -1565,7 +1854,7 @@ describe('the astro integration', () => {
     }
   });
 
-  it('puts config.base into the manifest\'s icon URLs, not only the links', async () => {
+  it("puts config.base into the manifest's icon URLs, not only the links", async () => {
     // The page linked /blog/site.webmanifest while the icons inside it pointed at /icon-32.png,
     // which 404s on any site deployed under a base path, and the PWA install fails with it.
     const root = freshDir();
@@ -1575,46 +1864,51 @@ describe('the astro integration', () => {
     await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
     await integration.hooks['astro:build:start']({ logger: s.args.logger });
     const manifest = JSON.parse(readFileSync(join(root, 'public', 'site.webmanifest'), 'utf8'));
-    assert.deepEqual(manifest.icons.map((i) => i.src), ['/blog/icon-32.png']);
+    assert.deepEqual(
+      manifest.icons.map((i) => i.src),
+      ['/blog/icon-32.png'],
+    );
     assert.ok(linksFrom(s.calls).includes('/blog/site.webmanifest'), 'the manifest link lost its base');
   });
 
-  it('keeps going when public/ already holds exactly what it would write',
-    async () => {
-      // The clean-install case: node_modules/.cache is gone, so the stamp is gone, but the
-      // files in public/ are still favseed's because the same input produces the same bytes.
-      const root = freshDir();
-      const s = stub(root);
-      const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
-      mkdirSync(root, { recursive: true });
-      copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
-      await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
-      await integration.hooks['astro:build:start']({ logger: s.args.logger });
+  it('keeps going when public/ already holds exactly what it would write', async () => {
+    // The clean-install case: node_modules/.cache is gone, so the stamp is gone, but the
+    // files in public/ are still favseed's because the same input produces the same bytes.
+    const root = freshDir();
+    const s = stub(root);
+    const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
+    mkdirSync(root, { recursive: true });
+    copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
+    await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
+    await integration.hooks['astro:build:start']({ logger: s.args.logger });
 
-      rmSync(join(root, 'node_modules'), { recursive: true, force: true });
-      await integration.hooks['astro:build:start']({ logger: s.args.logger });
-      assert.ok(existsSync(join(root, 'public', 'favicon.ico')));
-    });
+    rmSync(join(root, 'node_modules'), { recursive: true, force: true });
+    await integration.hooks['astro:build:start']({ logger: s.args.logger });
+    assert.ok(existsSync(join(root, 'public', 'favicon.ico')));
+  });
 
-  it('refuses to overwrite a favicon.ico it did not write',
-    async () => {
-      const root = freshDir();
-      const s = stub(root);
-      const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
-      mkdirSync(join(root, 'public'), { recursive: true });
-      copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
-      writeFileSync(join(root, 'public', 'favicon.ico'), 'a hand-tuned icon nobody should clobber');
+  it('refuses to overwrite a favicon.ico it did not write', async () => {
+    const root = freshDir();
+    const s = stub(root);
+    const integration = favseedAstro({ input: 'logo.svg', sizes: [32] });
+    mkdirSync(join(root, 'public'), { recursive: true });
+    copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
+    writeFileSync(join(root, 'public', 'favicon.ico'), 'a hand-tuned icon nobody should clobber');
 
-      await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
-      await assert.rejects(integration.hooks['astro:build:start']({ logger: s.args.logger }),
-        /public[\\\/]favicon\.ico already exists and differs from the generated file/);
-    });
+    await integration.hooks['astro:config:setup']({ command: 'build', ...s.args });
+    await assert.rejects(
+      integration.hooks['astro:build:start']({ logger: s.args.logger }),
+      /public[\\/]favicon\.ico already exists and differs from the generated file/,
+    );
+  });
 
   it('names custom public paths and starter recovery without changing conflicting files', async () => {
-    const root = freshDir(), pub = join(root, 'static');
+    const root = freshDir(),
+      pub = join(root, 'static');
     mkdirSync(pub, { recursive: true });
     copyFileSync(fixture('flat.svg'), join(root, 'logo.svg'));
-    const ico = Buffer.from('starter ICO'), svg = readFileSync(fixture('flat.svg'));
+    const ico = Buffer.from('starter ICO'),
+      svg = readFileSync(fixture('flat.svg'));
     writeFileSync(join(pub, 'favicon.ico'), ico);
     writeFileSync(join(pub, 'favicon.svg'), svg);
     const s = stub(root);
@@ -1637,7 +1931,9 @@ describe('the astro integration', () => {
   it('explains lost ownership when changed generated files survive a clean checkout', async () => {
     const first = await project({ sizes: [32], bg: '#fff' });
     await first.build();
-    const before = Object.fromEntries(readdirSync(first.pub).map((name) => [name, readFileSync(join(first.pub, name))]));
+    const before = Object.fromEntries(
+      readdirSync(first.pub).map((name) => [name, readFileSync(join(first.pub, name))]),
+    );
     rmSync(join(first.root, 'node_modules'), { recursive: true, force: true });
     const second = await project({ sizes: [32], bg: '#123456' }, first.root);
     await assert.rejects(second.build(), (error) => {
@@ -1648,7 +1944,10 @@ describe('the astro integration', () => {
       assert.ok(!error.message.includes('did not write it'), 'metadata loss is not proof of a foreign file');
       return true;
     });
-    assert.deepEqual(Object.fromEntries(readdirSync(second.pub).map((name) => [name, readFileSync(join(second.pub, name))])), before);
+    assert.deepEqual(
+      Object.fromEntries(readdirSync(second.pub).map((name) => [name, readFileSync(join(second.pub, name))])),
+      before,
+    );
     assert.ok(!existsSync(second.stamp), 'failed preflight must not adopt files');
   });
 });

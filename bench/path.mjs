@@ -28,7 +28,12 @@ export function benchmarkPath(value) {
     }
   }
   const physical = realpathSync(ancestor);
-  if (physical !== checkout && !physical.startsWith(checkout + sep)
-      && physical !== temporary && !physical.startsWith(temporary + sep)) throw new Error(message);
+  if (
+    physical !== checkout &&
+    !physical.startsWith(checkout + sep) &&
+    physical !== temporary &&
+    !physical.startsWith(temporary + sep)
+  )
+    throw new Error(message);
   return path;
 }

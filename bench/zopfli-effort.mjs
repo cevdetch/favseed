@@ -13,51 +13,85 @@ import { decode } from '../test/lib/png.mjs';
 
 const MARKS = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'];
 const ITERATIONS = [0, 1, 3, 5, 10, 15, 30, 60, 120];
-const args = new Map(process.argv.slice(2).map((arg) => {
-  const index = arg.indexOf('=');
-  return index < 0 ? [arg, true] : [arg.slice(0, index), arg.slice(index + 1)];
-}));
-for (const key of args.keys()) assert.ok(['--out', '--marks', '--repetitions', '--resume'].includes(key), `Unknown option ${key}`);
+const args = new Map(
+  process.argv.slice(2).map((arg) => {
+    const index = arg.indexOf('=');
+    return index < 0 ? [arg, true] : [arg.slice(0, index), arg.slice(index + 1)];
+  }),
+);
+for (const key of args.keys())
+  assert.ok(['--out', '--marks', '--repetitions', '--resume'].includes(key), `Unknown option ${key}`);
 const marks = args.has('--marks') ? String(args.get('--marks')).split(',') : MARKS;
-assert.ok(marks.length && new Set(marks).size === marks.length && marks.every((mark) => MARKS.includes(mark)), 'Invalid marks');
+assert.ok(
+  marks.length && new Set(marks).size === marks.length && marks.every((mark) => MARKS.includes(mark)),
+  'Invalid marks',
+);
 const repetitions = Number(args.get('--repetitions') ?? 2);
 assert.ok(Number.isInteger(repetitions) && repetitions >= 1 && repetitions <= 10, 'Invalid repetitions');
 const out = resolve(String(args.get('--out') ?? 'bench/out/zopfli-effort'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const median = (values) => {
-  const sorted = values.toSorted((a, b) => a - b), mid = Math.floor(sorted.length / 2);
+  const sorted = values.toSorted((a, b) => a - b),
+    mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 mkdirSync(join(out, 'inputs'), { recursive: true });
 mkdirSync(join(out, 'outputs'), { recursive: true });
-const engine = await loadEngine(), samples = [];
+const engine = await loadEngine(),
+  samples = [];
 const prepStart = performance.now();
 for (const mark of marks) {
   const source = readFileSync(new URL(`../test/fixtures/${mark}.svg`, import.meta.url), 'utf8');
-  await buildSet(source, normaliseOptions({ mode: 'release' }), { optimiseSvg, engine: {
-    ...engine,
-    finish: async (png) => {
-      const px = new DataView(png.buffer, png.byteOffset).getUint32(16);
-      const id = `${mark}-${px}`, owned = Buffer.from(png), decoded = decode(owned);
-      samples.push({ id, mark, px, png: owned, pixels: hash(decoded.data) });
-      return png;
+  await buildSet(source, normaliseOptions({ mode: 'release' }), {
+    optimiseSvg,
+    engine: {
+      ...engine,
+      finish: async (png) => {
+        const px = new DataView(png.buffer, png.byteOffset).getUint32(16);
+        const id = `${mark}-${px}`,
+          owned = Buffer.from(png),
+          decoded = decode(owned);
+        samples.push({ id, mark, px, png: owned, pixels: hash(decoded.data) });
+        return png;
+      },
     },
-  } });
+  });
 }
 assert.equal(samples.length, marks.length * 4, 'Expected ICO, Apple, 192px and 512px payloads');
 assert.equal(new Set(samples.map((s) => s.id)).size, samples.length);
-const configuration = { engine: engineVersions(), iterations: ITERATIONS, repetitions,
-  runtime: { node: process.version, cpu: cpus()[0]?.model, cores: cpus().length, platform: process.platform, arch: process.arch },
-  samples: samples.map(({ id, png, pixels }) => ({ id, sha256: hash(png), pixels, bytes: png.length })) };
+const configuration = {
+  engine: engineVersions(),
+  iterations: ITERATIONS,
+  repetitions,
+  runtime: {
+    node: process.version,
+    cpu: cpus()[0]?.model,
+    cores: cpus().length,
+    platform: process.platform,
+    arch: process.arch,
+  },
+  samples: samples.map(({ id, png, pixels }) => ({ id, sha256: hash(png), pixels, bytes: png.length })),
+};
 const fingerprint = hash(JSON.stringify(configuration));
-const metadata = { fingerprint, ...configuration, node: process.version, cpu: cpus()[0]?.model,
-  cores: cpus().length, prepMs: performance.now() - prepStart,
-  note: 'Fixed default-option PNG winners; 32px PNG is the ICO payload. No SVG/header bytes. Times cover finish only. Decode/hash checks run after timing.' };
-const metadataPath = join(out, 'metadata.json'), rowsPath = join(out, 'rows.jsonl');
+const metadata = {
+  fingerprint,
+  ...configuration,
+  node: process.version,
+  cpu: cpus()[0]?.model,
+  cores: cpus().length,
+  prepMs: performance.now() - prepStart,
+  note: 'Fixed default-option PNG winners; 32px PNG is the ICO payload. No SVG/header bytes. Times cover finish only. Decode/hash checks run after timing.',
+};
+const metadataPath = join(out, 'metadata.json'),
+  rowsPath = join(out, 'rows.jsonl');
 let rows = [];
 if (existsSync(metadataPath)) {
   assert.ok(args.has('--resume'), 'Output already exists; use --resume or another --out');
-  assert.equal(JSON.parse(readFileSync(metadataPath, 'utf8')).fingerprint, fingerprint, 'Cannot resume a different engine/corpus/configuration');
+  assert.equal(
+    JSON.parse(readFileSync(metadataPath, 'utf8')).fingerprint,
+    fingerprint,
+    'Cannot resume a different engine/corpus/configuration',
+  );
   rows = existsSync(rowsPath) ? readFileSync(rowsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
 } else {
   writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + '\n');
@@ -72,7 +106,16 @@ assert.equal(completed.size, rows.length, 'Duplicate measurement rows');
 const warm = samples.find((sample) => sample.px === 512);
 await engine.finish(warm.png, { iterations: 15 });
 await engine.finish(warm.png, { iterations: 15 });
-console.log(JSON.stringify({ phase: 'prepared', samples: samples.length, repetitions, iterations: ITERATIONS, out, resumedRows: rows.length }));
+console.log(
+  JSON.stringify({
+    phase: 'prepared',
+    samples: samples.length,
+    repetitions,
+    iterations: ITERATIONS,
+    out,
+    resumedRows: rows.length,
+  }),
+);
 for (let rep = 0; rep < repetitions; rep++) {
   for (const [index, sample] of samples.entries()) {
     const offset = index % ITERATIONS.length;
@@ -83,7 +126,8 @@ for (let rep = 0; rep < repetitions; rep++) {
       const start = performance.now();
       const png = await engine.finish(sample.png, { iterations });
       const ms = performance.now() - start;
-      const owned = Buffer.from(png), decoded = decode(owned);
+      const owned = Buffer.from(png),
+        decoded = decode(owned);
       assert.deepEqual([decoded.width, decoded.height], [sample.px, sample.px]);
       assert.equal(hash(decoded.data), sample.pixels, `Pixels changed: ${sample.id}/${iterations}`);
       const row = { rep, id: sample.id, iterations, ms, bytes: png.length, sha256: hash(png) };
@@ -91,10 +135,18 @@ for (let rep = 0; rep < repetitions; rep++) {
       if (previous) assert.equal(row.sha256, previous.sha256, 'Nondeterministic compression');
       writeFileSync(join(out, 'outputs', `${sample.id}-i${iterations}.png`), png);
       appendFileSync(rowsPath, JSON.stringify(row) + '\n');
-      rows.push(row); completed.add(key(row));
+      rows.push(row);
+      completed.add(key(row));
     }
-    console.log(JSON.stringify({ phase: 'progress', rep, sample: sample.id, completed: rows.length,
-      total: repetitions * samples.length * ITERATIONS.length }));
+    console.log(
+      JSON.stringify({
+        phase: 'progress',
+        rep,
+        sample: sample.id,
+        completed: rows.length,
+        total: repetitions * samples.length * ITERATIONS.length,
+      }),
+    );
   }
 }
 const perFile = samples.map(({ id }) => {
@@ -107,9 +159,15 @@ const perFile = samples.map(({ id }) => {
   return { id, minBytes, cheapestMinimum: arms.find((arm) => arm.bytes === minBytes).iterations, arms };
 });
 const summaries = ITERATIONS.map((iterations) => {
-  let totalBytes = 0, minimumTies = 0, matches120Size = 0, matches120Bytes = 0, worseThan120 = 0, maxExtraBytes = 0;
+  let totalBytes = 0,
+    minimumTies = 0,
+    matches120Size = 0,
+    matches120Bytes = 0,
+    worseThan120 = 0,
+    maxExtraBytes = 0;
   for (const file of perFile) {
-    const arm = file.arms.find((a) => a.iterations === iterations), baseline = file.arms.find((a) => a.iterations === 120);
+    const arm = file.arms.find((a) => a.iterations === iterations),
+      baseline = file.arms.find((a) => a.iterations === 120);
     totalBytes += arm.bytes;
     minimumTies += Number(arm.bytes === file.minBytes);
     matches120Size += Number(arm.bytes === baseline.bytes);
@@ -117,10 +175,22 @@ const summaries = ITERATIONS.map((iterations) => {
     worseThan120 += Number(arm.bytes > baseline.bytes);
     maxExtraBytes = Math.max(maxExtraBytes, arm.bytes - baseline.bytes);
   }
-  const totals = Array.from({ length: repetitions }, (_, rep) => rows.filter((r) => r.rep === rep && r.iterations === iterations).reduce((n, r) => n + r.ms, 0));
-  return { iterations, totalBytes, medianMs: median(totals), minMs: Math.min(...totals), maxMs: Math.max(...totals),
-    minimumTies, cheapestMinimum: perFile.filter((file) => file.cheapestMinimum === iterations).length,
-    matches120Size, matches120Bytes, worseThan120, maxExtraBytes };
+  const totals = Array.from({ length: repetitions }, (_, rep) =>
+    rows.filter((r) => r.rep === rep && r.iterations === iterations).reduce((n, r) => n + r.ms, 0),
+  );
+  return {
+    iterations,
+    totalBytes,
+    medianMs: median(totals),
+    minMs: Math.min(...totals),
+    maxMs: Math.max(...totals),
+    minimumTies,
+    cheapestMinimum: perFile.filter((file) => file.cheapestMinimum === iterations).length,
+    matches120Size,
+    matches120Bytes,
+    worseThan120,
+    maxExtraBytes,
+  };
 });
 const baseline = summaries.find((s) => s.iterations === 120);
 for (const summary of summaries) {
@@ -129,5 +199,10 @@ for (const summary of summaries) {
   summary.speedupVs120 = baseline.medianMs / summary.medianMs;
 }
 writeFileSync(join(out, 'summary.json'), JSON.stringify({ metadata, summaries, perFile }, null, 2) + '\n');
-console.log('iterations | PNG bytes | extra vs120 | finish seconds | min ties | cheapest min | exact120 | worst extra/file');
-for (const s of summaries) console.log(`${s.iterations} | ${s.totalBytes} | ${s.extraBytesVs120} (${s.extraPercentVs120.toFixed(3)}%) | ${(s.medianMs / 1000).toFixed(3)} | ${s.minimumTies}/${samples.length} | ${s.cheapestMinimum} | ${s.matches120Bytes}/${samples.length} | ${s.maxExtraBytes}`);
+console.log(
+  'iterations | PNG bytes | extra vs120 | finish seconds | min ties | cheapest min | exact120 | worst extra/file',
+);
+for (const s of summaries)
+  console.log(
+    `${s.iterations} | ${s.totalBytes} | ${s.extraBytesVs120} (${s.extraPercentVs120.toFixed(3)}%) | ${(s.medianMs / 1000).toFixed(3)} | ${s.minimumTies}/${samples.length} | ${s.cheapestMinimum} | ${s.matches120Bytes}/${samples.length} | ${s.maxExtraBytes}`,
+  );

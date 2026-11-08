@@ -59,17 +59,24 @@ export function maskableFit(image: RgbaImage): { radius: number; fullBleed: bool
 export function nestForMask(iconData: string, box: number, canvas: number): string;
 
 /** Bound active image work, retain input order and drain a failed batch before rejecting. */
-export function mapImages<T, R>(items: readonly T[], sizeOf: (item: T) => number,
-  work: (item: T) => R | PromiseLike<R>, options?: { serial?: boolean }): Promise<Awaited<R>[]>;
+export function mapImages<T, R>(
+  items: readonly T[],
+  sizeOf: (item: T) => number,
+  work: (item: T) => R | PromiseLike<R>,
+  options?: { serial?: boolean },
+): Promise<Awaited<R>[]>;
 
 export interface SafeZonePlacement extends PlacementMetrics {
   svg: string;
 }
 
 /** canvas must be a positive even size; render supplies transparent square RGBA pixels. */
-export function placeInSafeZone(iconData: string,
+export function placeInSafeZone(
+  iconData: string,
   render: (svgText: string, px: number) => RgbaImage | PromiseLike<RgbaImage>,
-  canvas: number, padding?: number | 'auto'): Promise<SafeZonePlacement>;
+  canvas: number,
+  padding?: number | 'auto',
+): Promise<SafeZonePlacement>;
 
 /** base is concatenated as supplied; use a trailing slash, e.g. /blog/. */
 export function linkTags(base?: string, manifest?: boolean): string;

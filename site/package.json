@@ -1,8 +1,8 @@
 {
   "name": "favseed-site",
   "private": true,
-  "type": "module",
   "description": "favseed in the browser: the same engine and bytes as the CLI, nothing uploaded.",
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
     "icons": "node ../bin/favseed.mjs",
@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
-    "@napi-rs/image-wasm32-wasi": "1.15.0",
-    "astro": "^7.3.8",
-    "buffer": "^6.0.3",
-    "svgo": "^4.1.0",
     "@emnapi/core": "2.0.0-alpha.5",
     "@emnapi/runtime": "2.0.0-alpha.5",
-    "@napi-rs/wasm-runtime": "1.2.5"
+    "@napi-rs/image-wasm32-wasi": "1.15.0",
+    "@napi-rs/wasm-runtime": "1.2.5",
+    "astro": "^7.3.8",
+    "buffer": "^6.0.3",
+    "svgo": "^4.1.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

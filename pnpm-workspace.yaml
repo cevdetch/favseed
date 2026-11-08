@@ -10,3 +10,6 @@ packages:
 #   transform, and its icons are built by favseed itself.
 allowBuilds:
   sharp: false
+
+minimumReleaseAgeExclude:
+  - knip@6.44.2

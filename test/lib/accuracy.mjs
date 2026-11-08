@@ -19,7 +19,7 @@ import { decode } from './png.mjs';
 import { resolveVars } from './resolve.mjs';
 
 export const THRESHOLD_PCT = 1.0;
-const CHANNEL_TOLERANCE = 8;      // out of 255
+const CHANNEL_TOLERANCE = 8; // out of 255
 
 /**
  * An unquantised render of the var-resolved SOURCE, not of favseed's icon.svg. Comparing
@@ -40,12 +40,21 @@ export async function reference({ source, px, bg, vars, fitted = false, padding 
   // Literal geometric goldens in engine/pipeline tests independently verify framing.
   const vb = /\bviewBox\s*=\s*"([^"]*)"/.exec(svg);
   if (vb) {
-    const [, , w, h] = vb[1].trim().split(/[\s,]+/).map(Number);
+    const [, , w, h] = vb[1]
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (w > 0 && h > 0 && w !== h) {
       const box = Math.max(w, h);
       const start = svg.indexOf('<svg');
-      const prolog = svg.slice(0, start), sourceRoot = svg.slice(start).replace(/<svg\b([^>]*?)(\/?)>/, (_m, attrs, close) =>
-        `<svg${attrs.replace(/\s(?:x|y|width|height)\s*=\s*"[^"]*"/g, '')} x="${(box - w) / 2}" y="${(box - h) / 2}" width="${w}" height="${h}"${close}>`);
+      const prolog = svg.slice(0, start),
+        sourceRoot = svg
+          .slice(start)
+          .replace(
+            /<svg\b([^>]*?)(\/?)>/,
+            (_m, attrs, close) =>
+              `<svg${attrs.replace(/\s(?:x|y|width|height)\s*=\s*"[^"]*"/g, '')} x="${(box - w) / 2}" y="${(box - h) / 2}" width="${w}" height="${h}"${close}>`,
+          );
       svg = `${prolog}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}">${sourceRoot}</svg>`;
     }
   }
@@ -75,10 +84,13 @@ export function score(candidate, ref) {
   if (candidate.width !== ref.width || candidate.height !== ref.height) {
     throw new Error(`size mismatch: ${candidate.width}x${candidate.height} vs ${ref.width}x${ref.height}`);
   }
-  let pct = 0, rmse = 0;
+  let pct = 0,
+    rmse = 0;
   for (const ground of [255, 0]) {
-    const a = composite(candidate, ground), b = composite(ref, ground);
-    let bad = 0, sq = 0;
+    const a = composite(candidate, ground),
+      b = composite(ref, ground);
+    let bad = 0,
+      sq = 0;
     for (let i = 0; i < a.length; i += 3) {
       let worst = 0;
       for (let c = 0; c < 3; c++) {

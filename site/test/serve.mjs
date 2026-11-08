@@ -6,9 +6,17 @@ import { fileURLToPath } from 'node:url';
 import { isolationHeaders, securityHeaders } from '../headers.mjs';
 
 const root = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
-  '.css': 'text/css', '.wasm': 'application/wasm', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+const types = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.css': 'text/css',
+  '.wasm': 'application/wasm',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
+};
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -20,11 +28,13 @@ const server = createServer(async (req, res) => {
     for (const file of [path, `${path}.html`, resolve(path, 'index.html')]) {
       if (!(await stat(file).catch(() => null))?.isFile()) continue;
       const bytes = await readFile(file);
-      res.writeHead(200, {
-        ...securityHeaders,
-        ...(url.searchParams.has('no-isolation') ? {} : isolationHeaders),
-        'content-type': types[extname(file)] ?? 'application/octet-stream',
-      }).end(bytes);
+      res
+        .writeHead(200, {
+          ...securityHeaders,
+          ...(url.searchParams.has('no-isolation') ? {} : isolationHeaders),
+          'content-type': types[extname(file)] ?? 'application/octet-stream',
+        })
+        .end(bytes);
       return;
     }
     res.writeHead(404).end('not found');

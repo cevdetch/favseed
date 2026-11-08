@@ -6,8 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, engineVersions } from '../bin/favseed.mjs';
-import { checkReleasePolicy, compareManifests, formatDifferences, previousRelease,
-  validateManifest } from './lib/bytes.mjs';
+import {
+  checkReleasePolicy,
+  compareManifests,
+  formatDifferences,
+  previousRelease,
+  validateManifest,
+} from './lib/bytes.mjs';
 
 const MARKS = ['general', 'flat', 'second', 'mask', 'heavy', 'animated', 'tiles', 'wide', 'gradient', 'smil', 'dark'];
 const baseline = new URL('./bytes.json', import.meta.url);
@@ -37,7 +42,8 @@ try {
       for (const file of [...result.files].sort()) {
         const bytes = readFileSync(join(out, file));
         current.files[`${profile}/${mark}/${file}`] = {
-          bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
+          bytes: bytes.length,
+          sha256: createHash('sha256').update(bytes).digest('hex'),
         };
       }
     }
@@ -46,12 +52,17 @@ try {
   const json = JSON.stringify(current, null, 2) + '\n';
   if (mode === '--write') {
     writeFileSync(baseline, json);
-    process.stderr.write(`Updated test/bytes.json (${Object.keys(current.files).length} files); review size, accuracy and release version before committing.\n`);
+    process.stderr.write(
+      `Updated test/bytes.json (${Object.keys(current.files).length} files); review size, accuracy and release version before committing.\n`,
+    );
   } else {
     process.stdout.write(json);
     if (mode) {
       const report = formatDifferences(compareManifests(JSON.parse(readFileSync(baseline, 'utf8')), current));
-      if (report) throw new Error(`Generated files differ from test/bytes.json:\n${report}\nReview size/accuracy before explicitly accepting with node test/hashes.mjs --write.`);
+      if (report)
+        throw new Error(
+          `Generated files differ from test/bytes.json:\n${report}\nReview size/accuracy before explicitly accepting with node test/hashes.mjs --write.`,
+        );
       if (mode === '--release') {
         const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
         const message = checkReleasePolicy({ current, version, previous: previousRelease(root, version) });

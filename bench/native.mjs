@@ -10,8 +10,15 @@ const execFileAsync = promisify(execFile);
 export const run = (tool, args) => execFileAsync(tool, args, { maxBuffer: 1 << 22 });
 
 /** `{ resvg, pngquant, oxipng }` first lines of `--version`, or null for a missing tool. */
-export const nativeVersions = async () => Object.fromEntries(await Promise.all(
-  ['resvg', 'pngquant', 'oxipng'].map(async (t) => {
-    try { return [t, (await execFileAsync(t, ['--version'])).stdout.split('\n')[0].trim()]; }
-    catch { return [t, null]; }
-  })));
+export const nativeVersions = async () =>
+  Object.fromEntries(
+    await Promise.all(
+      ['resvg', 'pngquant', 'oxipng'].map(async (t) => {
+        try {
+          return [t, (await execFileAsync(t, ['--version'])).stdout.split('\n')[0].trim()];
+        } catch {
+          return [t, null];
+        }
+      }),
+    ),
+  );

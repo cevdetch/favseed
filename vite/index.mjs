@@ -34,16 +34,27 @@ const message = (e) => (e instanceof FavseedError ? `favseed: ${e.message}` : St
 const emitsHere = (env) => env?.mode === 'build' && env.config?.consumer === 'client';
 
 export default function favseed(options = {}) {
-  if ('out' in options) throw new FavseedError("the Vite plugin has no 'out': Vite's build.outDir decides where the files go");
-  let root, publicDir, viteBase, cacheDir, logger, pwa = null;
+  if ('out' in options)
+    throw new FavseedError("the Vite plugin has no 'out': Vite's build.outDir decides where the files go");
+  let root,
+    publicDir,
+    viteBase,
+    cacheDir,
+    logger,
+    pwa = null;
   // Kept per mode: configResolved can fire on one instance for a dev-mode server and for the
   // build (Astro runs both in one `astro build`), and dev forces fast mode. One shared
   // promise would let the first caller decide the mode of the release bytes.
-  const settings = { dev: null, build: null };   // Promise<{ merged, o, names, links }>
-  const sets = { dev: null, build: null };       // Promise<{ name, bytes }[]>
-  let built = null;                              // the files this build emits
+  const settings = { dev: null, build: null }; // Promise<{ merged, o, names, links }>
+  const sets = { dev: null, build: null }; // Promise<{ name, bytes }[]>
+  let built = null; // the files this build emits
   const warned = new Set();
-  const warnOnce = (text) => { if (!warned.has(text)) { warned.add(text); logger.warn(text); } };
+  const warnOnce = (text) => {
+    if (!warned.has(text)) {
+      warned.add(text);
+      logger.warn(text);
+    }
+  };
 
   /** Plugin options over favseed.config.* in the Vite root over the defaults. */
   const resolveSettings = async (dev) => {
@@ -53,23 +64,34 @@ export default function favseed(options = {}) {
     // where the bundle lives, not the path the icons are served under.
     const vitePath = /^\/(?!\/)/.test(viteBase) ? viteBase : null;
     if ((options.base ?? config.base) === undefined && vitePath === null) {
-      warnOnce(`favseed: Vite's base '${viteBase}' is not a path, so the icon links use '/'; set base in the favseed options to change it`);
+      warnOnce(
+        `favseed: Vite's base '${viteBase}' is not a path, so the icon links use '/'; set base in the favseed options to change it`,
+      );
     }
     const merged = resolveOptions({ input: 'src/logo.svg', base: vitePath ?? '/' }, config, options);
     delete merged.out;
     merged.input = resolve(root, merged.input);
     if (dev) merged.mode = 'fast';
     if (merged.bg === undefined) {
-      warnOnce('favseed: bg not given, using #000000 for the padded icons (iOS composites transparent icons onto black)');
+      warnOnce(
+        'favseed: bg not given, using #000000 for the padded icons (iOS composites transparent icons onto black)',
+      );
     }
     // vite-plugin-pwa writes and links its own manifest.webmanifest.
     if (pwa && merged.manifest) {
-      warnOnce('favseed: vite-plugin-pwa writes the manifest, so favseed does not; pass favseedIcons() to its manifest.icons');
+      warnOnce(
+        'favseed: vite-plugin-pwa writes the manifest, so favseed does not; pass favseedIcons() to its manifest.icons',
+      );
     }
     if (pwa) merged.manifest = false;
     const o = normaliseOptions(merged);
-    const names = ['icon.svg', 'favicon.ico', 'apple-touch-icon.png',
-      ...o.sizes.map((s) => `icon-${s}.png`), ...(o.manifest ? ['site.webmanifest'] : [])];
+    const names = [
+      'icon.svg',
+      'favicon.ico',
+      'apple-touch-icon.png',
+      ...o.sizes.map((s) => `icon-${s}.png`),
+      ...(o.manifest ? ['site.webmanifest'] : []),
+    ];
     return { merged, o, names, links: linkTags(o.base, Boolean(o.manifest)) };
   };
 
@@ -84,16 +106,19 @@ export default function favseed(options = {}) {
   };
 
   /** The set for a mode's settings, from the cache when the key matches. */
-  const setFor = (mode) => (sets[mode] ??= (async () => {
-    const { merged } = await settingsFor(mode);
-    const source = await readFile(merged.input).catch(() => { throw new FavseedError(`no such file: ${merged.input}`); });
-    const key = cacheKey({ version: favseedVersion(), source, options: merged, engine: engineVersions() });
-    const hit = await readSlot(cacheDir, key);
-    if (hit) return hit;
-    const fresh = await buildFiles({ ...merged, onWarn: (m) => warnOnce(`favseed: ${m}`) });
-    await writeSlot(cacheDir, key, fresh.files);
-    return fresh.files;
-  })());
+  const setFor = (mode) =>
+    (sets[mode] ??= (async () => {
+      const { merged } = await settingsFor(mode);
+      const source = await readFile(merged.input).catch(() => {
+        throw new FavseedError(`no such file: ${merged.input}`);
+      });
+      const key = cacheKey({ version: favseedVersion(), source, options: merged, engine: engineVersions() });
+      const hit = await readSlot(cacheDir, key);
+      if (hit) return hit;
+      const fresh = await buildFiles({ ...merged, onWarn: (m) => warnOnce(`favseed: ${m}`) });
+      await writeSlot(cacheDir, key, fresh.files);
+      return fresh.files;
+    })());
 
   /** True when public/ holds a different file under a name favseed emits. */
   const clash = (f) => {
@@ -128,7 +153,7 @@ export default function favseed(options = {}) {
           if (!(await settingsFor('dev')).names.includes(name)) return next();
           files = await setFor('dev');
         } catch (e) {
-          sets.dev = null;            // try again on the next request or change
+          sets.dev = null; // try again on the next request or change
           warnOnce(message(e));
           return next();
         }
@@ -147,9 +172,17 @@ export default function favseed(options = {}) {
       const watched = new Set();
       const watch = async () => {
         let s = null;
-        try { s = await settingsFor('dev'); } catch { /* a bad option: watch the config files */ }
+        try {
+          s = await settingsFor('dev');
+        } catch {
+          /* a bad option: watch the config files */
+        }
         const paths = [...CONFIG_FILES.map((f) => join(root, f)), ...(s ? [s.merged.input] : [])];
-        for (const p of paths) if (!watched.has(p)) { watched.add(p); server.watcher.add(p); }
+        for (const p of paths)
+          if (!watched.has(p)) {
+            watched.add(p);
+            server.watcher.add(p);
+          }
       };
       watch();
       const onChange = async (file) => {
@@ -177,11 +210,13 @@ export default function favseed(options = {}) {
       // Here, not in generateBundle: an error here leaves the previous dist/ in place.
       for (const f of built) {
         if (clash(f)) {
-          this.error(`favseed: public/${f.name} exists and is not the file favseed builds. ` +
-            'Delete it to use favseed\'s, or remove the favseed plugin to keep yours.');
+          this.error(
+            `favseed: public/${f.name} exists and is not the file favseed builds. ` +
+              "Delete it to use favseed's, or remove the favseed plugin to keep yours.",
+          );
         }
       }
-      if (pwa?.api?.pwaAssetsGenerator && await pwa.api.pwaAssetsGenerator()) {
+      if (pwa?.api?.pwaAssetsGenerator && (await pwa.api.pwaAssetsGenerator())) {
         this.warn("favseed: vite-plugin-pwa's pwaAssets also writes favicon.ico and touch icons; turn one of them off");
       }
     },

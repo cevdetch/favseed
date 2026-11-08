@@ -13,6 +13,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          runtime: node@24
+          require-lockfile: true
+      - run: pnpm format:check
+      - run: pnpm lint
+
   linux:
     # Pinned, not ubuntu-latest, so an image flip never arrives inside an unrelated change.
     runs-on: ubuntu-24.04
@@ -74,8 +88,8 @@ jobs:
           path: hashes-macos.txt
 
   windows:
-    # The whole suite: nothing needs installing.
-    runs-on: windows-latest
+    # Pinned like the Linux and macOS jobs, so an image flip never arrives inside an unrelated change.
+    runs-on: windows-2025
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

@@ -1,0 +1,5 @@
+{
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "env": { "node": true, "browser": true, "es2024": true },
+  "ignorePatterns": ["site/dist/**", "site/.astro/**", "site/vendor/**", "bench/out/**", "lib/zopfli-build.mjs"]
+}

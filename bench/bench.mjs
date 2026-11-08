@@ -82,7 +82,14 @@ sweeps.accuracy = async () => {
       const cells = [];
       for (const c of cols) {
         const out = join(OUT, 'acc', `${m}-${c}-${label}`);
-        await build({ input: join(FIXTURES, `${m}.svg`), out, sizes: [192, 512], colors: c, bg: '#000000', zopfli: false });
+        await build({
+          input: join(FIXTURES, `${m}.svg`),
+          out,
+          sizes: [192, 512],
+          colors: c,
+          bg: '#000000',
+          zopfli: false,
+        });
         const ref = await reference({ source: join(FIXTURES, `${m}.svg`), px, bg, vars: {}, fitted });
         const s = score(decode(readFileSync(join(out, file))), ref);
         cells.push(s.pct);
@@ -92,55 +99,91 @@ sweeps.accuracy = async () => {
     }
   }
   const head = `${pad('mark', 10)}${num('size', 5)}${cols.map((c) => num('c' + c, 9)).join('')}`;
-  const body = rows.map(([m, px, ...cs]) =>
-    `${pad(m, 10)}${num(px, 5)}${cs.map((v) => num(v.toFixed(2), 9)).join('')}`);
-  return { title: 'Accuracy: pct by mark, size and palette size',
-           note: 'pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win, and no palette of 256 or fewer colours holds a four-stop gradient inside the bar, so the size guard (decision 7) is what decides it.',
-           text: [head, ...body].join('\n'),
-           summary: `worst non-gradient: ${worst.pct.toFixed(3)} % (${worst.at}, --colors ${worst.colors})` };
+  const body = rows.map(
+    ([m, px, ...cs]) => `${pad(m, 10)}${num(px, 5)}${cs.map((v) => num(v.toFixed(2), 9)).join('')}`,
+  );
+  return {
+    title: 'Accuracy: pct by mark, size and palette size',
+    note: 'pct = share of pixels more than 8/255 from an unquantised reference, worse of a white and a black composite. The bar is 1.0 %. `gradient` is excluded from the worst-case line: it exists to make the lossless path win, and no palette of 256 or fewer colours holds a four-stop gradient inside the bar, so the size guard (decision 7) is what decides it.',
+    text: [head, ...body].join('\n'),
+    summary: `worst non-gradient: ${worst.pct.toFixed(3)} % (${worst.at}, --colors ${worst.colors})`,
+  };
 };
 
 sweeps.colors = async () => {
   const out = [];
   for (const c of [4, 8, 16, 32, 64, 128, 256]) {
-    let bytes = 0, worst = 0, at = '';
+    let bytes = 0,
+      worst = 0,
+      at = '';
     for (const m of MARKS) {
       if (m === 'gradient') continue;
       const dir = join(OUT, 'colors', `${m}-${c}`);
-      const r = await build({ input: join(FIXTURES, `${m}.svg`), out: dir, sizes: [192, 512], colors: c, bg: '#000000' });
+      const r = await build({
+        input: join(FIXTURES, `${m}.svg`),
+        out: dir,
+        sizes: [192, 512],
+        colors: c,
+        bg: '#000000',
+      });
       for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) bytes += r.bytes[f];
       for (const [label, px, file, bg, fitted] of CHECKS) {
         const ref = await reference({ source: join(FIXTURES, `${m}.svg`), px, bg, vars: {}, fitted });
         const s = score(decode(readFileSync(join(dir, file))), ref);
-        if (s.pct > worst) { worst = s.pct; at = `${m}@${label}`; }
+        if (s.pct > worst) {
+          worst = s.pct;
+          at = `${m}@${label}`;
+        }
       }
     }
     out.push([c, bytes, worst, at]);
   }
   const base = out.find((r) => r[0] === DEFAULT_COLORS)[1];
-  const text = [`${num('colors', 7)}${num('bytes', 9)}${num(`vs c${DEFAULT_COLORS}`, 9)}${num('worst pct', 11)}  where`,
-    ...out.map(([c, b, w, at]) =>
-      `${num(c, 7)}${num(b, 9)}${num(((b / base - 1) * 100).toFixed(1) + '%', 9)}${num(w.toFixed(3) + '%', 11)}  ${at}${w <= 1 ? '' : '   OVER THE BAR'}`)].join('\n');
-  return { title: 'Palette size: bytes against accuracy',
-           note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. This is the sweep that sets the default.`,
-           text };
+  const text = [
+    `${num('colors', 7)}${num('bytes', 9)}${num(`vs c${DEFAULT_COLORS}`, 9)}${num('worst pct', 11)}  where`,
+    ...out.map(
+      ([c, b, w, at]) =>
+        `${num(c, 7)}${num(b, 9)}${num(((b / base - 1) * 100).toFixed(1) + '%', 9)}${num(w.toFixed(3) + '%', 11)}  ${at}${w <= 1 ? '' : '   OVER THE BAR'}`,
+    ),
+  ].join('\n');
+  return {
+    title: 'Palette size: bytes against accuracy',
+    note: `${MARKS.length - 1} marks (gradient excluded), 180 + 192 + 512 px all placed, default Zopfli disabled. This is the sweep that sets the default.`,
+    text,
+  };
 };
 
 sweeps.dither = async () => {
   const raws = await rawRenders();
   const wins = { nofs: 0, floyd: 0, lossless: 0 };
-  let bNofs = 0, bBest = 0;
+  let bNofs = 0,
+    bBest = 0;
   const dir = join(OUT, 'dither');
   mkdirSync(dir, { recursive: true });
   for (const { mark, px, file } of raws) {
     const cands = [];
-    for (const [name, flag] of [['nofs', '--nofs'], ['floyd', '--floyd=1']]) {
+    for (const [name, flag] of [
+      ['nofs', '--nofs'],
+      ['floyd', '--floyd=1'],
+    ]) {
       const f = join(dir, `${mark}-${px}-${name}.png`);
       try {
-        await run('pngquant', ['--force', '--speed', '1', flag, '--colors', String(DEFAULT_COLORS), '--output', f, file]);
+        await run('pngquant', [
+          '--force',
+          '--speed',
+          '1',
+          flag,
+          '--colors',
+          String(DEFAULT_COLORS),
+          '--output',
+          f,
+          file,
+        ]);
         await run('oxipng', ['-q', '-o', 'max', '-s', '-a', f]);
         cands.push([name, f]);
-      } catch { /* 98/99: would be larger, or below the quality floor */ }
+      } catch {
+        /* 98/99: would be larger, or below the quality floor */
+      }
     }
     const l = join(dir, `${mark}-${px}-lossless.png`);
     copyFileSync(file, l);
@@ -154,25 +197,40 @@ sweeps.dither = async () => {
     bNofs += size((nofs ?? best)[1]);
   }
   const n = raws.length;
-  return { title: `Which candidate wins, at --colors ${DEFAULT_COLORS} (the default)`,
-           note: `One row per (mark, size) over ${MARKS.length} marks x 5 sizes. "keep smallest" is the guard from decision 7: it costs nothing when it never fires and stops a raised --colors from producing larger files.`,
-           text: [`files                 ${n}`,
-                  `no dither wins        ${wins.nofs}`,
-                  `Floyd-Steinberg wins  ${wins.floyd}`,
-                  `no pngquant wins      ${wins.lossless}`,
-                  ``,
-                  `always no-dither      ${bNofs} B`,
-                  `keep smallest         ${bBest} B  (${((bBest / bNofs - 1) * 100).toFixed(2)} %)`].join('\n') };
+  return {
+    title: `Which candidate wins, at --colors ${DEFAULT_COLORS} (the default)`,
+    note: `One row per (mark, size) over ${MARKS.length} marks x 5 sizes. "keep smallest" is the guard from decision 7: it costs nothing when it never fires and stops a raised --colors from producing larger files.`,
+    text: [
+      `files                 ${n}`,
+      `no dither wins        ${wins.nofs}`,
+      `Floyd-Steinberg wins  ${wins.floyd}`,
+      `no pngquant wins      ${wins.lossless}`,
+      ``,
+      `always no-dither      ${bNofs} B`,
+      `keep smallest         ${bBest} B  (${((bBest / bNofs - 1) * 100).toFixed(2)} %)`,
+    ].join('\n'),
+  };
 };
 
 sweeps.order = async () => {
   const raws = (await rawRenders()).filter((r) => r.px === 192);
   const dir = join(OUT, 'order');
   mkdirSync(dir, { recursive: true });
-  let quantFirst = 0, oxiFirst = 0;
+  let quantFirst = 0,
+    oxiFirst = 0;
   for (const { mark, file } of raws) {
     const a = join(dir, `${mark}-qo.png`);
-    await run('pngquant', ['--force', '--speed', '1', '--nofs', '--colors', String(DEFAULT_COLORS), '--output', a, file]);
+    await run('pngquant', [
+      '--force',
+      '--speed',
+      '1',
+      '--nofs',
+      '--colors',
+      String(DEFAULT_COLORS),
+      '--output',
+      a,
+      file,
+    ]);
     await run('oxipng', ['-q', '-o', 'max', '-s', '-a', a]);
     quantFirst += size(a);
 
@@ -183,10 +241,14 @@ sweeps.order = async () => {
     await run('pngquant', ['--force', '--speed', '1', '--nofs', '--colors', String(DEFAULT_COLORS), '--output', c, b]);
     oxiFirst += size(c);
   }
-  return { title: 'Stage order at 192 px',
-           note: 'pngquant re-encodes from scratch, so anything oxipng did before it is discarded. The measurement is not close.',
-           text: [`pngquant then oxipng  ${quantFirst} B`,
-                  `oxipng then pngquant  ${oxiFirst} B  (${((oxiFirst / quantFirst - 1) * 100).toFixed(1)} %)`].join('\n') };
+  return {
+    title: 'Stage order at 192 px',
+    note: 'pngquant re-encodes from scratch, so anything oxipng did before it is discarded. The measurement is not close.',
+    text: [
+      `pngquant then oxipng  ${quantFirst} B`,
+      `oxipng then pngquant  ${oxiFirst} B  (${((oxiFirst / quantFirst - 1) * 100).toFixed(1)} %)`,
+    ].join('\n'),
+  };
 };
 
 // The `seconds` column here is the only wall-clock number in the whole harness, and it is
@@ -202,18 +264,34 @@ sweeps.zopfli = async () => {
     const t0 = Date.now();
     for (const { mark, px, file } of raws) {
       const f = join(dir, `${mark}-${px}-${zi}.png`);
-      await run('pngquant', ['--force', '--speed', '1', '--nofs', '--colors', String(DEFAULT_COLORS), '--output', f, file]);
+      await run('pngquant', [
+        '--force',
+        '--speed',
+        '1',
+        '--nofs',
+        '--colors',
+        String(DEFAULT_COLORS),
+        '--output',
+        f,
+        file,
+      ]);
       await run('oxipng', ['-q', '-o', 'max', '-s', '--zopfli', '--zi', String(zi), '-a', f]);
       bytes += size(f);
     }
     rows.push([zi, bytes, (Date.now() - t0) / 1000]);
   }
   const base = rows[0][1];
-  return { title: 'Zopfli iterations',
-           note: "The baseline is 15, oxipng's default and the fast mode's count; release builds use 120. Bytes ship forever and build time does not, so the knee is taken on the byte side, but the curve is flat past 120.",
-           text: [`${num('--zi', 6)}${num('bytes', 10)}${num('vs 15', 9)}${num('seconds', 10)}`,
-             ...rows.map(([zi, b, s]) =>
-               `${num(zi, 6)}${num(b, 10)}${num(((b / base - 1) * 100).toFixed(2) + '%', 9)}${num(s.toFixed(1), 10)}`)].join('\n') };
+  return {
+    title: 'Zopfli iterations',
+    note: "The baseline is 15, oxipng's default and the fast mode's count; release builds use 120. Bytes ship forever and build time does not, so the knee is taken on the byte side, but the curve is flat past 120.",
+    text: [
+      `${num('--zi', 6)}${num('bytes', 10)}${num('vs 15', 9)}${num('seconds', 10)}`,
+      ...rows.map(
+        ([zi, b, s]) =>
+          `${num(zi, 6)}${num(b, 10)}${num(((b / base - 1) * 100).toFixed(2) + '%', 9)}${num(s.toFixed(1), 10)}`,
+      ),
+    ].join('\n'),
+  };
 };
 
 /**
@@ -245,16 +323,32 @@ sweeps.concurrency = async () => {
   // The sizes a default build queues: the apple icon and the two --sizes entries on
   // their ground, and the ICO payload. Rendered from icon.svg for all four, since the
   // timing question is about oxipng contention, not about what is drawn.
-  const JOBS = [{ px: 180, bg: '#000000' }, { px: 192, bg: '#000000' }, { px: 512, bg: '#000000' }, { px: 32, bg: null }];
+  const JOBS = [
+    { px: 180, bg: '#000000' },
+    { px: 192, bg: '#000000' },
+    { px: 512, bg: '#000000' },
+    { px: 32, bg: null },
+  ];
 
   let seq = 0;
   const renderOne = async ({ px, bg }, zi) => {
     const tag = `${px}-${seq++}`;
     const raw = join(dir, `raw-${tag}.png`);
-    await run('resvg', ['--quiet', '-w', String(px), '-h', String(px),
-                        ...(bg ? ['--background', bg] : []), iconSvg, raw]);
+    await run('resvg', [
+      '--quiet',
+      '-w',
+      String(px),
+      '-h',
+      String(px),
+      ...(bg ? ['--background', bg] : []),
+      iconSvg,
+      raw,
+    ]);
     const cands = [];
-    for (const [name, dither] of [['nofs', '--nofs'], ['floyd', '--floyd=1']]) {
+    for (const [name, dither] of [
+      ['nofs', '--nofs'],
+      ['floyd', '--floyd=1'],
+    ]) {
       const f = join(dir, `${name}-${tag}.png`);
       try {
         // 16, not the shipped default of 8. This is a FIXED workload for a timing
@@ -262,7 +356,9 @@ sweeps.concurrency = async () => {
         // same everywhere, and a larger one gives zopfli more to chew on. Do not "fix" it
         // to track the default; that would change the numbers without changing the answer.
         await run('pngquant', ['--force', '--speed', '1', dither, '--colors', '16', '--output', f, raw]);
-      } catch { continue; }                      // 98/99: fall through to the lossless one
+      } catch {
+        continue;
+      } // 98/99: fall through to the lossless one
       await run('oxipng', ['-q', '-o', 'max', '-s', '-a', f]);
       cands.push(f);
     }
@@ -285,9 +381,11 @@ sweeps.concurrency = async () => {
     // made the concurrent arms report 3086 B against the serial arms' 5539 B for identical
     // output, which is the sort of thing that turns a benchmark into fiction unnoticed.
     const got = [];
-    await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, async () => {
-      for (let job = queue.shift(); job; job = queue.shift()) got.push(await renderOne(job, zi));
-    }));
+    await Promise.all(
+      Array.from({ length: Math.min(limit, queue.length) }, async () => {
+        for (let job = queue.shift(); job; job = queue.shift()) got.push(await renderOne(job, zi));
+      }),
+    );
     return got.reduce((a, b) => a + b, 0);
   };
 
@@ -298,8 +396,10 @@ sweeps.concurrency = async () => {
     try {
       const f = readFileSync('/proc/self/stat', 'utf8');
       const t = f.slice(f.lastIndexOf(')') + 2).split(' ');
-      return (Number(t[13]) + Number(t[14])) / 100;   // cutime + cstime, fields 16 and 17
-    } catch { return null; }
+      return (Number(t[13]) + Number(t[14])) / 100; // cutime + cstime, fields 16 and 17
+    } catch {
+      return null;
+    }
   };
 
   const ARMS = [];
@@ -308,7 +408,8 @@ sweeps.concurrency = async () => {
   const acc = ARMS.map(() => ({ wall: [], cpu: [], bytes: 0 }));
   for (let r = 0; r < REPS; r++) {
     for (let i = 0; i < ARMS.length; i++) {
-      const c0 = childCpu(), t0 = Date.now();
+      const c0 = childCpu(),
+        t0 = Date.now();
       const bytes = await pool(ARMS[i].limit, ARMS[i].zi);
       acc[i].wall.push((Date.now() - t0) / 1000);
       acc[i].cpu.push(c0 === null ? null : childCpu() - c0);
@@ -317,30 +418,39 @@ sweeps.concurrency = async () => {
   }
 
   const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
-  const shipped = mean(acc[0].wall);              // serial, --zi 120: what favseed does today
+  const shipped = mean(acc[0].wall); // serial, --zi 120: what favseed does today
   const hasCpu = acc[0].cpu[0] !== null;
-  const head = `${num('at once', 8)}${num('--zi', 6)}${num('wall', 9)}${num('min', 8)}${num('max', 8)}` +
-               (hasCpu ? num('child cpu', 11) + num('cores', 8) : '') + num('bytes', 9) + num('vs shipped', 12);
+  const head =
+    `${num('at once', 8)}${num('--zi', 6)}${num('wall', 9)}${num('min', 8)}${num('max', 8)}` +
+    (hasCpu ? num('child cpu', 11) + num('cores', 8) : '') +
+    num('bytes', 9) +
+    num('vs shipped', 12);
   const body = ARMS.map((a, i) => {
-    const w = mean(acc[i].wall), c = hasCpu ? mean(acc[i].cpu) : null;
-    return `${num(a.limit === 1 ? '1 (serial)' : a.limit, 8)}${num(a.zi, 6)}${num(w.toFixed(2) + 's', 9)}` +
-           `${num(Math.min(...acc[i].wall).toFixed(2), 8)}${num(Math.max(...acc[i].wall).toFixed(2), 8)}` +
-           (hasCpu ? num(c.toFixed(1) + 's', 11) + num((c / w).toFixed(1) + 'x', 8) : '') +
-           num(acc[i].bytes, 9) + num(((w / shipped - 1) * 100).toFixed(1) + '%', 12);
+    const w = mean(acc[i].wall),
+      c = hasCpu ? mean(acc[i].cpu) : null;
+    return (
+      `${num(a.limit === 1 ? '1 (serial)' : a.limit, 8)}${num(a.zi, 6)}${num(w.toFixed(2) + 's', 9)}` +
+      `${num(Math.min(...acc[i].wall).toFixed(2), 8)}${num(Math.max(...acc[i].wall).toFixed(2), 8)}` +
+      (hasCpu ? num(c.toFixed(1) + 's', 11) + num((c / w).toFixed(1) + 'x', 8) : '') +
+      num(acc[i].bytes, 9) +
+      num(((w / shipped - 1) * 100).toFixed(1) + '%', 12)
+    );
   });
 
   const conc120 = mean(acc[1].wall);
   return {
     title: 'Serial against concurrent rasters (decision 13, re-measured)',
-    note: `Four jobs (180 px on a ground, 192, 512 and the 32 px ICO payload) through the full ` +
-          `pipeline. ${REPS} interleaved repetitions per arm, identical work in every arm, on a ` +
-          `${cpus().length}-core machine. The --zi axis is here because favicon.sh passes a bare ` +
-          `--zopfli (which is --zi 15) where favseed passes --zi 120, and a comparison that varied ` +
-          `only the scheduling would have credited that to concurrency.`,
+    note:
+      `Four jobs (180 px on a ground, 192, 512 and the 32 px ICO payload) through the full ` +
+      `pipeline. ${REPS} interleaved repetitions per arm, identical work in every arm, on a ` +
+      `${cpus().length}-core machine. The --zi axis is here because favicon.sh passes a bare ` +
+      `--zopfli (which is --zi 15) where favseed passes --zi 120, and a comparison that varied ` +
+      `only the scheduling would have credited that to concurrency.`,
     text: [head, ...body].join('\n'),
-    summary: `concurrency buys ${((1 - conc120 / shipped) * 100).toFixed(1)} % at --zi 120; ` +
-             `dropping to --zi 15 buys ${((1 - mean(acc[2].wall) / shipped) * 100).toFixed(1)} % ` +
-             `and costs ${acc[2].bytes - acc[0].bytes} B`,
+    summary:
+      `concurrency buys ${((1 - conc120 / shipped) * 100).toFixed(1)} % at --zi 120; ` +
+      `dropping to --zi 15 buys ${((1 - mean(acc[2].wall) / shipped) * 100).toFixed(1)} % ` +
+      `and costs ${acc[2].bytes - acc[0].bytes} B`,
   };
 };
 
@@ -348,30 +458,52 @@ sweeps.ico = async () => {
   const raws = (await rawRenders()).filter((r) => r.px === 32);
   const dir = join(OUT, 'ico');
   mkdirSync(dir, { recursive: true });
-  let png = 0, bmp = 0, identical = 0, checked = 0;
+  let png = 0,
+    bmp = 0,
+    identical = 0,
+    checked = 0;
   let haveIcotool = true;
   for (const { mark, file } of raws) {
     const q = join(dir, `${mark}.png`);
-    await run('pngquant', ['--force', '--speed', '1', '--nofs', '--colors', String(DEFAULT_COLORS), '--output', q, file]);
+    await run('pngquant', [
+      '--force',
+      '--speed',
+      '1',
+      '--nofs',
+      '--colors',
+      String(DEFAULT_COLORS),
+      '--output',
+      q,
+      file,
+    ]);
     await run('oxipng', ['-q', '-o', 'max', '-s', '-a', q]);
     const mine = icoWrap(readFileSync(q), 32);
     png += mine.length;
     try {
-      const rp = join(dir, `${mark}-r.ico`), bp = join(dir, `${mark}-b.ico`);
+      const rp = join(dir, `${mark}-r.ico`),
+        bp = join(dir, `${mark}-b.ico`);
       await run('icotool', ['-c', '-r', q, '-o', rp]);
       await run('icotool', ['-c', q, '-o', bp]);
       bmp += size(bp);
       checked++;
       if (Buffer.compare(mine, readFileSync(rp)) === 0) identical++;
-    } catch { haveIcotool = false; }
+    } catch {
+      haveIcotool = false;
+    }
   }
-  return { title: 'The ICO container',
-           note: 'A PNG payload against icotool\'s default BMP one, and favseed\'s 22-byte writer against `icotool -c -r`.',
-           text: [`raw PNG payload       ${png} B`,
-                  ...(haveIcotool ? [
-                    `BMP payload           ${bmp} B  (${(bmp / png).toFixed(1)}x)`,
-                    `byte-identical to icotool -c -r   ${identical}/${checked}`,
-                  ] : ['(icotool not installed: comparison skipped)'])].join('\n') };
+  return {
+    title: 'The ICO container',
+    note: "A PNG payload against icotool's default BMP one, and favseed's 22-byte writer against `icotool -c -r`.",
+    text: [
+      `raw PNG payload       ${png} B`,
+      ...(haveIcotool
+        ? [
+            `BMP payload           ${bmp} B  (${(bmp / png).toFixed(1)}x)`,
+            `byte-identical to icotool -c -r   ${identical}/${checked}`,
+          ]
+        : ['(icotool not installed: comparison skipped)']),
+    ].join('\n'),
+  };
 };
 
 // The native pipeline against the engine, on the same raw renders: what decision 26 rests on.
@@ -381,15 +513,32 @@ sweeps.engine = async () => {
   const raws = await rawRenders();
   const dir = join(OUT, 'engine');
   mkdirSync(dir, { recursive: true });
-  let native = 0, napi = 0, worstNative = 0, worstNapi = 0;
+  let native = 0,
+    napi = 0,
+    worstNative = 0,
+    worstNapi = 0;
   for (const { mark, px, file } of raws) {
     const raw = readFileSync(file);
     // native: the old pipeline's three candidates, then zopfli on the winner
     const cands = [];
     for (const dither of ['--nofs', '--floyd=1']) {
       const f = join(dir, `${mark}-${px}${dither}.png`);
-      try { await run('pngquant', ['--force', '--speed', '1', dither, '--colors', String(DEFAULT_COLORS), '--output', f, file]); }
-      catch (e) { if (e.code !== 98 && e.code !== 99) throw e; continue; }
+      try {
+        await run('pngquant', [
+          '--force',
+          '--speed',
+          '1',
+          dither,
+          '--colors',
+          String(DEFAULT_COLORS),
+          '--output',
+          f,
+          file,
+        ]);
+      } catch (e) {
+        if (e.code !== 98 && e.code !== 99) throw e;
+        continue;
+      }
       await run('oxipng', ['-q', '-o', 'max', '-s', '-a', f]);
       cands.push(f);
     }
@@ -406,10 +555,14 @@ sweeps.engine = async () => {
     worstNative = Math.max(worstNative, score(decode(readFileSync(best)), decode(raw)).pct);
     worstNapi = Math.max(worstNapi, score(decode(Buffer.from(enc)), decode(raw)).pct);
   }
-  return { title: 'Native pipeline against the engine',
-           note: `The same ${raws.length} raw renders, encoded at --colors ${DEFAULT_COLORS} with zopfli at 120 iterations by both. pct is against the raw render.`,
-           text: [`native   ${num(native, 7)} B   worst ${worstNative.toFixed(3)} %`,
-                  `engine   ${num(napi, 7)} B   worst ${worstNapi.toFixed(3)} %   (${((napi / native - 1) * 100).toFixed(1)} %)`].join('\n') };
+  return {
+    title: 'Native pipeline against the engine',
+    note: `The same ${raws.length} raw renders, encoded at --colors ${DEFAULT_COLORS} with zopfli at 120 iterations by both. pct is against the raw render.`,
+    text: [
+      `native   ${num(native, 7)} B   worst ${worstNative.toFixed(3)} %`,
+      `engine   ${num(napi, 7)} B   worst ${worstNapi.toFixed(3)} %   (${((napi / native - 1) * 100).toFixed(1)} %)`,
+    ].join('\n'),
+  };
 };
 
 // Decision 27: does finishing the jobs in parallel worker threads beat finishing them in turn?
@@ -419,29 +572,40 @@ sweeps.parallel = async () => {
   const { loadEngine } = await import('../bin/favseed.mjs');
   const engine = await loadEngine();
   const raws = (await rawRenders()).filter((r) => r.mark === 'general');
-  const encs = await Promise.all(raws.map(async (r) => engine.encode(readFileSync(r.file), { colors: DEFAULT_COLORS })));
+  const encs = await Promise.all(
+    raws.map(async (r) => engine.encode(readFileSync(r.file), { colors: DEFAULT_COLORS })),
+  );
   const worker = `
     const { parentPort, workerData } = require('node:worker_threads');
     import('${new URL('../bin/favseed.mjs', import.meta.url).href}').then(async ({ loadEngine }) => {
       const e = await loadEngine();
       parentPort.postMessage((await e.finish(workerData, { iterations: 120 })).length);
     });`;
-  const serial = [], parallel = [];
+  const serial = [],
+    parallel = [];
   for (let rep = 0; rep < 3; rep++) {
     let t = performance.now();
     for (const enc of encs) await engine.finish(enc, { iterations: 120 });
     serial.push((performance.now() - t) / 1000);
     t = performance.now();
-    await Promise.all(encs.map((enc) => new Promise((ok, bad) => {
-      const w = new Worker(worker, { eval: true, workerData: enc });
-      w.once('message', ok); w.once('error', bad);
-    })));
+    await Promise.all(
+      encs.map(
+        (enc) =>
+          new Promise((ok, bad) => {
+            const w = new Worker(worker, { eval: true, workerData: enc });
+            w.once('message', ok);
+            w.once('error', bad);
+          }),
+      ),
+    );
     parallel.push((performance.now() - t) / 1000);
   }
   const med = (a) => [...a].sort((x, y) => x - y)[1];
-  return { title: 'Finishing the jobs in turn against in parallel workers (decision 27)',
-           note: `general.svg, ${encs.length} files, zopfli at 120 iterations, 3 interleaved repetitions, median shown.`,
-           text: [`in turn     ${med(serial).toFixed(2)} s`, `in parallel ${med(parallel).toFixed(2)} s`].join('\n') };
+  return {
+    title: 'Finishing the jobs in turn against in parallel workers (decision 27)',
+    note: `general.svg, ${encs.length} files, zopfli at 120 iterations, 3 interleaved repetitions, median shown.`,
+    text: [`in turn     ${med(serial).toFixed(2)} s`, `in parallel ${med(parallel).toFixed(2)} s`].join('\n'),
+  };
 };
 
 // ------------------------------------------------------------------- main --
@@ -452,7 +616,11 @@ const main = async () => {
   const want = args.filter((a) => !a.startsWith('--'));
   const available = new Map(Object.entries(sweeps));
   const names = want.length ? want : [...available.keys()];
-  for (const n of names) if (!available.has(n)) { process.stderr.write(`bench: no sweep '${n}'\n`); process.exit(1); }
+  for (const n of names)
+    if (!available.has(n)) {
+      process.stderr.write(`bench: no sweep '${n}'\n`);
+      process.exit(1);
+    }
 
   // A partial --write would truncate the document to whichever sweeps ran, without a warning,
   // which is worse than not writing at all: the file claims to be the current state of every axis.
@@ -461,7 +629,12 @@ const main = async () => {
     process.exit(1);
   }
 
-  const versions = { ...(names.some((name) => !['precision', 'framing', 'ico-size', 'placement'].includes(name)) ? await nativeVersions() : {}), ...engineVersions() };
+  const versions = {
+    ...(names.some((name) => !['precision', 'framing', 'ico-size', 'placement'].includes(name))
+      ? await nativeVersions()
+      : {}),
+    ...engineVersions(),
+  };
 
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
@@ -497,11 +670,19 @@ const main = async () => {
       'corpus the original decisions were taken on. Where they disagree, these are the ones',
       'to trust: they are the ones you can reproduce.',
       '',
-      ...results.flatMap((r) => [
-        `## ${r.title}`, '', r.note ?? '', r.note ? '' : null,
-        '```', r.text, '```', '',
-        ...(r.summary ? [`**${r.summary}**`, ''] : []),
-      ].filter((l) => l !== null)),
+      ...results.flatMap((r) =>
+        [
+          `## ${r.title}`,
+          '',
+          r.note ?? '',
+          r.note ? '' : null,
+          '```',
+          r.text,
+          '```',
+          '',
+          ...(r.summary ? [`**${r.summary}**`, ''] : []),
+        ].filter((l) => l !== null),
+      ),
     ].join('\n');
     writeFileSync(join(ROOT, 'docs', 'BENCHMARKS.md'), doc);
     process.stderr.write('bench: wrote docs/BENCHMARKS.md\n');

@@ -10,7 +10,8 @@ const exec = promisify(execFile);
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CLI = new URL('../bin/favseed.mjs', import.meta.url).href;
 const ASTRO = new URL('../astro/index.mjs', import.meta.url).href;
-const probe = (source) => exec(process.execPath, ['--input-type=module', '--eval', source], { cwd: ROOT, timeout: 15000 });
+const probe = (source) =>
+  exec(process.execPath, ['--input-type=module', '--eval', source], { cwd: ROOT, timeout: 15000 });
 const guard = (blockBuild = false) => `
   import assert from 'node:assert/strict';
   import { registerHooks } from 'node:module';
@@ -28,7 +29,9 @@ const guard = (blockBuild = false) => `
 
 describe('lazy build dependencies', () => {
   it('includes the installed SVG optimizer in cache identity without loading it', async () => {
-    await probe(guard() + `
+    await probe(
+      guard() +
+        `
       import { createRequire } from 'node:module';
       import { readFileSync } from 'node:fs';
       import { dirname, join } from 'node:path';
@@ -36,11 +39,14 @@ describe('lazy build dependencies', () => {
       const version = JSON.parse(readFileSync(join(dirname(require.resolve('svgo')), '../package.json'), 'utf8')).version;
       const api = await import(${JSON.stringify(CLI)});
       assert.equal(api.engineVersions().svgo, version);
-    `);
+    `,
+    );
   });
 
   it('exposes the Astro factory and existing library API at the package root without loading engines', async () => {
-    await probe(guard() + `
+    await probe(
+      guard() +
+        `
       const api = await import('favseed');
       const { default: favseed } = await import('favseed/astro');
       const cli = await import(${JSON.stringify(CLI)});
@@ -49,29 +55,38 @@ describe('lazy build dependencies', () => {
       assert.throws(() => api.default({imput:'logo.svg'}), /input/);
       for (const name of Object.keys(cli)) assert.equal(api[name], cli[name], name);
       assert.deepEqual(Object.keys(api).filter((name) => name !== 'default'), Object.keys(cli));
-    `);
+    `,
+    );
   });
 
   it('runs help and version without loading SVG or native engines', async () => {
-    const { stdout } = await probe(guard() + `
+    const { stdout } = await probe(
+      guard() +
+        `
       const api = await import(${JSON.stringify(CLI)});
       assert.equal(await api.cli(['--help']), 0);
       assert.equal(await api.cli(['--version']), 0);
-    `);
+    `,
+    );
     assert.match(stdout, /Usage:\s+favseed/);
     assert.match(stdout, /favseed \d+\.\d+\.\d+ \(@napi-rs\/image 1\.15\.0/);
   });
 
   it('rejects invalid build options and non-SVG input without loading build engines', async () => {
-    await probe(guard() + `
+    await probe(
+      guard() +
+        `
       const api = await import(${JSON.stringify(CLI)});
       await assert.rejects(api.buildFiles({input:'test/fixtures/flat.svg', colors:1}), /--colors/);
       await assert.rejects(api.buildFiles({input:'test/fixtures/notsvg.txt'}), /not an SVG/);
-    `);
+    `,
+    );
   });
 
   it('loads Astro configuration, sync, preview and dev:skip without the Node build module', async () => {
-    await probe(guard(true) + `
+    await probe(
+      guard(true) +
+        `
       const { default: favseed } = await import(${JSON.stringify(ASTRO)});
       const root = new URL(${JSON.stringify(new URL('../unused/', import.meta.url).href)});
       for (const command of ['sync', 'preview', 'dev', 'build']) {
@@ -82,7 +97,8 @@ describe('lazy build dependencies', () => {
         });
         await integration.hooks['astro:server:setup']({logger:{warn(){}}});
       }
-    `);
+    `,
+    );
   });
 
   it('keeps SVG results and errors synchronous, including repeated calls during an external ESM import', async () => {
@@ -157,7 +173,9 @@ describe('lazy build dependencies', () => {
   });
 
   it('validates Astro configuration before sync, preview or skipped dev without loading build engines', async () => {
-    await probe(guard(true) + `
+    await probe(
+      guard(true) +
+        `
       const {default:favseed} = await import(${JSON.stringify(ASTRO)});
       for (const options of [{imput:'logo.svg'}, {dev:'fast',sizes:[33]}, {dev:'skip',quality:0}, {mode:'slow'}]) {
         assert.throws(() => favseed(options), /favseed:/);
@@ -171,6 +189,7 @@ describe('lazy build dependencies', () => {
           updateConfig(){throw Error('unexpected config')},logger:{info(){}}
         });
       }
-    `);
+    `,
+    );
   });
 });

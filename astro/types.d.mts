@@ -19,4 +19,3 @@ export interface FavseedOptions extends ImageOptions {
    */
   head?: true | 'inject' | 'component' | false;
 }
-

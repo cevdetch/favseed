@@ -2,15 +2,51 @@
   "name": "favseed",
   "version": "0.0.0",
   "description": "Generate optimized, maskable favicons from SVG with the CLI, Vite, or Astro.",
-  "type": "module",
+  "keywords": [
+    "apple-touch-icon",
+    "astro",
+    "astro-integration",
+    "cli",
+    "favicon",
+    "favicon-generator",
+    "favicons",
+    "ico",
+    "icon",
+    "maskable",
+    "optimization",
+    "png",
+    "pwa",
+    "svg",
+    "vite",
+    "vite-plugin",
+    "webmanifest"
+  ],
+  "homepage": "https://favseed.cevdet.ch",
+  "bugs": {
+    "url": "https://github.com/cevdetch/favseed/issues"
+  },
   "license": "MIT",
   "author": {
     "name": "Cevdet",
     "url": "https://cevdet.ch/"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cevdetch/favseed.git"
+  },
   "bin": {
     "favseed": "bin/favseed.mjs"
   },
+  "files": [
+    "bin",
+    "lib",
+    "astro",
+    "vite",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
   "exports": {
     ".": {
       "types": "./bin/index.d.mts",
@@ -32,27 +68,29 @@
     "./astro/Head.astro": "./astro/Head.astro",
     "./package.json": "./package.json"
   },
-  "engines": {
-    "node": ">=24"
+  "publishConfig": {
+    "access": "public"
   },
-  "packageManager": "pnpm@12.3.4",
-  "files": [
-    "bin",
-    "lib",
-    "astro",
-    "vite",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
   "scripts": {
     "test": "node --test test/run.mjs test/engine.mjs test/pipeline.mjs test/config.mjs test/vite.mjs test/security.mjs test/zopfli.mjs test/svg-precision.mjs test/astro-middleware.mjs test/lazy-loading.mjs test/astro-dev.mjs test/bytes.mjs test/write-failures.mjs",
     "test:astro": "node --test test/astro.mjs",
-    "bench": "node bench/bench.mjs"
+    "bench": "node bench/bench.mjs",
+    "lint": "oxlint . && knip --include exports,files,dependencies --no-exit-code",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "@napi-rs/image": "1.15.0",
     "svgo": "^4.1.0"
+  },
+  "devDependencies": {
+    "@gfx/zopfli": "1.0.15",
+    "@types/node": "^26.6.6",
+    "knip": "6.44.2",
+    "oxfmt": "0.77.0",
+    "oxlint": "1.92.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.3"
   },
   "peerDependencies": {
     "astro": "^7.3.5",
@@ -66,40 +104,8 @@
       "optional": true
     }
   },
-  "keywords": [
-    "favicon",
-    "favicons",
-    "favicon-generator",
-    "icon",
-    "svg",
-    "maskable",
-    "astro-integration",
-    "astro",
-    "vite",
-    "pwa",
-    "apple-touch-icon",
-    "webmanifest",
-    "ico",
-    "png",
-    "optimization",
-    "cli",
-    "vite-plugin"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cevdetch/favseed.git"
+  "engines": {
+    "node": ">=24"
   },
-  "bugs": {
-    "url": "https://github.com/cevdetch/favseed/issues"
-  },
-  "homepage": "https://favseed.cevdet.ch",
-  "publishConfig": {
-    "access": "public"
-  },
-  "devDependencies": {
-    "@gfx/zopfli": "1.0.15",
-    "@types/node": "^26.6.6",
-    "typescript": "7.0.2",
-    "vite": "8.3.3"
-  }
+  "packageManager": "pnpm@12.3.4"
 }
