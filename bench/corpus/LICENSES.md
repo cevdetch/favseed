@@ -20,6 +20,9 @@ CC0 1.0 Universal places these works in the public domain: no permission is requ
 attribution is owed, but it is given anyway for clarity. Full text:
 <https://creativecommons.org/publicdomain/zero/1.0/legalcode>.
 
+CC0 covers the copyright in the drawings only: it grants no trademark rights in the logos they
+depict, which remain their owners' marks.
+
 ## MIT (`fluent-emoji`, `flat-color-icons`)
 
 ### `fluent-emoji` — Microsoft Corporation
