@@ -48,9 +48,34 @@ const substitute = (text, vars, depth = 0) => {
   }
 };
 
+// A comment is never rendered, so prose inside one (this file's own header comment says
+// "var()" more than once) must not be scanned for calls to resolve. An unclosed `<!--` runs
+// to the end of the document, exactly as XML parses it, so it is never substituted either.
+const splitComments = (svg) => {
+  const parts = [];
+  let i = 0;
+  for (;;) {
+    const start = svg.indexOf('<!--', i);
+    if (start === -1) {
+      parts.push({ text: svg.slice(i), comment: false });
+      return parts;
+    }
+    parts.push({ text: svg.slice(i, start), comment: false });
+    const end = svg.indexOf('-->', start + 4);
+    if (end === -1) {
+      parts.push({ text: svg.slice(start), comment: true });
+      return parts;
+    }
+    parts.push({ text: svg.slice(start, end + 3), comment: true });
+    i = end + 3;
+  }
+};
+
 /** `vars` keys may be given with or without the leading `--`. */
 export function resolveVars(svg, vars = {}) {
   const map = new Map();
   for (const [k, v] of Object.entries(vars)) map.set(k.startsWith('--') ? k : '--' + k, String(v));
-  return substitute(svg, map);
+  return splitComments(svg)
+    .map(({ text, comment }) => (comment ? text : substitute(text, map)))
+    .join('');
 }
