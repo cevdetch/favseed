@@ -1221,6 +1221,29 @@ describe('the svg stage on its own', () => {
     assert.ok(!/#1f3a5f/i.test(b.data));
   });
 
+  it('ignores var() mentioned inside a CSS comment in a stylesheet', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style>/* uses var(--undefined) */ .a{fill:var(--c, #123456)}</style>' +
+      '<rect class="a"/></svg>';
+    const result = optimiseSvg(source, { icon: true });
+    assert.match(result.data, /#123456/);
+  });
+
+  it('still throws on an unresolved var() outside a CSS comment', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style>/* fine */ .a{fill:var(--undefined2)}</style><rect class="a"/></svg>';
+    assert.throws(
+      () => optimiseSvg(source, { icon: true }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--undefined2\)/);
+        return true;
+      },
+    );
+  });
+
   it('throws FavseedError on a var() with no fallback, in the icon pass', () => {
     assert.throws(
       () => optimiseSvg(read('unresolved'), { icon: true }),

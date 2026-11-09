@@ -71,11 +71,46 @@ const splitComments = (svg) => {
   }
 };
 
+// Inside a <style>...</style> block, a CSS comment is just as unrendered as an XML one, so it
+// gets the same treatment: skipped for substitution, its own text kept verbatim. An unclosed
+// `/*` runs to the end of the style block's text, matching the XML comment rule above.
+const STYLE = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi;
+
+const substituteCss = (css, vars) => {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const start = css.indexOf('/*', from);
+    if (start === -1) {
+      out.push(substitute(css.slice(from), vars));
+      return out.join('');
+    }
+    out.push(substitute(css.slice(from, start), vars));
+    const end = css.indexOf('*/', start + 2);
+    if (end === -1) {
+      out.push(css.slice(start));
+      return out.join('');
+    }
+    out.push(css.slice(start, end + 2));
+    from = end + 2;
+  }
+};
+
+const substituteMarkup = (text, vars) => {
+  let out = '',
+    last = 0;
+  for (const m of text.matchAll(STYLE)) {
+    out += substitute(text.slice(last, m.index), vars) + m[1] + substituteCss(m[2], vars) + m[3];
+    last = m.index + m[0].length;
+  }
+  return out + substitute(text.slice(last), vars);
+};
+
 /** `vars` keys may be given with or without the leading `--`. */
 export function resolveVars(svg, vars = {}) {
   const map = new Map();
   for (const [k, v] of Object.entries(vars)) map.set(k.startsWith('--') ? k : '--' + k, String(v));
   return splitComments(svg)
-    .map(({ text, comment }) => (comment ? text : substitute(text, map)))
+    .map(({ text, comment }) => (comment ? text : substituteMarkup(text, map)))
     .join('');
 }

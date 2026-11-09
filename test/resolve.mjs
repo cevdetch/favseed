@@ -44,3 +44,20 @@ test('an unclosed comment runs to the end of the file, like XML', () => {
     '<rect fill="var(--c, #000)"/><!-- unterminated var(--x)';
   assert.doesNotThrow(() => resolveVars(svg));
 });
+
+test('skips var() mentioned inside a CSS comment in a <style> block', () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+    '<style>/* uses var(--undefined) */ .a{fill:var(--c, #123456)}</style>' +
+    '<rect class="a"/></svg>';
+  const out = resolveVars(svg);
+  assert.ok(out.includes('/* uses var(--undefined) */'));
+  assert.ok(out.includes('fill:#123456'));
+});
+
+test('still throws on an unresolved var() outside a CSS comment', () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+    '<style>/* fine */ .a{fill:var(--undefined2)}</style><rect class="a"/></svg>';
+  assert.throws(() => resolveVars(svg), /unresolved var\(--undefined2\)/);
+});
