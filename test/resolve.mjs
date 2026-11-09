@@ -61,3 +61,33 @@ test('still throws on an unresolved var() outside a CSS comment', () => {
     '<style>/* fine */ .a{fill:var(--undefined2)}</style><rect class="a"/></svg>';
   assert.throws(() => resolveVars(svg), /unresolved var\(--undefined2\)/);
 });
+
+// A quoted "/*" (a legal CSS string, e.g. a generated-content value) is not a comment opener.
+// Treating it as one would swallow everything up to the next literal "*/" as "comment", so a
+// genuinely unresolvable var() just after it would silently stop being scanned at all.
+test('throws on an unresolvable var() after a quoted "/*" that looks like a comment opener', () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+    '<style>.a{content:"/*"; fill:var(--undefined)} ' +
+    '@media (prefers-color-scheme: dark){.a{fill:red}}</style>' +
+    '<rect class="a" width="10" height="10"/></svg>';
+  assert.throws(() => resolveVars(svg), /unresolved var\(--undefined\)/);
+});
+
+test('keeps a quoted "/*" string intact when there is no var() problem', () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+    '<style>.a{content:"/*"; fill:#000}</style><rect class="a" width="10" height="10"/></svg>';
+  const out = resolveVars(svg);
+  assert.ok(out.includes('content:"/*"'));
+});
+
+test('still skips a real comment that follows a quoted "/*" string', () => {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+    '<style>.a{content:"/*"} /* uses var(--undefined) */ .b{fill:var(--c, #123456)}</style>' +
+    '<rect class="b" width="10" height="10"/></svg>';
+  const out = resolveVars(svg);
+  assert.ok(out.includes('/* uses var(--undefined) */'));
+  assert.ok(out.includes('fill:#123456'));
+});

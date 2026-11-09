@@ -76,11 +76,31 @@ const splitComments = (svg) => {
 // `/*` runs to the end of the style block's text, matching the XML comment rule above.
 const STYLE = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi;
 
+// A `/*` written inside a quoted CSS string (e.g. content: "/*") is not a comment opener; a
+// quote only closes at a matching, non-escaped quote character, same as the quote handling
+// `substitute` itself has no need for but a comment scan does.
+const findCommentOpen = (css, from) => {
+  let quote = null;
+  for (let i = from; i < css.length; i++) {
+    const c = css[i];
+    if (quote) {
+      if (c === quote && css[i - 1] !== '\\') quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
+    if (c === '/' && css[i + 1] === '*') return i;
+  }
+  return -1;
+};
+
 const substituteCss = (css, vars) => {
   const out = [];
   let from = 0;
   for (;;) {
-    const start = css.indexOf('/*', from);
+    const start = findCommentOpen(css, from);
     if (start === -1) {
       out.push(substitute(css.slice(from), vars));
       return out.join('');
