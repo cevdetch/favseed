@@ -39,6 +39,7 @@ const url = new URL(Astro.url.pathname.replace(/(?:index)?\.html$/, ''), Astro.s
 <slot />
 
 <footer>
+  <nav><a href="/how-it-works">How it works</a> · <a href="/outputs">Outputs</a> · <a href="/benchmarks">Benchmarks</a></nav>
   By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
   favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
   checks the rest of your <code>&lt;head&gt;</code>.

@@ -1,7 +1,7 @@
 ---
-// Static page, client-side pipeline. The only reason this is Astro rather than a lone HTML file
-// is that the pipeline imports the shared engine and WASM packages, and something has to
-// resolve and bundle them.
+// Static page, client-side pipeline. The pipeline imports the shared engine and WASM packages,
+// and something has to resolve and bundle them; the documentation pages share this page's
+// layout.
 import Page from '../layouts/Page.astro';
 
 const title = 'favseed: one SVG in, an optimised favicon set out';
@@ -115,6 +115,7 @@ const outputs = [
     <dl>
       {outputs.map(([name, what]) => (<><dt><code>{name}</code></dt><dd>{what}</dd></>))}
     </dl>
+    <p><a href="/outputs">Each file in detail</a>: its format, the HTML it needs and the platforms that read it.</p>
   </section>
 
   <aside>
@@ -124,9 +125,10 @@ const outputs = [
       files. Builds run in a worker so the page stays responsive; Cancel stops the build.</p>
     <p>In a four-logo benchmark using matching raster inputs, Fast’s quality-80 set used 0.5% more
       PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel
-      error. <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
-    <p>Default effort keeps, for each PNG, the smallest encode that still passes the accuracy
-      bar, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
+      error. <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>;
+      the <a href="/benchmarks">benchmarks</a> cover the default effort too.</p>
+    <p>Default effort keeps, for each PNG, the smallest encode that still passes
+      the <a href="/how-it-works">accuracy bar</a>, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
       Maximum tries every candidate and runs Zopfli longest. A pinned quality or palette makes
       one encode at that setting and warns when it misses the bar. These
       match <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
