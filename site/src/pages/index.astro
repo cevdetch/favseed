@@ -143,13 +143,13 @@ const outputs = [
       Matching SVG and options produce identical SVG, PNG, ICO, and manifest
       files. Builds run in a worker so the page stays responsive; Cancel stops the build.</p>
     <p>In a four-logo benchmark using matching raster inputs, Fast’s quality-80 set used 0.5% more
-      PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel error.
-      <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
+      PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel
+      error. <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
     <p>Default effort keeps, for each PNG, the smallest encode that still passes the accuracy
       bar, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
       Maximum tries every candidate and runs Zopfli longest. A pinned quality or palette makes
-      one encode at that setting and warns when it misses the bar. These match
-      <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
+      one encode at that setting and warns when it misses the bar. These
+      match <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
       page includes a manifest; use <code>--manifest</code> for the matching CLI set.</p>
     <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
@@ -159,8 +159,7 @@ const outputs = [
 </main>
 
 <footer>
-  By <a href="https://cevdet.ch/">Cevdet</a> · MIT ·
-  <a href="https://github.com/cevdetch/favseed">Source</a> ·
+  By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
   favseed also ships a CLI and an Astro integration.
 </footer>
 
