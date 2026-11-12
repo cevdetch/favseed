@@ -1,0 +1,48 @@
+---
+// The document the indexable pages share: the head, the site's own icon set, the share tags
+// and the footer. A page passes its title and description; the canonical URL is the page's own
+// slash-free path, the form Cloudflare Pages serves with 'never' and the file format.
+import '../styles/app.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const url = new URL(Astro.url.pathname.replace(/(?:index)?\.html$/, ''), Astro.site).href;
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{title}</title>
+<meta name="color-scheme" content="light dark" />
+<!-- The site's own set, built by favseed: the same block `favseed --html --manifest` prints. -->
+<link rel="icon" href="/favicon.ico" sizes="48x48" />
+<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="canonical" href={url} />
+<meta name="description" content={description} />
+<meta property="og:site_name" content="favseed" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content={url} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={new URL('/og.png', Astro.site).href} />
+<meta name="twitter:card" content="summary_large_image" />
+<slot name="head" />
+</head>
+<body>
+<slot />
+
+<footer>
+  By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
+  favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
+  checks the rest of your <code>&lt;head&gt;</code>.
+</footer>
+<slot name="end" />
+</body>
+</html>

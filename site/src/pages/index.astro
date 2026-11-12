@@ -2,7 +2,7 @@
 // Static page, client-side pipeline. The only reason this is Astro rather than a lone HTML file
 // is that the pipeline imports the shared engine and WASM packages, and something has to
 // resolve and bundle them.
-import '../styles/app.css';
+import Page from '../layouts/Page.astro';
 
 const title = 'favseed: one SVG in, an optimised favicon set out';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
@@ -32,30 +32,9 @@ const outputs = [
   ['site.webmanifest', 'Icons only. Merge your own name and theme_color.'],
 ];
 ---
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{title}</title>
-<meta name="color-scheme" content="light dark" />
-<!-- The site's own set, built by favseed: the same block `favseed --html --manifest` prints. -->
-<link rel="icon" href="/favicon.ico" sizes="48x48" />
-<link rel="icon" href="/icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
-<link rel="canonical" href={url} />
-<meta name="description" content={description} />
-<meta property="og:site_name" content="favseed" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content={url} />
-<meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
-<meta property="og:image" content={new URL('/og.png', Astro.site).href} />
-<meta name="twitter:card" content="summary_large_image" />
-<script type="application/ld+json" set:html={jsonLd} />
-</head>
-<body>
+<Page {title} {description}>
+  <script slot="head" type="application/ld+json" set:html={jsonLd} />
+
 <header>
   <h1><img src="/icon.svg" alt="" width="40" height="40" />favseed</h1>
   <p>One SVG in, an optimised favicon set out.</p>
@@ -159,12 +138,7 @@ const outputs = [
   </aside>
 </main>
 
-<footer>
-  By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
-  favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
-  checks the rest of your <code>&lt;head&gt;</code>.
-</footer>
-
+<Fragment slot="end">
 <script>
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
@@ -319,5 +293,5 @@ const outputs = [
     if (!event.persisted) for (const u of urls) URL.revokeObjectURL(u);
   });
 </script>
-</body>
-</html>
+</Fragment>
+</Page>
