@@ -52,6 +52,7 @@ const outputs = [
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={new URL('/og.png', Astro.site).href} />
+<meta name="twitter:card" content="summary_large_image" />
 <script type="application/ld+json" set:html={jsonLd} />
 </head>
 <body>
@@ -160,7 +161,8 @@ const outputs = [
 
 <footer>
   By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
-  favseed also ships a CLI and an Astro integration.
+  favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
+  checks the rest of your <code>&lt;head&gt;</code>.
 </footer>
 
 <script>

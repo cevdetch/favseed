@@ -28,6 +28,7 @@ test('homepage metadata agrees with the canonical URL and served share image', a
   expect(await attribute('meta[property="og:title"]')).toBe(title);
   expect(await attribute('meta[property="og:description"]')).toBe(description);
   expect(await attribute('meta[property="og:type"]')).toBe('website');
+  expect(await attribute('meta[name="twitter:card"]')).toBe('summary_large_image');
   const name = await attribute('meta[property="og:site_name"]');
   await expect(head.locator('meta[name=robots]')).toHaveCount(0);
   const schema = head.locator('script[type="application/ld+json"]');
@@ -39,6 +40,7 @@ test('homepage metadata agrees with the canonical URL and served share image', a
     url: canonical,
     description,
     inLanguage: 'en',
+    publisher: { '@type': 'Person', '@id': 'https://cevdet.ch/#person', name: 'Cevdet', url: 'https://cevdet.ch/' },
   });
 
   const image = new URL(await attribute('meta[property="og:image"]'));
