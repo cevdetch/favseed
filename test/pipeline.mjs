@@ -588,14 +588,56 @@ describe('the fast set first', () => {
     // One render per job: the final search reuses the first pass's render.
     assert.equal(renders, 3);
 
-    // The final set is exactly what the search gives without a seed and without an early set.
-    const unseeded = {
+    // Without early the build is one pass, searching unseeded as it always did, and the final
+    // set is the same.
+    const seen = [];
+    let plainRenders = 0;
+    const plain = {
       ...engine,
-      search: (raw, reference, { seed: _seed, ...rest }) => engine.search(raw, reference, rest),
+      render: (...args) => {
+        plainRenders++;
+        return engine.render(...args);
+      },
+      search: (raw, reference, searchOptions) => {
+        seen.push(searchOptions);
+        return engine.search(raw, reference, searchOptions);
+      },
     };
-    const today = await buildSet(read('general'), options, { engine: unseeded, optimiseSvg });
+    const today = await buildSet(read('general'), options, { engine: plain, optimiseSvg });
     assert.deepEqual(final, today);
+    assert.equal(plainRenders, 3);
+    assert.equal(seen.length, 3);
+    for (const searchOptions of seen) {
+      assert.equal(searchOptions.effort, 'default');
+      assert.equal(searchOptions.seed, undefined);
+    }
   });
+
+  for (const effort of ['default', 'max']) {
+    it(`gives early its own buffers at effort '${effort}': transferring or zeroing them changes nothing`, async () => {
+      const options = defaultBuild({ effort, manifest: true });
+      const today = await buildSet(read('general'), options, { engine, optimiseSvg });
+      const hosts = {
+        transfer: (set) => structuredClone(set, { transfer: set.files.map((f) => f.bytes.buffer) }),
+        zero: (set) => {
+          for (const f of set.files) f.bytes.fill(0);
+        },
+      };
+      for (const [host, use] of Object.entries(hosts)) {
+        let handed;
+        const final = await buildSet(read('general'), options, {
+          engine,
+          optimiseSvg,
+          early: (set) => {
+            handed = set.files.map((f) => f.bytes);
+            use(set);
+          },
+        });
+        assert.deepEqual(final, today, host);
+        for (const f of final.files) assert.ok(!handed.includes(f.bytes), `${host}: ${f.name} is an early buffer`);
+      }
+    });
+  }
 
   it("is not built at effort 'fast' or for a pinned setting", async () => {
     for (const extra of [{}, { effort: 'default', quality: 90 }, { effort: 'max', colors: 64 }]) {
@@ -612,16 +654,17 @@ describe('the fast set first', () => {
     }
   });
 
-  it('survives an early callback that throws, and builds the same set', async () => {
+  it('survives an early callback that throws or rejects, and builds the same set', async () => {
     const options = defaultBuild();
-    const set = await buildSet(read('general'), options, {
-      engine,
-      optimiseSvg,
-      early: () => {
+    const today = await buildSet(read('general'), options, { engine, optimiseSvg });
+    for (const early of [
+      () => {
         throw new Error('host failed');
       },
-    });
-    assert.deepEqual(set, await buildSet(read('general'), options, { engine, optimiseSvg }));
+      () => Promise.reject(new Error('host failed later')),
+    ]) {
+      assert.deepEqual(await buildSet(read('general'), options, { engine, optimiseSvg, early }), today);
+    }
   });
 
   it('reports each search probe per file, between the raster events', async () => {
