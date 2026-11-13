@@ -709,7 +709,19 @@ const holdFinal = async (page) => {
       self.postMessage = (...args) => (held && args[0]?.type === 'result' ? held.push(args) : post(...args)); }\n`;
     await route.fulfill({ response, body: hold + (await response.text()) });
   });
-  return () => workers.at(-1).evaluate(() => self.favseedRelease());
+  // The worker is evaluable as soon as Playwright sees the 'worker' event, but on
+  // Firefox/WebKit its routed module may not have run yet, so favseedRelease can still
+  // be undefined. Wait for it instead of racing it; bounded, so a real failure still
+  // reports clearly rather than hanging the test.
+  return () =>
+    workers.at(-1).evaluate(async () => {
+      const deadline = Date.now() + 10_000;
+      while (!self.favseedRelease) {
+        if (Date.now() > deadline) throw new Error('favseedRelease never appeared on the worker');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      self.favseedRelease();
+    });
 };
 // Every text the status line shows and every announcement, in order: progress passes too
 // quickly to poll for.
