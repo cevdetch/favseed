@@ -15,8 +15,8 @@ const search = [
   ['All', '568', '1,142,455', '907,979 (−20.5%)', '909,846 (−20.4%)'],
 ];
 const efforts = [
-  ['general', '0.40 s', '2.33 s', '8.73 s'],
-  ['gradient', '0.60 s', '4.67 s', '17.68 s'],
+  ['general', '0.40 s', '1.98 s', '7.50 s'],
+  ['gradient', '0.60 s', '4.07 s', '15.73 s'],
   ['heavy', '0.38 s', '2.41 s', '8.25 s'],
 ];
 const zopfli = [
@@ -76,8 +76,10 @@ const vite = [
 
   <section>
     <h2>Build time by effort</h2>
-    <p>Wall clock for <code>favseed</code> on the command line, one default set, three interleaved repetitions, median,
-      on an idle 8-core, 16-thread Ryzen 7 7840U:</p>
+    <p>Wall clock for <code>favseed</code> on the command line, one default set, interleaved repetitions, median,
+      on an 8-core, 16-thread Ryzen 7 7840U. <code>general</code> and <code>gradient</code> run the default and
+      max figures below with the search's two walks at once (decision 30); <code>heavy</code> still runs them
+      one after the other:</p>
     <div>
       <table>
         <thead><tr><th>Mark</th><th>fast</th><th>default</th><th>max</th></tr></thead>
@@ -87,8 +89,9 @@ const vite = [
       </table>
     </div>
     <p>On <code>general</code> and <code>gradient</code>, <code>max</code> writes 18,670 raster bytes against the
-      default’s 18,780 (−0.6%) in 3.7 to 3.8 times the time. The default takes that 0.6% for a build of seconds
-      rather than tens of seconds; <code>--effort max</code> is there when bytes matter more.</p>
+      default’s 18,780 (−0.6%) in 3.8 to 3.9 times the time. The default takes that 0.6% for a build of seconds
+      rather than tens of seconds; <code>--effort max</code> is there when bytes matter more.
+      Read <a href={`${repo}docs/DECISIONS.md`}>decision 30</a> for the two-walk search and its numbers.</p>
   </section>
 
   <section>
