@@ -19,15 +19,17 @@ export default defineConfig({
   trailingSlash: 'never',
   build: {
     format: 'file',
-    // One page and one small stylesheet, so there is no second page to share a cached file
-    // with: inlining removes the only render-blocking request. 'always', not the default
-    // 'auto', so a stylesheet that grows past 4 KB does not turn back into a request unnoticed.
+    // A few small pages and one small stylesheet: inlining removes the only render-blocking
+    // request, which a visitor who reads one page would otherwise pay for. 'always', not the
+    // default 'auto', so a stylesheet that grows past 4 KB does not turn back into a request
+    // unnoticed.
     inlineStylesheets: 'always',
   },
   integrations: [
     sitemap({
-      // Only the homepage is indexable; /check and error pages stay out.
-      filter: (page) => new URL(page).pathname === '/',
+      // The homepage and the documentation pages are indexable; /check and the 404 page are
+      // noindex and stay out.
+      filter: (page) => !['/check', '/404'].includes(new URL(page).pathname),
     }),
     {
       name: 'favseed-host',

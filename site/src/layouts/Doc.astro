@@ -1,0 +1,25 @@
+---
+// A documentation page: the shared document, a way back to the tool, and the page's cards. Each
+// direct child of the slot is a card, as on the homepage.
+import Page from './Page.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  heading: string;
+  lede: string;
+}
+
+const { title, description, heading, lede } = Astro.props;
+---
+<Page {title} {description}>
+<header>
+  <p><a href="/">favseed</a>: make a favicon set from one SVG, in your browser.</p>
+  <h1>{heading}</h1>
+  <p>{lede}</p>
+</header>
+
+<main>
+  <slot />
+</main>
+</Page>

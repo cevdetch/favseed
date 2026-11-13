@@ -1,0 +1,109 @@
+---
+import Doc from '../layouts/Doc.astro';
+
+const title = 'How one SVG becomes a favicon set · favseed';
+const description = 'The steps from one SVG to favicon.ico, an apple-touch-icon and maskable PWA icons: SVG optimisation, safe-zone placement, the accuracy bar and Zopfli.';
+const lede = 'One SVG goes in and five files come out, six with a manifest. The same code runs every step on the command line, in the Vite and Astro integrations, and on this site.';
+
+const efforts = [
+  ['fast', 'One encode at quality 80 with the full 256-colour palette. Nothing is scored.', 'none'],
+  ['default', 'A binary search of each list: 7 to 9 encodes, the smallest that passes.', '15 iterations'],
+  ['max', 'All 26 candidates, the smallest that passes.', '120 iterations'],
+];
+---
+<Doc {title} {description} heading="How it works" {lede}>
+  <section>
+    <h2>1. The SVG stage</h2>
+    <p>favseed checks that the file holds an <code>&lt;svg&gt;</code> element, then optimises it with SVGO. CSS custom
+      properties are resolved first: <code>var(--brand, #0E7C68)</code> becomes its fallback unless you
+      set <code>--var brand=…</code>. The renderer has no <code>var()</code> support and would draw the whole mark
+      black, so a <code>var()</code> with neither a fallback nor a value is an error rather than a black square.</p>
+    <p>Animation, styling and accessibility survive by default: CSS and SMIL animation, the classes and ids something
+      references, <code>role</code>, and the ids that ARIA attributes name.
+      A <code>@media (prefers-color-scheme: dark)</code> block stays too, so a favicon drawn for dark tab strips keeps
+      working. The result is one <code>icon.svg</code> for the favicon link and for images on your
+      pages. <code>--no-animation</code> writes a static SVG instead.</p>
+    <p>Coordinates are rounded to as few decimals as the mark allows. favseed tries 1, 2, 3, 4, 6 and 8 decimals in
+      turn and keeps the first whose static render at 512 px has at most 1% of pixels off by more than 8/255, on a
+      black and on a white background. If none passes, <code>icon.svg</code> keeps the source's own numbers and the
+      build warns. A wide or tall viewBox keeps its proportions: the rasters centre it on a square canvas,
+      and <code>icon.svg</code> keeps the original viewport.</p>
+  </section>
+
+  <section>
+    <h2>2. Placement in the safe zone</h2>
+    <p>Every platform that installs a web app shows the icon through a shape of its own: a circle, a squircle, a
+      rounded square. The W3C Web App Manifest names the area every one of those masks shows, a circle centred on the
+      icon with a radius of 40% of its size. iOS's rounded square contains that circle whole, so the apple-touch-icon
+      and the manifest icons are all placed the same way.</p>
+    <p>With <code>--padding auto</code>, the default, favseed renders the mark at each icon's own size, finds the
+      opaque pixel farthest from the centre, and scales the mark until that pixel's outer corner sits on the safe
+      circle. A mark drawn with its own margin is enlarged and one that reaches its corners is shrunk. No fixed
+      percentage suits every shape: across the test fixtures <code>auto</code> chooses between 7.6% and 18.8% per
+      side. A number, such as <code>--padding 12</code>, is applied as given.</p>
+    <p>An exact fit scales by an arbitrary factor, which puts the edges of a mark drawn on a grid between pixels. So
+      favseed then walks the size down in whole pixels, by up to 10%, and takes the size with the fewest partly
+      covered pixels, if that at least halves them. On a seven-block grid mark at 512 px the box goes from 330 to
+      320 px, the colours from 12 to 3, and the file from 571 to 290 bytes. A curved mark, anti-aliased at every
+      size, keeps its exact fit. A source that is opaque in all four corners is full-bleed and is used as drawn.</p>
+    <p>The padded icons sit on the <code>--bg</code> ground, <code>#000000</code> unless you choose another. That is
+      what iOS composites a transparent icon onto anyway, and a maskable icon has to be opaque, so a colour with
+      transparency is refused. <code>--bg none</code> keeps the whole set transparent and unpadded,
+      declared <code>any</code> only. The ICO is never padded.</p>
+  </section>
+
+  <section>
+    <h2>3. Each raster against the accuracy bar</h2>
+    <p>Each raster is rendered at its own size and scored against an unquantised render of your source, placed
+      exactly like it. It passes when at most 1% of pixels are off by more than 8/255
+      in any channel, and the edge-weighted luma error is at most 1.5883, on both a black and a white background.
+      The second clause catches serrated edges that the first lets through.</p>
+    <p>The candidates are quality 40, 50, 60, 70, 80, 90, 95, 98 and 99 at the full palette, and quality 100 at 2 to
+      256 colours: 26 encodes. Each one is already the smaller of a quantised and a lossless PNG. The effort decides
+      how many are tried:</p>
+    <div>
+      <table>
+        <thead><tr><th>Effort</th><th>Encodes</th><th>Zopfli</th></tr></thead>
+        <tbody>
+          {efforts.map(([name, encodes, zopfli]) => (<tr><td><code>{name}</code></td><td>{encodes}</td><td>{zopfli}</td></tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>If quality 80 fails and another candidate passes, that candidate wins even when it is larger: the bar is a
+      constraint, not one side of a trade. If nothing passes, as on the 48 px ICO of a very dense grid, the raster
+      keeps the quality-80 encode. A pinned <code>--quality</code> or <code>--colors</code> makes one encode at
+      that setting and warns when it misses the bar. The Vite and Astro dev servers always use <code>fast</code>.</p>
+  </section>
+
+  <section>
+    <h2>4. Finishing and packing</h2>
+    <p>Zopfli re-deflates each chosen PNG once, after the choice, so it never runs on a losing candidate. It is
+      lossless: the decoded pixels are unchanged. The order matters, because the quantiser re-encodes from scratch
+      and would throw away any recompression done before it. Measured at 192 px, the wrong order is 21.0% bigger.</p>
+    <p><code>favicon.ico</code> is a 22-byte header followed by the 48×48 PNG, unchanged. favseed writes that header
+      itself, byte-identical to <code>icotool -c -r</code>; the BMP payload icotool writes by default is 8.8 times
+      larger on the fixtures. The optional manifest lists only the padded PNGs, and the build prints
+      the <code>&lt;link&gt;</code> tags for your <code>&lt;head&gt;</code>. <a href="/outputs">Outputs</a> describes
+      every file and the markup it needs.</p>
+  </section>
+
+  <section>
+    <h2>Where it runs</h2>
+    <p>The command line needs Node 24 or newer. Its image engine, <code>@napi-rs/image</code>, carries resvg, oxipng
+      and a quantiser in one native module, prebuilt for Linux, macOS and Windows on x64 and arm64, and FreeBSD on
+      x64. Zopfli is a WebAssembly build of Google's source. The Vite plugin and the Astro integration run the same
+      build and cache its result, keyed on favseed's version, the source, the options and the engine versions.</p>
+    <p>This site runs the same pipeline in a worker, on the WebAssembly build of the same engine. It needs HTTPS or
+      localhost, WebAssembly and <code>DecompressionStream</code>. Where the browser allows shared memory it uses
+      the threaded engine, and otherwise a single-thread build that is slower but gives the same files. The engine
+      is about 10.3 MB before transfer compression and loads only after you choose an SVG. Your file never leaves the
+      tab.</p>
+    <p>Matching self-contained SVGs and options give identical bytes everywhere. CI builds the test fixtures on
+      Linux, macOS and Windows and compares the hashes, and runs this site in Chromium, Firefox and WebKit against
+      the native output. Outline text and embed images as <code>data:</code> URLs, because fonts and external files
+      can differ between machines. Every number above comes from a measurement;
+      the <a href="/benchmarks">benchmarks</a> collect the results,
+      and <a href="https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md">the decisions</a> record why each
+      step is the way it is.</p>
+  </section>
+</Doc>

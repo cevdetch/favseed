@@ -53,6 +53,39 @@ test('homepage metadata agrees with the canonical URL and served share image', a
   expect(header(await response.body())).toMatchObject({ width: 1200, height: 630 });
 });
 
+const docs = ['/how-it-works', '/outputs', '/benchmarks'];
+
+for (const path of docs) {
+  test(`${path} has its own title, description and slash-free canonical URL`, async ({ page }) => {
+    await page.goto(path);
+    const head = page.locator('head');
+    const content = async (selector, name = 'content') => {
+      await expect(head.locator(selector)).toHaveCount(1);
+      return head.locator(selector).getAttribute(name);
+    };
+    const url = new URL(path, canonical).href;
+    const title = await page.title();
+    expect(title).toMatch(/ · favseed$/);
+    const description = await content('meta[name=description]');
+    expect(description.length).toBeGreaterThan(100);
+    expect(await content('link[rel=canonical]', 'href')).toBe(url);
+    expect(await content('meta[property="og:url"]')).toBe(url);
+    expect(await content('meta[property="og:title"]')).toBe(title);
+    expect(await content('meta[property="og:description"]')).toBe(description);
+    expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image');
+    await expect(head.locator('meta[name=robots]')).toHaveCount(0);
+    await expect(page.locator('h1')).toHaveCount(1);
+    // Every page reaches the tool and the other documentation pages.
+    for (const target of ['/', ...docs]) await expect(page.locator(`a[href="${target}"]`).first()).toBeAttached();
+  });
+}
+
+test('the sitemap lists the indexable pages and nothing else', async ({ request }) => {
+  const xml = await (await request.get('/sitemap-0.xml')).text();
+  const listed = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(([, loc]) => loc).sort();
+  expect(listed).toEqual(['/', ...docs].map((path) => new URL(path, canonical).href).sort());
+});
+
 for (const path of ['/check', '/404']) {
   test(`${path} stays noindex without a canonical URL`, async ({ page }) => {
     await page.goto(path);
