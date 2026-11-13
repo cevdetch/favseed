@@ -664,9 +664,14 @@ describe('search, both walks at once', () => {
           pinned: null,
           onProbe: (p) => calls.push(p),
         });
+        // The fallback, q80 at 256 colours, is the quality list's first midpoint and one of its
+        // entries, so it adds no encode to either bound; the two lists share no setting because
+        // the quality list stops below 100. If either list changes that, these bounds must too.
+        assert.equal(SEARCH_QUALITIES[(SEARCH_QUALITIES.length - 1) >> 1], DEFAULT_QUALITY);
+        assert.ok(!SEARCH_QUALITIES.includes(100));
         const total = {
           fast: 1,
-          default: 1 + binaryBound(SEARCH_QUALITIES.length) + binaryBound(SEARCH_COLORS.length),
+          default: binaryBound(SEARCH_QUALITIES.length) + binaryBound(SEARCH_COLORS.length),
           max: SEARCH_QUALITIES.length + SEARCH_COLORS.length,
         }[effort];
         assert.equal(calls.length, result.probes, effort);
@@ -759,4 +764,70 @@ describe('search, both walks at once', () => {
     assert.equal(result.probes, 0);
     assert.equal(typeof result.pass, 'boolean');
   });
+
+  it('a pin ignores a seed of any other setting and encodes once', async () => {
+    const { raw, reference } = searchCaptures.general;
+    const pinned = { quality: 100, colors: 4 };
+    const seed = { setting: { quality: DEFAULT_QUALITY }, png: await engine.encode(raw, { quality: DEFAULT_QUALITY }) };
+    const result = await engine.search(raw, reference, { effort: 'default', pinned, seed });
+    assert.deepEqual([...result.png], [...(await engine.encode(raw, pinned))]);
+    assert.deepEqual(result.setting, pinned);
+    assert.equal(result.probes, 1);
+  });
+
+  it('max with a q80 seed saves one of its 26 encodes and changes nothing else', async () => {
+    const { raw, reference } = searchCaptures.gradient;
+    const plain = await engine.search(raw, reference, { effort: 'max', pinned: null });
+    const seed = { setting: { quality: DEFAULT_QUALITY }, png: await engine.encode(raw, { quality: DEFAULT_QUALITY }) };
+    const seeded = await engine.search(raw, reference, { effort: 'max', pinned: null, seed });
+    assert.deepEqual([...seeded.png], [...plain.png]);
+    assert.deepEqual(seeded.setting, plain.setting);
+    assert.equal(plain.probes, 26);
+    assert.equal(seeded.probes, 25);
+  });
+
+  it('a throwing onProbe changes nothing', async () => {
+    const { raw, reference } = searchCaptures.general;
+    const plain = await engine.search(raw, reference, { effort: 'default', pinned: null });
+    const loud = await engine.search(raw, reference, {
+      effort: 'default',
+      pinned: null,
+      onProbe: () => {
+        throw new Error('progress went wrong');
+      },
+    });
+    assert.deepEqual([...loud.png], [...plain.png]);
+    assert.deepEqual(loud.setting, plain.setting);
+    assert.equal(loud.probes, plain.probes);
+  });
+
+  for (const effort of ['default', 'max']) {
+    it(`${effort}: the first failed encode stops both walks, drains, and rejects with it`, async () => {
+      let calls = 0;
+      const image = {
+        ...napi,
+        // maxQuality below 100 is every quality-list encode; the colour list's run at 100.
+        pngQuantize: async (png, options) => {
+          calls++;
+          if (options.maxQuality < 100) throw new Error('lossy quantise failed');
+          return napi.pngQuantize(png, options);
+        },
+      };
+      const failing = createEngine({ image, zopfli: null, inflate: inflateSync });
+      const unhandled = [];
+      const onUnhandled = (reason) => unhandled.push(reason);
+      process.on('unhandledRejection', onUnhandled);
+      try {
+        const { raw, reference } = searchCaptures.general;
+        await assert.rejects(failing.search(raw, reference, { effort, pinned: null }), /lossy quantise failed/);
+        await new Promise((resolve) => setImmediate(resolve));
+      } finally {
+        process.off('unhandledRejection', onUnhandled);
+      }
+      assert.deepEqual(unhandled, []);
+      // The failing quality probe, the colour probe running beside it, and at most one more
+      // colour probe that colour walk started before the failure landed.
+      assert.ok(calls <= 3, `${calls} quantisations`);
+    });
+  }
 });

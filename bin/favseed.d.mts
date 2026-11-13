@@ -99,7 +99,7 @@ export interface SearchProbe {
   pass: boolean | null;
   /** Encodes completed so far, 1 up to the result's `probes`. */
   done: number;
-  /** An upper bound on the search's encodes. */
+  /** The most encodes the search can make: 9 for default, 26 for max, 1 for fast or a pin. */
   total: number;
 }
 
