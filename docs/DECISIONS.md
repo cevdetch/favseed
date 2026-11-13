@@ -695,6 +695,105 @@ priority rule that is a byte cost for build time, and it is the one the default 
 for a build of seconds rather than tens of seconds. Every raster that can pass passes at
 either effort, and `--effort max` is one flag away.
 
+Decision 30 has since run the search's two walks at once, with the same bytes: `default` now
+takes 1.98 s and 4.07 s on `general` and `gradient`, `max` 7.50 s and 15.73 s.
+
+### 30. The website shows the quick set first and searches behind it
+
+On the website the search is the visitor's wait. Choosing `general.svg` on the threaded engine,
+unthrottled, put the default-effort set on the page after 3 078 ms, and `gradient.svg` after
+7 067 ms, where effort `fast` took 638 and 1 049 ms ([bench/browser](../bench/browser/README.md),
+2026-11-13, three interleaved repetitions, median). The `fast` set is already a complete,
+usable set: every raster at quality 80, the encode the search keeps when nothing passes
+(decision 29). So the page shows it first, labelled as quick, and replaces it with the final
+set when the search ends. Downloads serve whichever is the best finished set, and say which.
+
+**How.** `buildSet` takes an `early` callback (`lib/pipeline.mjs`). When a host passes one and
+the effort searches with nothing pinned, the first pass is exactly an effort `fast` build, and
+the callback gets a deep copy of that set, byte-identical to a separate `--effort fast` build
+(asserted in `test/pipeline.mjs`). The copy is the host's to transfer or overwrite: uncopied,
+the website's transfer to the page would detach the very buffers the second pass seeds its
+searches with. The second pass reuses the first pass's renders, and each search takes the
+quality-80 encode as a seed, which the binary walk's first probe asks for (index 4 of the
+9-entry quality list). The final set is the same set a build without `early` returns, compared
+whole in the same test. Without `early` the build is one pass, unseeded, as it always was: the
+CLI, the API, Vite and Astro pass none, and their builds pay nothing for this.
+
+**The final set can land slightly later, and that is the trade.** Seeding saves one encode per
+raster but no wall time, because the colour walk, up to five probes, is the search's long pole
+and the seed sits on the quality walk. The first pass's own time is mostly not recovered.
+Natively, `buildSet` at the default effort with and without `early` (sizes 192 and 512,
+`#000000`, four interleaved runs, median): `general` 1.98 s against 2.01 s (+1.7 %), quick
+set at 0.41 s; `gradient` 4.08 s against 4.26 s (+4.5 %), quick set at 0.61 s. On the website
+the concurrent walks below more than pay for it on the threaded engine; the single-thread
+engine has one thread for both walks, so its final set lands where it did:
+
+| engine, network | mark | before: the one set | after: quick set | after: final set |
+|---|---|---|---|---|
+| threaded, unthrottled | `general` | 3 078 ms | 649 ms (−79 %) | 2 612 ms (−15 %) |
+| | `gradient` | 7 067 ms | 1 039 ms (−85 %) | 6 154 ms (−13 %) |
+| single-thread, unthrottled | `general` | 3 900 ms | 762 ms (−80 %) | 3 952 ms (+1 %) |
+| | `gradient` | 10 113 ms | 1 603 ms (−84 %) | 10 115 ms (±0 %) |
+| threaded, 9 Mbps + 60 ms | `general` | 9 140 ms | 3 946 ms (−57 %) | 8 159 ms (−11 %) |
+| | `gradient` | 13 048 ms | 4 858 ms (−63 %) | 13 265 ms (+2 %) |
+| single-thread, 9 Mbps + 60 ms | `general` | 7 831 ms | 3 716 ms (−53 %) | 7 420 ms (−5 %) |
+| | `gradient` | 17 541 ms | 6 131 ms (−65 %) | 17 192 ms (−2 %) |
+
+Default effort, from choosing the file. The worst final-set cell, +2 %, sits inside its own
+before-range (11 445–14 819 ms). At `max` the quick set arrives at the same moment and the
+final set takes 10–43 s, so there the first set is 78–96 % sooner. A visitor who wants only
+the smaller files waits about as long as before at worst; everyone else has a set to look at
+and download after 0.6–1.6 s unthrottled.
+
+**The two walks run at once, and that cannot change the winner.** `engine.search` used to walk
+the quality list and then the colour list; it now starts both and awaits both
+(`lib/engine.mjs`). Each walk's next probe depends only on its own probes' pass or fail, and a
+probe's bytes and gate depend only on the raw render and the setting, so both walks visit
+exactly the settings they visited one after the other, in the same order each. A setting both
+ask for is one cached encode. The winner is chosen only after both finish, from both probe
+lists in list order, by fewest bytes, then higher quality, then more colours, with nothing
+depending on which encode completed first. `test/engine.mjs` asserts the concurrent search
+matches the sequential walks in bytes, setting, scores and probe count at 192 and 512 px, and
+`node test/hashes.mjs --check` holds the byte manifest's eleven marks at `default`, and two
+at `max`, to the same bytes. The first failed encode stops both walks from starting another;
+encodes already running drain, and the search rejects with that first error. CLI wall clock, the four builds byte-identical before and
+after (`node bin/favseed.mjs` with `--bg '#000000'`, interleaved, median, load average about 2):
+
+| mark | `default`, before | after | `max`, before | after |
+|---|---|---|---|---|
+| `general` | 2.38 s | 1.98 s (−17 %) | 8.87 s | 7.50 s (−15 %) |
+| `gradient` | 4.72 s | 4.07 s (−14 %) | 17.89 s | 15.73 s (−12 %) |
+
+One search now has two encodes in flight, so the batch budget charges a gated job a second
+decoded candidate: 46 B/px over its canvas, up from 42 (`referenceBytes`).
+
+**The engine loads on intent, not on idle.** The page fetches no JavaScript worker and no WASM
+before the visitor does something: the image engine is the page's largest download, 2.5 MB at
+Brotli 11 ([bench/browser-compat/SLIM.md](../bench/browser-compat/SLIM.md)), and a visitor who
+only reads the documentation should not pay for it, nor should it sit in a page-weight audit
+such as Lighthouse's, which counts what the page transfers while it loads. An idle-time
+preload would spend that on every visit. Loading starts instead on the first pointer, focus or
+drag that reaches the drop zone, or on a chosen file. `site/test/page.spec.mjs` asserts that
+loading the page, editing the form and choosing a non-SVG file start no worker and request no
+engine or WASM, and that hovering over the drop zone or focusing the file input starts the
+load. At the default and `max` efforts the worker fetches `zopfli.wasm` alongside the engine
+rather than at the first finish. The head start is the time between pointing at the drop zone
+and choosing a file: on the throttled link a cold engine takes 2 959–3 114 ms to be ready on
+the threaded engine, which a visitor spends in the file picker anyway. The WASM sits under
+`/_astro/` with hashed names and `immutable` caching (`site/headers.mjs`), so a repeat visit
+fetches nothing. The timings above choose the file without hovering, so they include none of
+this head start.
+
+**Recorded next step: a slim engine.** The WASM carries AVIF, WebP and lossless-JPEG codecs
+favseed never calls. Built without them, the engine is 1 433 110 B at Brotli 11 against
+2 470 599 for the single-thread build (−42 %), and 1 456 603 against 2 481 262 for the
+threaded one, with 6 000 of 6 000 engine outputs identical in each mode over every fixture;
+on the 9 Mbps link it is ready about a second sooner (−32 %), and the first set moves by the
+same second ([bench/browser-compat/SLIM.md](../bench/browser-compat/SLIM.md)). It is not shipped
+here. The single-thread engine's build recipe exists and gains only a patch step; the threaded
+engine is the published npm package today, so a slim one means building and vendoring it, with
+the same both-mode parity checks the single-thread engine carries. That is its own change.
+
 ---
 
 ## History
