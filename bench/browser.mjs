@@ -536,7 +536,16 @@ function writeReadme({ date, cpu, threads, chromiumVersion, reps, results, commi
 
 // ------------------------------------------------------------------------------------- main --
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  let options;
+  try {
+    options = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    // An argument error, including a path benchmarkPath() refuses, is the caller's to fix:
+    // one line, not a stack trace.
+    console.error(`bench/browser.mjs: ${error.message}`);
+    process.exitCode = 2;
+    return;
+  }
   if (options.help) {
     process.stdout.write(USAGE);
     return;
