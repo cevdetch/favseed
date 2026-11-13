@@ -708,6 +708,10 @@ const statusLog = (page) =>
       if (text && text !== window.favseedStatus.at(-1)) window.favseedStatus.push(text);
     }).observe(document, { subtree: true, childList: true, characterData: true });
   });
+const settings = (page) =>
+  page
+    .locator('#files tr')
+    .evaluateAll((rows) => rows.map((row) => [row.cells[0].textContent, row.cells[2].textContent, row.cells[2].title]));
 
 test('default effort shows the quick set at once, then the smallest passing set', async ({ page }) => {
   const release = await holdFinal(page);
@@ -725,6 +729,13 @@ test('default effort shows the quick set at once, then the smallest passing set'
   // Until the final set exists, downloads serve the quick set: effort 'fast''s bytes.
   const quick = summary(await buildFiles({ input: fixture('tiles'), effort: 'fast', manifest: true }));
   expect(await downloads(page)).toEqual(quick.files);
+  for (const [name, setting, title] of await settings(page)) {
+    if (/\.(svg|webmanifest)$/.test(name)) expect(setting).toBe('');
+    else {
+      expect(setting).toBe('quality 80 (quick)');
+      expect(title).toBe('Not scored against the accuracy bar.');
+    }
+  }
   const quickHref = await zip.getAttribute('href');
   expect(
     await page.evaluate(async (href) => (await (await fetch(href)).arrayBuffer()).byteLength, quickHref),
@@ -742,6 +753,11 @@ test('default effort shows the quick set at once, then the smallest passing set'
   await expect(zip).toHaveAttribute('download', 'favseed.zip');
   const final = summary(await buildFiles({ input: fixture('tiles'), manifest: true }));
   expect(await downloads(page)).toEqual(final.files);
+  for (const [name, setting, title] of await settings(page)) {
+    if (/\.(svg|webmanifest)$/.test(name)) continue;
+    expect(setting).toMatch(/^(quality \d+|\d+ colours)$/);
+    expect(title).toMatch(/^\d+\.\d\d % of pixels off, edge error \d+\.\d{3}$/);
+  }
   // The quick set's object URLs are released once the final set replaces it.
   expect(
     await page.evaluate(
@@ -757,6 +773,7 @@ test('default effort shows the quick set at once, then the smallest passing set'
   const log = await page.evaluate(() => window.favseedStatus);
   const at = (pattern) => log.findIndex((text) => pattern.test(text));
   expect(at(/^Quick set ready — searching for smaller files…$/)).toBeGreaterThan(-1);
+  expect(at(/^Searching [\w.-]+: \d+ of up to \d+ encodes$/)).toBeGreaterThan(at(/^Quick set ready/));
   expect(log.some((text) => /undefined/.test(text))).toBe(false);
   const marks = await page.evaluate(() =>
     ['favseed:quick-set', 'favseed:final-set'].map((name) => performance.getEntriesByName(name).length),

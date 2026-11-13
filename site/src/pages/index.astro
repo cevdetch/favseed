@@ -97,7 +97,7 @@ const outputs = [
     <figure><img id="p-dark" alt="the mark on dark" /><figcaption>on dark</figcaption></figure>
     <figure><img id="p-mask" alt="a padded icon under a circular mask" /><figcaption>masked</figcaption></figure>
     <div><table>
-      <thead><tr><th>file</th><th>bytes</th><th></th></tr></thead>
+      <thead><tr><th>file</th><th>bytes</th><th>setting</th><th></th></tr></thead>
       <tbody id="files"></tbody>
     </table></div>
     <p><small id="fit"></small></p>
@@ -203,6 +203,15 @@ const outputs = [
     warm();
   });
 
+  // A raster's chosen encode, as the CLI's --quality and --colors would ask for it, and its scores.
+  const setting = (q, quick) => {
+    if (!q) return ['', ''];
+    const { quality: n, colors: c } = q.setting;
+    const label = (n < 100 || c === 256 ? `quality ${n}` : `${c} colours`) + (quick ? ' (quick)' : '');
+    return [label, q.pct === null ? 'Not scored against the accuracy bar.'
+      : `${q.pct.toFixed(2)} % of pixels off, edge error ${q.edge.toFixed(3)}${q.pass ? '' : ' (misses the bar)'}`];
+  };
+
   // Shows a set, quick or final, and frees the previous one's object URLs.
   const show = (built, quick) => {
     const next = [];
@@ -213,9 +222,12 @@ const outputs = [
     };
     try {
       // Every name comes from the pipeline's fixed list, never from the visitor's file.
-      $('files').innerHTML = built.files.map((f) =>
-        `<tr><td><code>${f.name}</code></td><td>${f.bytes.length}\u00a0B</td>` +
-        `<td><a download="${f.name}" href="${url(f.bytes, TYPES[f.name.split('.').pop()])}">save</a></td></tr>`).join('');
+      $('files').innerHTML = built.files.map((f) => {
+        const [label, scores] = setting(built.quality[f.name], quick);
+        return `<tr><td><code>${f.name}</code></td><td>${f.bytes.length}\u00a0B</td>` +
+          `<td title="${scores}">${label}</td>` +
+          `<td><a download="${f.name}" href="${url(f.bytes, TYPES[f.name.split('.').pop()])}">save</a></td></tr>`;
+      }).join('');
 
       const byName = Object.fromEntries(built.files.map((f) => [f.name, f.bytes]));
       $('p-light').src = $('p-dark').src = url(byName['icon.svg'], TYPES.svg);
@@ -289,10 +301,11 @@ const outputs = [
           shown = controller;
           say('Quick set ready — searching for smaller files…');
         },
-        onProgress: ({ phase, completed, total }) => {
+        onProgress: ({ phase, completed, total, file: name, done }) => {
           if (!current()) return;
           if (phase === 'placement') say('Placing the mark…');
           else if (phase === 'raster' && result.dataset.set !== 'quick') say(`Building images… ${completed}/${total}`);
+          else if (phase === 'search') say(`Searching ${name}: ${done} of up to ${total} encodes`);
           else if (phase === 'complete') say('Preparing downloads…');
         },
       });
