@@ -8,11 +8,18 @@ const client = createWorkerClient({
   checkCapabilities,
 });
 
-export const warm = () => client.warm();
+export const warm = (effort) => client.warm(effort);
 export const dispose = () => client.dispose();
 
-export async function buildInBrowser(source, options = {}, controls = {}) {
+const withArchive = ({ archiveBytes, ...result }) => ({ ...result, archive: () => new Uint8Array(archiveBytes) });
+
+/**
+ * Resolves with the final set. `onEarly(set)`, when given, receives the quick set first (the
+ * set effort 'fast' builds, in the same shape) whenever a search follows it; an identical
+ * rebuild answered from the worker's cache resolves with the final set alone.
+ */
+export async function buildInBrowser(source, options = {}, { onEarly, ...controls } = {}) {
   const normalized = normaliseOptions({ ...options, manifest: options.manifest ?? true });
-  const { archiveBytes, ...result } = await client.build(source, normalized, controls);
-  return { ...result, archive: () => new Uint8Array(archiveBytes) };
+  const early = typeof onEarly === 'function' ? (set) => onEarly(withArchive(set)) : undefined;
+  return withArchive(await client.build(source, normalized, { ...controls, onEarly: early }));
 }

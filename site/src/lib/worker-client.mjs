@@ -35,6 +35,10 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
         request.onWarn?.(data.message);
         return;
       }
+      if (data.type === 'early') {
+        request.onEarly?.(data.result);
+        return;
+      }
       if (data.type === 'error' && data.fatal) {
         reset(new Error(data.message));
         return;
@@ -54,7 +58,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
     };
     return current;
   };
-  const request = (type, payload = {}, { signal, onProgress, onWarn } = {}) =>
+  const request = (type, payload = {}, { signal, onProgress, onWarn, onEarly } = {}) =>
     new Promise((resolve, reject) => {
       if (signal?.aborted) {
         reject(aborted());
@@ -71,7 +75,7 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
       const id = ++sequence;
       const cancel = () => reset();
       const cleanup = () => signal?.removeEventListener('abort', cancel);
-      pending.set(id, { resolve, reject, cleanup, onProgress, onWarn });
+      pending.set(id, { resolve, reject, cleanup, onProgress, onWarn, onEarly });
       if (type === 'build') activeBuild = id;
       signal?.addEventListener('abort', cancel, { once: true });
       try {
@@ -81,8 +85,11 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
       }
     });
   return {
-    warm: () => request('warm'),
-    build: (source, options, controls) => request('build', { source, options }, controls),
+    // The effort lets the worker fetch Zopfli alongside the engine when the build will need it.
+    warm: (effort) => request('warm', { effort }),
+    // Only a caller that shows the quick set asks for it: without one the build is one pass.
+    build: (source, options, controls) =>
+      request('build', { source, options, early: typeof controls?.onEarly === 'function' }, controls),
     dispose: () => reset(),
   };
 }

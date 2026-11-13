@@ -99,6 +99,17 @@ Builds run in a dedicated worker; Cancel terminates it and its children. Previou
 successful downloads remain usable after a failed or cancelled build. One completed set is
 cached in memory with owned copies and a 16 MiB budget; no source/result is persisted or uploaded.
 
+At Default and Maximum effort with nothing pinned, the worker first builds the set Fast would
+and posts it at once: the page shows it as the quick set, with its own downloads, while the
+search goes on, then replaces it with the final set and says how the two compare. Downloads
+always serve the best finished set and are labelled with which one it is; a quick set left by a
+cancelled search stays, labelled as quick. The status line counts each encode of each raster's
+search, and each file row shows the setting it kept, with its scores as a tooltip. Screen readers
+are told the phases (building, quick set ready, done), not every step. Decision 30 in
+[docs/DECISIONS.md](../docs/DECISIONS.md) records why, and
+[bench/browser](../bench/browser/README.md) measures the time from choosing a file to the
+engine being ready, the quick set and the final set.
+
 After generation, **Copy markup** copies the displayed head links and announces success or
 manual-copy guidance if clipboard access is denied. The code block stays selectable; browsers
 without clipboard support show manual guidance. New results clear earlier copy feedback.
@@ -118,7 +129,9 @@ for the size and accuracy tradeoff; other file bytes are unchanged.
 The image WASM asset is 10,322,976 bytes before transfer compression; production serves it
 with Brotli (3,193,943 transferred bytes in the measured response). The loader starts with
 64 MiB of growable shared memory. It preloads four async workers plus two to four spare workers,
-and retains upstream fallback spawning. Loading starts after selecting an SVG.
+and retains upstream fallback spawning. Loading starts on the first pointer, focus or drag
+that reaches the drop zone, or when an SVG is chosen, never on page load; at Default and
+Maximum effort the worker fetches the Zopfli WASM alongside the engine.
 Earlier release-mode compressor and palette measurements are retained in `bench/zopfli/`;
 they describe historical work, rather than the effort levels.
 
@@ -209,7 +222,7 @@ capabilities, and the document can require compatibility even if its worker perm
 consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.
 The documentation pages (`/how-it-works`, `/outputs`, `/benchmarks`) each get their own title,
 description and slash-free canonical URL, and the sitemap lists those pages and the homepage only.
-It also guards cold startup before SVG selection, including form edits and a rejected PNG:
+It also guards cold startup before any sign of intent, including form edits and a rejected PNG:
 no workers or engine/WASM requests, at most 5 KiB gzipped HTML, 4 KiB gzipped JavaScript,
 8 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. Actual responses include
 imports and preloads; each body is compressed separately with gzip level 9. Inline CSS is
@@ -218,6 +231,8 @@ excluded; these are reproducible size comparisons, not Cloudflare transfer measu
 load-time guarantees. The test attaches resource sizes and totals, then selects an SVG and
 verifies that the engine loads and generation succeeds. The pre-selection observation ends
 after settled network activity; it does not detect arbitrarily delayed background work.
+Two further tests check that hovering over the drop zone starts the worker with the engine
+and Zopfli WASM requests, and that focusing the file input starts it too.
 
 Copy-control checks cover keyboard/touch activation, exact text, rejection/retry, missing API
 and stale requests. Chromium projects also verify a real clipboard round trip with test-only

@@ -25,8 +25,11 @@ No install at all: **[favseed.cevdet.ch](https://favseed.cevdet.ch)** runs the s
 build pipeline in your browser, with nothing uploaded. Matching input and options
 produce identical files for self-contained SVGs. Outline text and embed external images for
 consistent raster output. The page includes a manifest; use `--manifest` for the matching CLI
-set. Builds run in a worker with progress and cancellation; see [browser requirements and
-measurements](site/README.md).
+set. Builds run in a worker with cancellation. At the default and maximum efforts the page
+shows a quick set first (the `--effort fast` files, ready to download) and replaces it with
+the final set when the search ends; progress counts each encode, and each file shows the
+setting it kept. The engine starts loading when you point at, focus or drag onto the file
+picker. See [browser requirements and measurements](site/README.md).
 
 Add the links to your `<head>`. `favseed --html` prints them:
 

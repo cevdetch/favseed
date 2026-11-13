@@ -87,19 +87,20 @@ const outputs = [
     <label><input type="checkbox" name="animation" checked /> Preserve SVG animation</label>
     <button type="submit">Generate</button>
     <button type="button" id="cancel" hidden>Cancel</button>
-    <output aria-live="polite"></output>
+    <output aria-live="off"></output>
+    <p id="announce" role="status" aria-live="polite" aria-atomic="true"></p>
   </form>
   <ul id="warnings" aria-live="polite" hidden></ul>
 
   <section id="result" hidden>
-    <h2>Your set</h2>
+    <h2 id="set-title">Your set</h2>
     <figure><img id="p-light" alt="the mark on white" /><figcaption>on white</figcaption></figure>
     <figure><img id="p-dark" alt="the mark on dark" /><figcaption>on dark</figcaption></figure>
     <figure><img id="p-mask" alt="a padded icon under a circular mask" /><figcaption>masked</figcaption></figure>
-    <table>
-      <thead><tr><th>file</th><th>bytes</th><th></th></tr></thead>
+    <div><table>
+      <thead><tr><th>file</th><th>bytes</th><th>setting</th><th></th></tr></thead>
       <tbody id="files"></tbody>
-    </table>
+    </table></div>
     <p><small id="fit"></small></p>
     <a id="zip" class="button" download="favseed.zip">Download .zip</a>
     <div class="head-tools">
@@ -129,11 +130,13 @@ const outputs = [
       the <a href="/benchmarks">benchmarks</a> cover the default effort too.</p>
     <p>Default effort keeps, for each PNG, the smallest encode that still passes
       the <a href="/how-it-works">accuracy bar</a>, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
-      Maximum tries every candidate and runs Zopfli longest. A pinned quality or palette makes
+      Maximum tries every candidate and runs Zopfli longest. At Default and Maximum this page shows
+      Fast’s set at once, ready to download, and replaces it when the smallest passing files are
+      ready. A pinned quality or palette makes
       one encode at that setting and warns when it misses the bar. These
       match <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
       page includes a manifest; use <code>--manifest</code> for the matching CLI set.</p>
-    <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
+    <p>The engine loads when you reach for the file picker, never before. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
       Browser privacy restrictions can select a slower compatibility mode.
       Your SVG and generated files stay in this tab.</p>
@@ -144,17 +147,18 @@ const outputs = [
 <script>
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
-  const { file, quality, colors } = form.elements;
+  const { file, quality, colors, effort } = form.elements;
   // A quality below 100 lets the quantiser choose the palette, so the two cannot be pinned together.
   const updatePalette = () => { colors.disabled = quality.value.trim() !== '' && Number(quality.value) < 100; };
   quality.addEventListener('input', updatePalette);
   updatePalette();
   const drop = file.labels[0], go = form.querySelector('button[type=submit]'), status = form.querySelector('output');
-  const cancel = $('cancel'), warnings = $('warnings');
+  const cancel = $('cancel'), warnings = $('warnings'), result = $('result'), title = $('set-title'), zipLink = $('zip');
   const copy = $('copy-links'), copyStatus = $('copy-status'), links = $('links');
   const canCopy = typeof navigator.clipboard?.writeText === 'function';
   const TYPES = { svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon', webmanifest: 'application/manifest+json' };
-  let urls = [], active, resultRevision = 0;
+  // `shown` is the build whose set is on the page.
+  let urls = [], active, shown, resultRevision = 0;
 
   copy.hidden = !canCopy;
   const resetCopyStatus = () => { copyStatus.textContent = canCopy ? '' : 'Select and copy the markup below.'; };
@@ -175,14 +179,22 @@ const outputs = [
     }
   });
 
-  const say = (msg, kind = '') => { status.textContent = msg; status.className = kind; };
+  // The status line shows every step; screen readers hear only the moments that matter (the build
+  // starting, a set ready, a cancel or a failure), not one announcement per encode.
+  const announce = $('announce');
+  const say = (msg, kind = '', step = false) => {
+    status.textContent = msg;
+    status.className = kind;
+    if (!step) announce.textContent = msg;
+  };
 
-  // Fetch the engine only after choosing a file, overlapping initialization with options.
+  // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
+  // or a chosen file. Never on page load. Each warm names the effort, so the worker fetches Zopfli
+  // alongside the engine when the build will need it.
   let pipeline;
-  const load = () => (pipeline ??= import('../lib/pipeline.mjs').then(
-    (m) => { m.warm().catch(() => {}); return m; },
-    (e) => { pipeline = null; throw e; },
-  ));
+  const load = () => (pipeline ??= import('../lib/pipeline.mjs').catch((e) => { pipeline = null; throw e; }));
+  const warm = () => load().then((m) => m.warm(effort.value)).catch(() => {});   // reported by the submit that awaits load
+  for (const type of ['pointerenter', 'focusin', 'dragenter']) drop.addEventListener(type, warm, { once: true });
 
   // The input covers the drop zone, so the browser does the picking and the dropping; all that
   // is left here is the highlight while something is dragged over it.
@@ -195,10 +207,78 @@ const outputs = [
     const ok = f && (/\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
     if (f && !ok) file.value = '';
     drop.querySelector('strong').textContent = ok ? f.name : 'Choose an SVG';
+    // A new file ends the build in progress; a quick set it showed stays.
+    if (active) { stop(); idle(); }
     if (!ok) return say(f ? 'That is not an SVG.' : '', f ? 'bad' : '');
     say('Ready.');
-    load().catch(() => {});   // reported by the submit that awaits it
+    warm();
   });
+
+  // A raster's chosen encode, as the CLI's --quality and --colors would ask for it, and its scores.
+  // A pinned palette is echoed as colours even at 256, where it is the same encode as quality 100.
+  const setting = (q, quick, byColors) => {
+    if (!q) return ['', ''];
+    const { quality: n, colors: c } = q.setting;
+    const label = (n < 100 || (c === 256 && !byColors) ? `quality ${n}` : `${c} colours`) + (quick ? ' (quick)' : '');
+    return [label, q.pct === null ? 'Not scored against the accuracy bar.'
+      : `${q.pct.toFixed(2)} % of pixels off, edge error ${q.edge.toFixed(3)}${q.pass ? '' : ' (misses the bar)'}`];
+  };
+
+  // Shows a set, quick or final, and frees the previous one's object URLs.
+  const show = (built, quick, byColors) => {
+    const next = [];
+    const url = (bytes, type) => {
+      const u = URL.createObjectURL(new Blob([bytes], { type }));
+      next.push(u);
+      return u;
+    };
+    try {
+      // Every name comes from the pipeline's fixed list, never from the visitor's file.
+      $('files').innerHTML = built.files.map((f) => {
+        const [label, scores] = setting(built.quality[f.name], quick, byColors);
+        return `<tr><td><code>${f.name}</code></td><td>${f.bytes.length}\u00a0B</td>` +
+          `<td title="${scores}">${label}</td>` +
+          `<td><a download="${f.name}" href="${url(f.bytes, TYPES[f.name.split('.').pop()])}">save</a></td></tr>`;
+      }).join('');
+
+      const byName = Object.fromEntries(built.files.map((f) => [f.name, f.bytes]));
+      $('p-light').src = $('p-dark').src = url(byName['icon.svg'], TYPES.svg);
+      const biggest = Math.max(...Object.keys(built.fit.icons).map(Number));
+      const fit = built.fit.icons[biggest];
+      // The masked preview shows the largest padded icon: that is what a launcher masks.
+      $('p-mask').src = fit ? url(byName[`icon-${biggest}.png`], TYPES.png) : $('p-light').src;
+      $('fit').textContent = fit
+        ? `Mark placed at ${fit.box}px of ${fit.canvas} in the safe zone` +
+          `${fit.snapped ? ', snapped to whole pixels' : ''}` +
+          `${fit.fullBleed ? ' (full-bleed source, used as drawn)' : ''}.`
+        : 'No padded icon: the ground is transparent.';
+      links.textContent = built.links.trim();
+      resultRevision++;
+      resetCopyStatus();
+      zipLink.href = url(built.archive(), 'application/zip');
+    } catch (e) {
+      for (const u of next) URL.revokeObjectURL(u);
+      throw e;
+    }
+    // Downloads always serve the best finished set, and say which one it is.
+    title.textContent = quick ? 'Quick set — searching for smaller files…' : 'Your set';
+    zipLink.textContent = quick ? 'Download the quick set (.zip)' : 'Download .zip';
+    zipLink.download = quick ? 'favseed-quick.zip' : 'favseed.zip';
+    result.dataset.set = quick ? 'quick' : 'final';
+    result.hidden = false;
+    for (const u of urls) URL.revokeObjectURL(u);
+    urls = next;
+    performance.mark(quick ? 'favseed:quick-set' : 'favseed:final-set');
+  };
+  const size = (built) => built.files.reduce((n, f) => n + f.bytes.length, 0);
+  // The whole set against the whole quick set. The final set can be larger: each raster is the
+  // smallest encode that passes, and a quick encode that misses the bar is not a candidate.
+  const versus = (bytes, quick) => {
+    const d = bytes - quick, pct = Math.round((100 * Math.abs(d)) / quick) || '<1';
+    return d === 0 ? 'the whole set is the same size as the quick set'
+      : d < 0 ? `the whole set is ${pct} % smaller than the quick set`
+      : `the whole set is ${pct} % larger than the quick set, which missed the accuracy bar`;
+  };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -206,23 +286,21 @@ const outputs = [
     const controller = new AbortController();
     active = controller;
     const data = new FormData(form);
+    const current = () => active === controller && !controller.signal.aborted;
+    // Whether this build has shown its quick set: its own, not whatever set the page holds.
+    let early = false;
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
     warnings.replaceChildren();
     warnings.hidden = true;
-    const nextUrls = [];
-    const url = (bytes, type) => {
-      const u = URL.createObjectURL(new Blob([bytes], { type }));
-      nextUrls.push(u);
-      return u;
-    };
     try {
       const { buildInBrowser } = await load();
       controller.signal.throwIfAborted();
       const t0 = performance.now();
       // An empty field is Auto: it is left out, so it pins nothing and the search chooses.
       const pin = (name) => (data.get(name)?.trim() ? { [name]: data.get(name).trim() } : {});
+      const byColors = 'colors' in pin('colors');
       const built = await buildInBrowser(await data.get('file').text(), {
         ...pin('quality'),
         ...pin('colors'),
@@ -234,63 +312,53 @@ const outputs = [
       }, {
         signal: controller.signal,
         onWarn: (message) => {
-          if (active !== controller || controller.signal.aborted) return;
+          if (!current()) return;
           const item = document.createElement('li');
           item.textContent = message;
           warnings.append(item);
           warnings.hidden = false;
         },
-        onProgress: ({ phase, completed, total }) => {
-          if (active !== controller || controller.signal.aborted) return;
-          say(phase === 'placement' ? 'Placing the mark…' : phase === 'complete'
-            ? 'Preparing downloads…' : `Building images… ${completed}/${total}`);
+        onEarly: (quick) => {
+          if (!current()) return;
+          show(quick, true, byColors);
+          shown = controller;
+          early = true;
+          say('Quick set ready — searching for smaller files…');
+        },
+        onProgress: ({ phase, completed, total, file: name, done }) => {
+          if (!current()) return;
+          if (phase === 'placement') say('Placing the mark…', '', true);
+          else if (phase === 'raster' && !early) say(`Building images… ${completed}/${total}`, '', true);
+          else if (phase === 'search') say(`Searching ${name}: ${done} of up to ${total} encodes`, '', true);
+          else if (phase === 'complete') say('Preparing downloads…', '', true);
         },
       });
       controller.signal.throwIfAborted();
       const ms = Math.round(performance.now() - t0);
-
-      // Every name comes from the pipeline's fixed list, never from the visitor's file.
-      $('files').innerHTML = built.files.map((f) =>
-        `<tr><td><code>${f.name}</code></td><td>${f.bytes.length}\u00a0B</td>` +
-        `<td><a download="${f.name}" href="${url(f.bytes, TYPES[f.name.split('.').pop()])}">save</a></td></tr>`).join('');
-
-      const byName = Object.fromEntries(built.files.map((f) => [f.name, f.bytes]));
-      $('p-light').src = $('p-dark').src = url(byName['icon.svg'], TYPES.svg);
-      const biggest = Math.max(...Object.keys(built.fit.icons).map(Number));
-      const show = built.fit.icons[biggest];
-      // The masked preview shows the largest padded icon: that is what a launcher masks.
-      $('p-mask').src = show ? url(byName[`icon-${biggest}.png`], TYPES.png) : $('p-light').src;
-      $('fit').textContent = show
-        ? `Mark placed at ${show.box}px of ${show.canvas} in the safe zone` +
-          `${show.snapped ? ', snapped to whole pixels' : ''}` +
-          `${show.fullBleed ? ' (full-bleed source, used as drawn)' : ''}.`
-        : 'No padded icon: the ground is transparent.';
-      links.textContent = built.links.trim();
-      resultRevision++;
-      resetCopyStatus();
-      $('zip').href = url(built.archive(), 'application/zip');
-      $('result').hidden = false;
-      for (const u of urls) URL.revokeObjectURL(u);
-      urls = nextUrls;
-      say(`Done in ${ms} ms. ${built.animated ? 'icon.svg preserves its animation.' : 'The source is static.'}`, 'good');
+      show(built, false, byColors);
+      shown = controller;
+      say(`${built.quickBytes ? `Smallest passing files ready: ${versus(size(built), built.quickBytes)}. ` : ''}` +
+        `Done in ${ms} ms. ${built.animated ? 'icon.svg preserves its animation.' : 'The source is static.'}`, 'good');
     } catch (e) {
-      for (const u of nextUrls) URL.revokeObjectURL(u);
       if (active === controller) say(e?.name === 'AbortError' ? 'Cancelled.' : e?.message ?? String(e), e?.name === 'AbortError' ? '' : 'bad');
     } finally {
-      if (active === controller) {
-        active = undefined;
-        go.disabled = false;
-        cancel.hidden = true;
-      }
+      // A quick set left behind by a stopped search stays, labelled as what it is.
+      if (shown === controller && result.dataset.set === 'quick') title.textContent = 'Quick set';
+      if (active === controller) idle();
     }
   });
-  cancel.addEventListener('click', () => {
+  const idle = () => {
+    active = undefined;
+    go.disabled = false;
+    cancel.hidden = true;
+  };
+  const stop = () => {
     active?.abort();
     pipeline?.then((m) => m.dispose()).catch(() => {});
-  });
+  };
+  cancel.addEventListener('click', stop);
   window.addEventListener('pagehide', (event) => {
-    active?.abort();
-    pipeline?.then((m) => m.dispose()).catch(() => {});
+    stop();
     // BFCache restores this DOM and its links; their URLs must survive with it.
     if (!event.persisted) for (const u of urls) URL.revokeObjectURL(u);
   });

@@ -1221,6 +1221,88 @@ describe('the svg stage on its own', () => {
     assert.ok(!/#1f3a5f/i.test(b.data));
   });
 
+  it('ignores var() mentioned inside a CSS comment in a stylesheet', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style>/* uses var(--undefined) */ .a{fill:var(--c, #123456)}</style>' +
+      '<rect class="a"/></svg>';
+    const result = optimiseSvg(source, { icon: true });
+    assert.match(result.data, /#123456/);
+  });
+
+  it('still throws on an unresolved var() outside a CSS comment', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style>/* fine */ .a{fill:var(--undefined2)}</style><rect class="a"/></svg>';
+    assert.throws(
+      () => optimiseSvg(source, { icon: true }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--undefined2\)/);
+        return true;
+      },
+    );
+  });
+
+  // A quoted "/*" is legal CSS (e.g. generated content) and is not a comment opener. Treating
+  // it as one swallows everything up to the next literal "*/" as "comment" and a genuinely
+  // unresolvable var() just after it stops being scanned at all - resvg renders that var()
+  // literally and the mark comes out entirely black.
+  it('throws on an unresolvable var() after a quoted "/*" that looks like a comment opener', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<style>.a{content:"/*"; fill:var(--undefined)} ' +
+      '@media (prefers-color-scheme: dark){.a{fill:red}}</style>' +
+      '<rect class="a" width="10" height="10"/></svg>';
+    assert.throws(
+      () => optimiseSvg(source, { icon: true }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--undefined\)/);
+        return true;
+      },
+    );
+  });
+
+  it('keeps a quoted "/*" string intact when there is no var() problem', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<style>.a{content:"/*"; fill:#000}</style><rect class="a" width="10" height="10"/></svg>';
+    // Later svgo stages may re-serialise the declaration (e.g. HTML-escaping the quotes once
+    // it becomes an attribute); what matters here is that the "/*" text itself was never
+    // swallowed as an unterminated comment, not its exact surrounding syntax.
+    assert.ok(optimiseSvg(source, { icon: true }).data.includes('/*'));
+  });
+
+  it('still skips a real comment that follows a quoted "/*" string', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<style>.a{content:"/*"} /* uses var(--undefined) */ .b{fill:var(--c, #123456)}</style>' +
+      '<rect class="b" width="10" height="10"/></svg>';
+    assert.match(optimiseSvg(source, { icon: true }).data, /#123456/);
+  });
+
+  it('resolves var() in CDATA-wrapped <style> content, and throws when unresolved', () => {
+    const resolved =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style><![CDATA[.a{fill:var(--c,#123456)}]]></style><rect class="a"/></svg>';
+    const result = optimiseSvg(resolved, { icon: true });
+    assert.match(result.data, /#123456/);
+    assert.ok(!result.data.includes('var('));
+
+    const unresolved =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
+      '<style><![CDATA[.a{fill:var(--undefined3)}]]></style><rect class="a"/></svg>';
+    assert.throws(
+      () => optimiseSvg(unresolved, { icon: true }),
+      (e) => {
+        assert.ok(e instanceof FavseedError);
+        assert.match(e.message, /unresolved var\(--undefined3\)/);
+        return true;
+      },
+    );
+  });
+
   it('throws FavseedError on a var() with no fallback, in the icon pass', () => {
     assert.throws(
       () => optimiseSvg(read('unresolved'), { icon: true }),

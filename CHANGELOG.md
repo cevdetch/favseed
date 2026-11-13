@@ -36,7 +36,15 @@ contain.
   favseed's version, the input, the options and the versions of the image engine, SVGO and
   the Zopfli build, so an engine upgrade invalidates it instead of serving stale bytes.
 - A website, <https://favseed.cevdet.ch>, running the same pipeline client-side with a WASM
-  raster stage and nothing uploaded, including a copy button for the generated head markup.
+  raster stage and nothing uploaded, including a copy button for the generated head markup. At
+  the default and maximum efforts, with nothing pinned, it shows a quick set at once (every
+  raster at quality 80, the `--effort fast` set, ready to download) and replaces it with the
+  final set when the search ends; downloads always serve the best finished set and say which
+  one it is. Progress counts each encode of each raster's search, every file shows the setting
+  it kept, and screen readers hear the phases rather than every step. The image engine loads
+  when the pointer, focus or a drag first reaches the file picker, or a file is chosen, never
+  on page load, and fetches Zopfli alongside itself. `docs/DECISIONS.md` (decision 30) has the
+  measurements.
 - TypeScript declarations for the package root, `favseed/core`, and the Vite and Astro
   integrations.
 - One image engine: `@napi-rs/image` renders, quantises and recompresses, and favseed's own
@@ -65,4 +73,9 @@ contain.
   file or an integration fails with a message naming `effort`.
 - The CLI summary names the effort and its Zopfli iterations, and the setting each PNG kept or
   the pinned one.
+- CSS custom properties are resolved before rendering, in attributes and in `<style>` blocks,
+  CDATA-wrapped or not. A `var()` written inside a CSS comment is ignored rather than resolved
+  or reported as unresolved, and a `/*` inside a quoted string is not taken for a comment.
+- The default and maximum efforts walk the quality and palette candidates at the same time.
+  The file each raster keeps is the one walking them in turn would keep, byte for byte.
 - Errors print as `favseed: <message>` on stderr with a non-zero exit, never a stack trace.
