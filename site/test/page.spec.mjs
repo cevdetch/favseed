@@ -65,7 +65,7 @@ for (const path of docs) {
     };
     const url = new URL(path, canonical).href;
     const title = await page.title();
-    expect(title).toMatch(/ · favseed$/);
+    expect(title).toMatch(/ - favseed$/);
     const description = await content('meta[name=description]');
     expect(description.length).toBeGreaterThan(100);
     expect(await content('link[rel=canonical]', 'href')).toBe(url);
@@ -119,7 +119,7 @@ test('/check stays idle until explicitly initialized', async ({ page }) => {
   await page.evaluate(() => window.favseedCheck.dispose());
 });
 
-test('cold startup stays small and defers engine loading until SVG selection', async ({ page }, testInfo) => {
+test('cold startup stays small and loads no engine before a sign of intent', async ({ page }, testInfo) => {
   const responses = [],
     requests = [],
     workers = [];

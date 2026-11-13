@@ -552,6 +552,18 @@ test('pinned settings default to Auto, gate the palette and match native', async
   await expect(page.locator('output')).toContainText('Done in', { timeout: 120_000 });
   const palette = summary(await buildFiles({ input: fixture('gradient'), colors: 32, effort: 'fast', manifest: true }));
   expect(await downloads(page)).toEqual(palette.files);
+  // A pinned palette reads as colours, at 256 too, where it is the same encode as quality 100.
+  const pinnedSettings = () =>
+    page
+      .locator('#files tr')
+      .evaluateAll((rows) =>
+        rows.filter((row) => /\.(png|ico)$/.test(row.cells[0].textContent)).map((row) => row.cells[2].textContent),
+      );
+  expect(new Set(await pinnedSettings())).toEqual(new Set(['32 colours']));
+  await colors.fill('256');
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect.poll(pinnedSettings, { timeout: 120_000 }).toContain('256 colours');
+  expect(new Set(await pinnedSettings())).toEqual(new Set(['256 colours']));
 });
 
 test('form defaults to the default effort, unpinned, and matches native bytes', async ({ page }) => {
@@ -699,13 +711,20 @@ const holdFinal = async (page) => {
   });
   return () => workers.at(-1).evaluate(() => self.favseedRelease());
 };
-// Every text the status line shows, in order: progress passes too quickly to poll for.
+// Every text the status line shows and every announcement, in order: progress passes too
+// quickly to poll for.
 const statusLog = (page) =>
   page.addInitScript(() => {
     window.favseedStatus = [];
+    window.favseedAnnounced = [];
     new MutationObserver(() => {
-      const text = document.querySelector('form output')?.textContent;
-      if (text && text !== window.favseedStatus.at(-1)) window.favseedStatus.push(text);
+      for (const [selector, log] of [
+        ['form output', window.favseedStatus],
+        ['#announce', window.favseedAnnounced],
+      ]) {
+        const text = document.querySelector(selector)?.textContent;
+        if (text && text !== log.at(-1)) log.push(text);
+      }
     }).observe(document, { subtree: true, childList: true, characterData: true });
   });
 const settings = (page) =>
@@ -746,7 +765,7 @@ test('default effort shows the quick set at once, then the smallest passing set'
   await expect(page.locator('output')).toHaveClass('good', { timeout: 120_000 });
   await expect(result).toHaveAttribute('data-set', 'final');
   await expect(page.locator('output')).toHaveText(
-    /^Smallest passing files ready \(\d+ % smaller than the quick set\)\. Done in \d+ ms\./,
+    /^Smallest passing files ready: the whole set is \d+ % smaller than the quick set\. Done in \d+ ms\./,
   );
   await expect(page.locator('#set-title')).toHaveText('Your set');
   await expect(zip).toHaveText('Download .zip');
@@ -775,6 +794,15 @@ test('default effort shows the quick set at once, then the smallest passing set'
   expect(at(/^Quick set ready — searching for smaller files…$/)).toBeGreaterThan(-1);
   expect(at(/^Searching [\w.-]+: \d+ of up to \d+ encodes$/)).toBeGreaterThan(at(/^Quick set ready/));
   expect(log.some((text) => /undefined/.test(text))).toBe(false);
+  // Screen readers hear the phases, never the per-encode steps: the quick set's announcement
+  // stands until the final set's.
+  const announced = await page.evaluate(() => window.favseedAnnounced);
+  expect(announced).toEqual([
+    'Ready.',
+    'Building…',
+    'Quick set ready — searching for smaller files…',
+    expect.stringMatching(/^Smallest passing files ready/),
+  ]);
   const marks = await page.evaluate(() =>
     ['favseed:quick-set', 'favseed:final-set'].map((name) => performance.getEntriesByName(name).length),
   );
@@ -818,4 +846,54 @@ test('cancelling the search or choosing a new file keeps the quick set', async (
   // The stopped build stays stopped: its status never overwrites the new file's.
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
   await expect(page.locator('output')).toHaveText('Ready.');
+});
+
+test('a build after a cancelled search reports its own progress', async ({ page }) => {
+  const release = await holdFinal(page);
+  await statusLog(page);
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('#result')).toHaveAttribute('data-set', 'quick', { timeout: 60_000 });
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('output')).toHaveText('Cancelled.');
+  await page.evaluate(() => window.favseedStatus.splice(0));
+  // The page still holds a quick set, but this build has shown none: its raster progress shows.
+  await page.locator('select[name=effort]').selectOption('fast');
+  const worker = page.waitForEvent('worker', (w) => w.url().includes('engine-worker-'));
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await worker;
+  await release();
+  await expect(page.locator('output')).toHaveClass('good', { timeout: 60_000 });
+  expect(await page.evaluate(() => window.favseedStatus)).toContainEqual(
+    expect.stringMatching(/^Building images… \d+\/\d+$/),
+  );
+  await expect(page.locator('#result')).toHaveAttribute('data-set', 'final');
+  expect(await downloads(page)).toEqual(
+    summary(await buildFiles({ input: fixture('tiles'), effort: 'fast', manifest: true })).files,
+  );
+});
+
+test("a new file while one build is searching replaces it; the first one's final set never appears", async ({
+  page,
+}) => {
+  const release = await holdFinal(page);
+  await page.goto('/');
+  const generate = page.getByRole('button', { name: 'Generate', exact: true });
+  await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
+  await generate.click();
+  await expect(page.locator('#result')).toHaveAttribute('data-set', 'quick', { timeout: 60_000 });
+  // Generate is disabled while a build runs; a new file stops it, then a new build starts.
+  await expect(generate).toBeDisabled();
+  await page.locator('input[type=file]').setInputFiles(fixture('general'));
+  await generate.click();
+  const quickSets = () => page.evaluate(() => performance.getEntriesByName('favseed:quick-set').length);
+  await expect.poll(quickSets, { timeout: 60_000 }).toBe(2);
+  expect(await downloads(page)).toEqual(
+    summary(await buildFiles({ input: fixture('general'), effort: 'fast', manifest: true })).files,
+  );
+  await release();
+  await expect(page.locator('output')).toHaveClass('good', { timeout: 120_000 });
+  expect(await page.evaluate(() => performance.getEntriesByName('favseed:final-set').length)).toBe(1);
+  expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('general'), manifest: true })).files);
 });

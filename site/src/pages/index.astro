@@ -87,7 +87,8 @@ const outputs = [
     <label><input type="checkbox" name="animation" checked /> Preserve SVG animation</label>
     <button type="submit">Generate</button>
     <button type="button" id="cancel" hidden>Cancel</button>
-    <output aria-live="polite"></output>
+    <output aria-live="off"></output>
+    <p id="announce" role="status" aria-live="polite" aria-atomic="true"></p>
   </form>
   <ul id="warnings" aria-live="polite" hidden></ul>
 
@@ -178,7 +179,14 @@ const outputs = [
     }
   });
 
-  const say = (msg, kind = '') => { status.textContent = msg; status.className = kind; };
+  // The status line shows every step; screen readers hear only the moments that matter (the build
+  // starting, a set ready, a cancel or a failure), not one announcement per encode.
+  const announce = $('announce');
+  const say = (msg, kind = '', step = false) => {
+    status.textContent = msg;
+    status.className = kind;
+    if (!step) announce.textContent = msg;
+  };
 
   // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
   // or a chosen file. Never on page load. Each warm names the effort, so the worker fetches Zopfli
@@ -207,16 +215,17 @@ const outputs = [
   });
 
   // A raster's chosen encode, as the CLI's --quality and --colors would ask for it, and its scores.
-  const setting = (q, quick) => {
+  // A pinned palette is echoed as colours even at 256, where it is the same encode as quality 100.
+  const setting = (q, quick, byColors) => {
     if (!q) return ['', ''];
     const { quality: n, colors: c } = q.setting;
-    const label = (n < 100 || c === 256 ? `quality ${n}` : `${c} colours`) + (quick ? ' (quick)' : '');
+    const label = (n < 100 || (c === 256 && !byColors) ? `quality ${n}` : `${c} colours`) + (quick ? ' (quick)' : '');
     return [label, q.pct === null ? 'Not scored against the accuracy bar.'
       : `${q.pct.toFixed(2)} % of pixels off, edge error ${q.edge.toFixed(3)}${q.pass ? '' : ' (misses the bar)'}`];
   };
 
   // Shows a set, quick or final, and frees the previous one's object URLs.
-  const show = (built, quick) => {
+  const show = (built, quick, byColors) => {
     const next = [];
     const url = (bytes, type) => {
       const u = URL.createObjectURL(new Blob([bytes], { type }));
@@ -226,7 +235,7 @@ const outputs = [
     try {
       // Every name comes from the pipeline's fixed list, never from the visitor's file.
       $('files').innerHTML = built.files.map((f) => {
-        const [label, scores] = setting(built.quality[f.name], quick);
+        const [label, scores] = setting(built.quality[f.name], quick, byColors);
         return `<tr><td><code>${f.name}</code></td><td>${f.bytes.length}\u00a0B</td>` +
           `<td title="${scores}">${label}</td>` +
           `<td><a download="${f.name}" href="${url(f.bytes, TYPES[f.name.split('.').pop()])}">save</a></td></tr>`;
@@ -262,6 +271,14 @@ const outputs = [
     performance.mark(quick ? 'favseed:quick-set' : 'favseed:final-set');
   };
   const size = (built) => built.files.reduce((n, f) => n + f.bytes.length, 0);
+  // The whole set against the whole quick set. The final set can be larger: each raster is the
+  // smallest encode that passes, and a quick encode that misses the bar is not a candidate.
+  const versus = (bytes, quick) => {
+    const d = bytes - quick, pct = Math.round((100 * Math.abs(d)) / quick) || '<1';
+    return d === 0 ? 'the whole set is the same size as the quick set'
+      : d < 0 ? `the whole set is ${pct} % smaller than the quick set`
+      : `the whole set is ${pct} % larger than the quick set, which missed the accuracy bar`;
+  };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -270,6 +287,8 @@ const outputs = [
     active = controller;
     const data = new FormData(form);
     const current = () => active === controller && !controller.signal.aborted;
+    // Whether this build has shown its quick set: its own, not whatever set the page holds.
+    let early = false;
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
@@ -281,6 +300,7 @@ const outputs = [
       const t0 = performance.now();
       // An empty field is Auto: it is left out, so it pins nothing and the search chooses.
       const pin = (name) => (data.get(name)?.trim() ? { [name]: data.get(name).trim() } : {});
+      const byColors = 'colors' in pin('colors');
       const built = await buildInBrowser(await data.get('file').text(), {
         ...pin('quality'),
         ...pin('colors'),
@@ -300,24 +320,24 @@ const outputs = [
         },
         onEarly: (quick) => {
           if (!current()) return;
-          show(quick, true);
+          show(quick, true, byColors);
           shown = controller;
+          early = true;
           say('Quick set ready — searching for smaller files…');
         },
         onProgress: ({ phase, completed, total, file: name, done }) => {
           if (!current()) return;
-          if (phase === 'placement') say('Placing the mark…');
-          else if (phase === 'raster' && result.dataset.set !== 'quick') say(`Building images… ${completed}/${total}`);
-          else if (phase === 'search') say(`Searching ${name}: ${done} of up to ${total} encodes`);
-          else if (phase === 'complete') say('Preparing downloads…');
+          if (phase === 'placement') say('Placing the mark…', '', true);
+          else if (phase === 'raster' && !early) say(`Building images… ${completed}/${total}`, '', true);
+          else if (phase === 'search') say(`Searching ${name}: ${done} of up to ${total} encodes`, '', true);
+          else if (phase === 'complete') say('Preparing downloads…', '', true);
         },
       });
       controller.signal.throwIfAborted();
       const ms = Math.round(performance.now() - t0);
-      show(built, false);
+      show(built, false, byColors);
       shown = controller;
-      const saved = built.quickBytes && Math.round(100 * (1 - size(built) / built.quickBytes));
-      say(`${built.quickBytes ? `Smallest passing files ready (${saved > 0 ? `${saved} % smaller than` : 'as small as'} the quick set). ` : ''}` +
+      say(`${built.quickBytes ? `Smallest passing files ready: ${versus(size(built), built.quickBytes)}. ` : ''}` +
         `Done in ${ms} ms. ${built.animated ? 'icon.svg preserves its animation.' : 'The source is static.'}`, 'good');
     } catch (e) {
       if (active === controller) say(e?.name === 'AbortError' ? 'Cancelled.' : e?.message ?? String(e), e?.name === 'AbortError' ? '' : 'bad');
