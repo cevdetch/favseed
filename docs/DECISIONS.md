@@ -756,8 +756,10 @@ depending on which encode completed first. `test/engine.mjs` asserts the concurr
 matches the sequential walks in bytes, setting, scores and probe count at 192 and 512 px, and
 `node test/hashes.mjs --check` holds the byte manifest's eleven marks at `default`, and two
 at `max`, to the same bytes. The first failed encode stops both walks from starting another;
-encodes already running drain, and the search rejects with that first error. CLI wall clock, the four builds byte-identical before and
-after (`node bin/favseed.mjs` with `--bg '#000000'`, interleaved, median, load average about 2):
+encodes already running drain, and the search rejects with that first error.
+
+CLI wall clock, the four builds byte-identical before and after (`node bin/favseed.mjs` with
+`--bg '#000000'`, interleaved, median, load average about 2):
 
 | mark | `default`, before | after | `max`, before | after |
 |---|---|---|---|---|
@@ -783,6 +785,10 @@ the threaded engine, which a visitor spends in the file picker anyway. The WASM 
 `/_astro/` with hashed names and `immutable` caching (`site/headers.mjs`), so a repeat visit
 fetches nothing. The timings above choose the file without hovering, so they include none of
 this head start.
+
+On a touch screen `pointerenter` fires when a finger goes down, so a scroll that merely starts
+on the drop zone also loads the engine. That is accepted: a touch there is still a sign of
+intent, and the engine is cached afterwards, so an idle scroll costs the download once.
 
 **Recorded next step: a slim engine.** The WASM carries AVIF, WebP and lossless-JPEG codecs
 favseed never calls. Built without them, the engine is 1 433 110 B at Brotli 11 against
