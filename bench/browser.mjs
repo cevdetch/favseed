@@ -46,7 +46,7 @@ const FIXTURE_NAMES = ['general', 'gradient'];
 const EFFORTS = ['fast', 'default', 'max'];
 const NETWORKS = ['unthrottled', 'throttled'];
 const MODES = ['threaded', 'compat'];
-const DOWNLINK_BYTES_PER_SECOND = 9e6 / 8; // 9 Mbps, the brief's throttled downlink
+const DOWNLINK_BYTES_PER_SECOND = 9e6 / 8; // 9 Mbps downlink
 const ADDED_LATENCY_MS = 60;
 const RUN_TIMEOUT_MS = 180_000;
 
