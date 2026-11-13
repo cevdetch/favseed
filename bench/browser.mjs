@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // Measures the website end to end, in a real browser: from choosing a file to the engine
-// worker reporting ready, to the result section becoming visible ("first set shown"), to the
-// status line reporting completion ("final set shown"). Today's page only ever produces one
-// result, so the two are the same instant; the two marks stay separate so a later task that
-// shows a quick set before the final one can point them at distinct markers without touching
-// this harness (see markPage() below for exactly where that change would land).
+// worker reporting ready, to the first set shown (the quick set, at an effort that searches),
+// to the final set shown. The page marks both with performance.mark('favseed:quick-set') and
+// performance.mark('favseed:final-set'); where a mark is missing (effort 'fast' makes no quick
+// set, and a page from before the marks makes neither) the DOM stands in, as markPage() says.
 //
 // Chromium's page-level CDP network emulation does not reach fetches made from a worker (the
 // engine worker fetches its own WASM), so --throttle serves the production build through a
@@ -204,10 +203,11 @@ function startThrottledServer() {
 // --------------------------------------------------------------------------- page measurement --
 // Installed before any page script runs. "choose" is the file input's change event; "engine
 // ready" is the worker's own ready message (site/src/lib/engine-worker.mjs, sent once its WASM
-// has loaded); "first/final set shown" are read off the DOM the page already exposes (the
-// #result section's hidden attribute and the status output's class, site/src/pages/index.astro).
-// A later task that adds dedicated data- attributes or performance.mark()s for a quick vs. a
-// final set only needs to change the two mark() calls inside the MutationObserver below.
+// has loaded). "First/final set shown" come from the page's own marks (site/src/pages/index.astro)
+// when it made them, read after the run in measureOne(); the DOM fallbacks below are the result
+// section becoming visible and the status output turning 'good'. The page starts loading the
+// engine on hover or focus too; this harness chooses the file without either, so choose->ready
+// is the whole load, as a visitor who drops a file straight in would see it.
 function markPage() {
   window.__bench = {};
   const mark = (name) => {
@@ -257,7 +257,16 @@ async function measureOne(browser, { baseUrl, mode, fixture, effort }) {
       timeout: RUN_TIMEOUT_MS,
       polling: 25,
     });
-    const marks = await page.evaluate(() => window.__bench);
+    const { quick, final, ...observed } = await page.evaluate(() => ({
+      ...window.__bench,
+      quick: performance.getEntriesByName('favseed:quick-set', 'mark')[0]?.startTime,
+      final: performance.getEntriesByName('favseed:final-set', 'mark')[0]?.startTime,
+    }));
+    const marks = {
+      ...observed,
+      firstSetShown: quick ?? final ?? observed.firstSetShown,
+      finalSetShown: final ?? observed.finalSetShown,
+    };
     assert.ok(!marks.failed, `Build failed for ${fixture}/${effort} (${mode}): ${marks.failureText}`);
     return {
       chooseToReady: Math.round(marks.engineReady - marks.choose),
@@ -406,11 +415,13 @@ function writeReadme({ date, cpu, threads, chromiumVersion, reps, results }) {
     'Each cell times one build in a fresh browser context, from choosing the file to:',
     '',
     '- **choose→ready** — the engine worker reporting it has loaded its WASM and is ready to build.',
-    '- **choose→first set** — the result section becoming visible.',
-    '- **choose→final set** — the status line reporting the build complete, with every download ready.',
+    '- **choose→first set** — the first set on the page: the quick set (`favseed:quick-set`) at an ' +
+      'effort that searches, the only set at effort fast.',
+    '- **choose→final set** — the final set on the page (`favseed:final-set`), with every download ready.',
     '',
-    'The site currently produces only one result, so first and final set are the same instant; ' +
-      'a later change that shows a quick set before the final one will make them differ.',
+    'At effort fast the two are the same instant. The page starts loading the engine as soon as ' +
+      'the pointer or focus reaches the drop zone; these runs choose the file without either, so ' +
+      'choose→ready is the whole load.',
     '',
     '`threaded` is the default shared-memory engine; `compat` is the single-threaded fallback ' +
       '(`?no-isolation`, taken when the document cannot share WASM memory with its worker).',

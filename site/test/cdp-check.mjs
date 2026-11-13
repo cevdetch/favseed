@@ -358,7 +358,9 @@ try {
   await evaluate('document.getElementById("cancel").click()');
   await waitFor('document.querySelector("output").textContent === "Cancelled."');
   await noWorkers();
-  assert.equal(await evaluate('document.getElementById("zip").href'), download);
+  // The previous set stays, unless the cancelled search had already shown its quick set.
+  if ((await evaluate('document.getElementById("result").dataset.set')) === 'final')
+    assert.equal(await evaluate('document.getElementById("zip").href'), download);
   assert.ok(
     await evaluate(
       '(async () => (await (await fetch(document.getElementById("zip").href)).arrayBuffer()).byteLength > 100)()',

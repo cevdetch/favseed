@@ -54,7 +54,7 @@ const generateHead = async (page) => {
   await page.locator('input[name=file]').setInputFiles(fixture('tiles'));
   await page.locator('input[name=sizes]').fill('32');
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('output')).toHaveText(/Done in/);
   return page.locator('#links').textContent();
 };
 
@@ -327,12 +327,12 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   await page.locator('input[name=sizes]').fill('32');
   const generate = page.getByRole('button', { name: 'Generate', exact: true });
   await generate.click();
-  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('output')).toHaveText(/Done in/);
   await expect(page.locator('#warnings li')).toHaveCount(2);
   await expect(page.locator('#warnings')).toContainText('Convert text to paths');
   const previous = await downloads(page);
   await generate.click(); // Replaying the cached build must not lose or duplicate guidance.
-  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('output')).toHaveText(/Done in/);
   await expect(page.locator('#warnings li')).toHaveCount(2);
   await page.locator('input[name=file]').setInputFiles({
     name: 'text.svg',
@@ -371,7 +371,7 @@ test('form keeps SVG guidance through failed builds and clears it on the next bu
   }
   await page.locator('input[name=file]').setInputFiles(fixture('flat'));
   await generate.click();
-  await expect(page.locator('output')).toHaveText(/^Done in/);
+  await expect(page.locator('output')).toHaveText(/Done in/);
   await expect(page.locator('#warnings')).toBeHidden();
 });
 
@@ -492,12 +492,13 @@ test('form downloads match native and survive failed and cancelled builds', asyn
   await generate.click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('output')).toHaveText('Cancelled.');
-  await expect(page.locator('#zip')).toHaveAttribute('href', url);
-  expect(
-    await page.evaluate(
-      async () => (await (await fetch(document.getElementById('zip').href)).arrayBuffer()).byteLength,
-    ),
-  ).toBe(zip.length);
+  const zipBytes = () =>
+    page.evaluate(async () => (await (await fetch(document.getElementById('zip').href)).arrayBuffer()).byteLength);
+  // The previous set stays, unless the cancelled search had already shown its quick set.
+  if ((await page.locator('#result').getAttribute('data-set')) === 'final') {
+    await expect(page.locator('#zip')).toHaveAttribute('href', url);
+    expect(await zipBytes()).toBe(zip.length);
+  } else expect(await zipBytes()).toBeGreaterThan(100);
   if (isMobile) {
     const layout = await page.evaluate(() => ({
       width: document.documentElement.scrollWidth,
@@ -573,7 +574,7 @@ test('missing document isolation generates matching downloads and restores form 
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(false);
   await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.locator('output')).toHaveText(/^Done in/, { timeout: 30_000 });
+  await expect(page.locator('output')).toHaveText(/Done in/, { timeout: 30_000 });
   expect(await downloads(page)).toEqual(summary(await buildFiles({ input: fixture('tiles'), manifest: true })).files);
   await expect(page.getByRole('button', { name: 'Generate', exact: true })).toBeEnabled();
   await expect(page.locator('#cancel')).toBeHidden();
@@ -681,3 +682,123 @@ for (const compatibility of [false, true])
     expect(images).toHaveLength(2);
     expect(images[1]).toContain(expected);
   });
+
+// Holds the engine worker's final result until released, so the quick set stays on the page
+// for as long as a test needs it. Every other message passes straight through.
+const holdFinal = async (page) => {
+  const workers = [];
+  page.on('worker', (worker) => {
+    if (worker.url().includes('engine-worker-')) workers.push(worker);
+  });
+  await page.route('**/engine-worker-*.js', async (route) => {
+    const response = await route.fetch();
+    const hold = `{ const post = self.postMessage.bind(self); let held = [];
+      self.favseedRelease = () => { const all = held ?? []; held = null; for (const args of all) post(...args); };
+      self.postMessage = (...args) => (held && args[0]?.type === 'result' ? held.push(args) : post(...args)); }\n`;
+    await route.fulfill({ response, body: hold + (await response.text()) });
+  });
+  return () => workers.at(-1).evaluate(() => self.favseedRelease());
+};
+// Every text the status line shows, in order: progress passes too quickly to poll for.
+const statusLog = (page) =>
+  page.addInitScript(() => {
+    window.favseedStatus = [];
+    new MutationObserver(() => {
+      const text = document.querySelector('form output')?.textContent;
+      if (text && text !== window.favseedStatus.at(-1)) window.favseedStatus.push(text);
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+
+test('default effort shows the quick set at once, then the smallest passing set', async ({ page }) => {
+  const release = await holdFinal(page);
+  await statusLog(page);
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+
+  const result = page.locator('#result'),
+    zip = page.locator('#zip');
+  await expect(result).toHaveAttribute('data-set', 'quick', { timeout: 60_000 });
+  await expect(page.locator('#set-title')).toHaveText('Quick set — searching for smaller files…');
+  await expect(zip).toHaveText('Download the quick set (.zip)');
+  await expect(zip).toHaveAttribute('download', 'favseed-quick.zip');
+  // Until the final set exists, downloads serve the quick set: effort 'fast''s bytes.
+  const quick = summary(await buildFiles({ input: fixture('tiles'), effort: 'fast', manifest: true }));
+  expect(await downloads(page)).toEqual(quick.files);
+  const quickHref = await zip.getAttribute('href');
+  expect(
+    await page.evaluate(async (href) => (await (await fetch(href)).arrayBuffer()).byteLength, quickHref),
+  ).toBeGreaterThan(quick.files.reduce((n, f) => n + f.size, 0));
+  await expect(page.locator('#cancel')).toBeVisible();
+
+  await release();
+  await expect(page.locator('output')).toHaveClass('good', { timeout: 120_000 });
+  await expect(result).toHaveAttribute('data-set', 'final');
+  await expect(page.locator('output')).toHaveText(
+    /^Smallest passing files ready \(\d+ % smaller than the quick set\)\. Done in \d+ ms\./,
+  );
+  await expect(page.locator('#set-title')).toHaveText('Your set');
+  await expect(zip).toHaveText('Download .zip');
+  await expect(zip).toHaveAttribute('download', 'favseed.zip');
+  const final = summary(await buildFiles({ input: fixture('tiles'), manifest: true }));
+  expect(await downloads(page)).toEqual(final.files);
+  // The quick set's object URLs are released once the final set replaces it.
+  expect(
+    await page.evaluate(
+      (href) =>
+        fetch(href).then(
+          () => 'fetched',
+          () => 'revoked',
+        ),
+      quickHref,
+    ),
+  ).toBe('revoked');
+
+  const log = await page.evaluate(() => window.favseedStatus);
+  const at = (pattern) => log.findIndex((text) => pattern.test(text));
+  expect(at(/^Quick set ready — searching for smaller files…$/)).toBeGreaterThan(-1);
+  expect(log.some((text) => /undefined/.test(text))).toBe(false);
+  const marks = await page.evaluate(() =>
+    ['favseed:quick-set', 'favseed:final-set'].map((name) => performance.getEntriesByName(name).length),
+  );
+  expect(marks).toEqual([1, 1]);
+
+  // An identical rebuild comes from the worker's cache: the final set at once, no quick set.
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => performance.getEntriesByName('favseed:final-set').length)).toBe(2);
+  expect(await page.evaluate(() => performance.getEntriesByName('favseed:quick-set').length)).toBe(1);
+  await expect(page.locator('output')).toHaveText(/^Smallest passing files ready/);
+  expect(await downloads(page)).toEqual(final.files);
+});
+
+test('cancelling the search or choosing a new file keeps the quick set', async ({ page }) => {
+  await holdFinal(page);
+  await page.goto('/');
+  const generate = page.getByRole('button', { name: 'Generate', exact: true });
+  const quick = summary(await buildFiles({ input: fixture('tiles'), effort: 'fast', manifest: true }));
+  await page.locator('input[type=file]').setInputFiles(fixture('tiles'));
+  await generate.click();
+  await expect(page.locator('#result')).toHaveAttribute('data-set', 'quick', { timeout: 60_000 });
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('output')).toHaveText('Cancelled.');
+  await expect(page.locator('#result')).toHaveAttribute('data-set', 'quick');
+  await expect(page.locator('#set-title')).toHaveText('Quick set');
+  await expect(page.locator('#zip')).toHaveText('Download the quick set (.zip)');
+  await expect(page.locator('#cancel')).toBeHidden();
+  await expect(generate).toBeEnabled();
+  expect(await downloads(page)).toEqual(quick.files);
+
+  await generate.click();
+  await expect
+    .poll(() => page.evaluate(() => performance.getEntriesByName('favseed:quick-set').length), { timeout: 60_000 })
+    .toBe(2);
+  await page.locator('input[type=file]').setInputFiles(fixture('general'));
+  await expect(page.locator('output')).toHaveText('Ready.');
+  await expect(page.locator('#cancel')).toBeHidden();
+  await expect(generate).toBeEnabled();
+  await expect(page.locator('#set-title')).toHaveText('Quick set');
+  expect(await downloads(page)).toEqual(quick.files);
+  // The stopped build stays stopped: its status never overwrites the new file's.
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
+  await expect(page.locator('output')).toHaveText('Ready.');
+});

@@ -220,6 +220,6 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   await page.locator('input[name=file]').setInputFiles(fixture);
   await Promise.all([worker, wasm]);
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.locator('output')).toHaveText(/^Done in/, { timeout: 120_000 });
+  await expect(page.locator('output')).toHaveText(/Done in/, { timeout: 120_000 });
   await expect(page.locator('#zip')).toBeVisible();
 });

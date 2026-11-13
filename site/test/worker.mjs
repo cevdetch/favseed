@@ -286,3 +286,30 @@ test('pre-aborted and unsupported requests do not start workers', async () => {
   });
   await assert.rejects(unsupported.warm(), /Cross-origin isolation/);
 });
+
+test('a build that shows the quick set asks for it and receives it before the result', async () => {
+  const { client, workers } = setup(),
+    events = [];
+  const pending = client.build('svg', { effort: 'default' }, { onEarly: (set) => events.push(['early', set]) });
+  const w = workers[0],
+    message = w.messages[0];
+  assert.equal(message.early, true);
+  w.reply({ id: message.id + 99, type: 'early', result: 'stale' });
+  w.reply({ id: message.id, type: 'early', result: result() });
+  assert.deepEqual(events, [['early', result()]], 'the quick set does not settle the build');
+  w.reply({ id: message.id, type: 'result', result: { ...result(), links: 'final' } });
+  assert.equal((await pending).links, 'final');
+  client.dispose();
+  w.reply({ id: message.id, type: 'early', result: 'late' });
+  assert.equal(events.length, 1);
+});
+
+test('a build without a quick-set callback is one pass', async () => {
+  const { client, workers } = setup();
+  const pending = client.build('svg', {});
+  const [build] = workers[0].messages;
+  assert.equal(build.early, false);
+  workers[0].reply({ id: build.id, type: 'result', result: result() });
+  await pending;
+  client.dispose();
+});

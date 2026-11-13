@@ -44,7 +44,11 @@ const load = (parentThreaded) => {
     }));
 };
 
-self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
+const total = (files) => files.reduce((n, f) => n + f.bytes.byteLength, 0);
+// apple and icon-180 can alias. Shared WASM memory is already copied by createEngine.
+const buffers = (set) => [...new Set([...set.files.map((f) => f.bytes.buffer), set.archiveBytes.buffer])];
+
+self.onmessage = async ({ data: { id, type, threaded, source, options, early } }) => {
   let initialized = false;
   try {
     const engine = await load(threaded);
@@ -58,6 +62,7 @@ self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
     let result = cache.get(key);
     if (!result) {
       const warnings = [];
+      let quickBytes = null;
       const built = await buildSet(source, options, {
         engine,
         optimiseSvg,
@@ -66,8 +71,17 @@ self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
           self.postMessage({ id, type: 'warning', message });
         },
         progress: (progress) => self.postMessage({ id, type: 'progress', progress }),
+        // The quick set is the build's own copy, so its buffers can be transferred. Only its
+        // total is kept: the page compares the final set with it, from the cache too.
+        early: early
+          ? (set) => {
+              quickBytes = total(set.files);
+              const message = { ...set, archiveBytes: zip(set.files) };
+              self.postMessage({ id, type: 'early', result: message }, buffers(message));
+            }
+          : undefined,
       });
-      result = { ...built, warnings, archiveBytes: zip(built.files) };
+      result = { ...built, quickBytes, warnings, archiveBytes: zip(built.files) };
       cache.set(key, result);
     } else {
       for (const message of result.warnings) self.postMessage({ id, type: 'warning', message });
@@ -75,9 +89,7 @@ self.onmessage = async ({ data: { id, type, threaded, source, options } }) => {
     // Warnings belong to each request's callback; retain them only in the private
     // cache so a repeated build gives the same guidance without rebuilding bytes.
     const { warnings: _warnings, ...output } = result;
-    // apple and icon-180 can alias. Shared WASM memory is already copied by createEngine.
-    const buffers = [...new Set([...result.files.map((f) => f.bytes.buffer), result.archiveBytes.buffer])];
-    self.postMessage({ id, type: 'result', result: output }, buffers);
+    self.postMessage({ id, type: 'result', result: output }, buffers(result));
   } catch (error) {
     self.postMessage({ id, type: 'error', fatal: !initialized, message: error?.message ?? String(error) });
   }
