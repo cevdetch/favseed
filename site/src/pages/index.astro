@@ -1,8 +1,8 @@
 ---
-// Static page, client-side pipeline. The only reason this is Astro rather than a lone HTML file
-// is that the pipeline imports the shared engine and WASM packages, and something has to
-// resolve and bundle them.
-import '../styles/app.css';
+// Static page, client-side pipeline. The pipeline imports the shared engine and WASM packages,
+// and something has to resolve and bundle them; the documentation pages share this page's
+// layout.
+import Page from '../layouts/Page.astro';
 
 const title = 'favseed: one SVG in, an optimised favicon set out';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
@@ -32,29 +32,9 @@ const outputs = [
   ['site.webmanifest', 'Icons only. Merge your own name and theme_color.'],
 ];
 ---
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{title}</title>
-<meta name="color-scheme" content="light dark" />
-<!-- The site's own set, built by favseed: the same block `favseed --html --manifest` prints. -->
-<link rel="icon" href="/favicon.ico" sizes="48x48" />
-<link rel="icon" href="/icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
-<link rel="canonical" href={url} />
-<meta name="description" content={description} />
-<meta property="og:site_name" content="favseed" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content={url} />
-<meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
-<meta property="og:image" content={new URL('/og.png', Astro.site).href} />
-<script type="application/ld+json" set:html={jsonLd} />
-</head>
-<body>
+<Page {title} {description}>
+  <script slot="head" type="application/ld+json" set:html={jsonLd} />
+
 <header>
   <h1><img src="/icon.svg" alt="" width="40" height="40" />favseed</h1>
   <p>One SVG in, an optimised favicon set out.</p>
@@ -135,6 +115,7 @@ const outputs = [
     <dl>
       {outputs.map(([name, what]) => (<><dt><code>{name}</code></dt><dd>{what}</dd></>))}
     </dl>
+    <p><a href="/outputs">Each file in detail</a>: its format, the HTML it needs and the platforms that read it.</p>
   </section>
 
   <aside>
@@ -143,13 +124,14 @@ const outputs = [
       Matching SVG and options produce identical SVG, PNG, ICO, and manifest
       files. Builds run in a worker so the page stays responsive; Cancel stops the build.</p>
     <p>In a four-logo benchmark using matching raster inputs, Fast’s quality-80 set used 0.5% more
-      PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel error.
-      <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>.</p>
-    <p>Default effort keeps, for each PNG, the smallest encode that still passes the accuracy
-      bar, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
+      PNG/ICO bytes than Vite PWA assets-generator 2.0.0’s default, with lower measured PNG pixel
+      error. <a href="https://github.com/cevdetch/favseed/blob/main/bench/ico-size/README.md">Measurements and method</a>;
+      the <a href="/benchmarks">benchmarks</a> cover the default effort too.</p>
+    <p>Default effort keeps, for each PNG, the smallest encode that still passes
+      the <a href="/how-it-works">accuracy bar</a>, then recompresses it with Zopfli. Fast makes one quality-80 encode and skips Zopfli;
       Maximum tries every candidate and runs Zopfli longest. A pinned quality or palette makes
-      one encode at that setting and warns when it misses the bar. These match
-      <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
+      one encode at that setting and warns when it misses the bar. These
+      match <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
       page includes a manifest; use <code>--manifest</code> for the matching CLI set.</p>
     <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
@@ -158,12 +140,7 @@ const outputs = [
   </aside>
 </main>
 
-<footer>
-  By <a href="https://cevdet.ch/">Cevdet</a> · MIT ·
-  <a href="https://github.com/cevdetch/favseed">Source</a> ·
-  favseed also ships a CLI and an Astro integration.
-</footer>
-
+<Fragment slot="end">
 <script>
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
@@ -318,5 +295,5 @@ const outputs = [
     if (!event.persisted) for (const u of urls) URL.revokeObjectURL(u);
   });
 </script>
-</body>
-</html>
+</Fragment>
+</Page>

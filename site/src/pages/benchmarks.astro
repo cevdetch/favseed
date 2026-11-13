@@ -1,0 +1,158 @@
+---
+// Every figure here is copied from a report committed under bench/ or docs/, each linked beside
+// its table. Regenerating a report means updating its numbers here too.
+import Doc from '../layouts/Doc.astro';
+
+const title = 'Favicon size and accuracy benchmarks - favseed';
+const description = 'Measured bytes, accuracy and build time for favseed: the per-raster search against quality 80 over 568 rasters, effort levels, Zopfli, the ICO and Vite PWA.';
+const lede = 'The numbers behind favseed’s defaults, from the benchmark reports in its repository. Each section names its inputs, its date and the report it comes from. Results depend on the input.';
+
+const repo = 'https://github.com/cevdetch/favseed/blob/main/';
+const search = [
+  ['Test fixtures', '92', '129,398', '77,505 (−40.1%)', '77,630 (−40.0%)'],
+  ['Open icons', '320', '829,568', '719,503 (−13.3%)', '720,967 (−13.1%)'],
+  ['Private marks', '156', '183,489', '110,971 (−39.5%)', '111,249 (−39.4%)'],
+  ['All', '568', '1,142,455', '907,979 (−20.5%)', '909,846 (−20.4%)'],
+];
+const efforts = [
+  ['general', '0.40 s', '2.33 s', '8.73 s'],
+  ['gradient', '0.60 s', '4.67 s', '17.68 s'],
+  ['heavy', '0.38 s', '2.41 s', '8.25 s'],
+];
+const zopfli = [
+  ['15', '57,159', '0.00%', '28.0'],
+  ['30', '57,112', '−0.08%', '42.9'],
+  ['60', '57,106', '−0.09%', '72.9'],
+  ['120', '57,066', '−0.16%', '134.0'],
+  ['240', '57,046', '−0.20%', '255.7'],
+];
+const ico = [
+  ['ICO bytes', '7,537', '9,483'],
+  ['Complete set bytes', '127,260', '129,206'],
+  ['Worst ICO error against the source', '1.660%', '1.215%'],
+  ['Marks over 1%', '4', '2'],
+];
+const vite = [
+  ['Vite PWA default, quality 60', '36,906', '5.900%', '3.429%'],
+  ['favseed, quality 80 (now effort fast)', '37,082', '0.055%', '0%'],
+  ['Vite PWA, quality 100', '53,888', '0.065%', '0%'],
+];
+---
+<Doc {title} {description} heading="Benchmarks" {lede}>
+  <section>
+    <h2>The smallest passing file against quality 80</h2>
+    <p>Before the search, every raster was one encode at quality 80. The search sweep built every raster a default set
+      contains (the ICO payload, the apple-touch-icon and the 192 and 512 px icons) for 23 test fixtures, 80 openly
+      licensed icons from four Iconify sets, and 39 private marks that are reported only as totals. It tried all 26
+      candidates on each and kept the smallest that passes the <a href="/how-it-works">accuracy bar</a>, then
+      replayed the binary search the default effort runs. Bytes, measured on 8 November 2026
+      with <code>@napi-rs/image</code> 1.15.0 and SVGO 4.1.0:</p>
+    <div>
+      <table>
+        <thead><tr><th>Corpus</th><th>Rasters</th><th>Quality 80</th><th>Every candidate</th><th>Binary search</th></tr></thead>
+        <tbody>
+          {search.map((row) => (<tr>{row.map((cell) => (<td>{cell}</td>))}</tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>On the 502 rasters where quality 80 already passed, the search can only save, and saved 40.5%, 23.1% and
+      39.5% on the three corpora. Quality 80 missed the bar on 66 rasters. 25 of those have a passing candidate and
+      now take it, at 3.6% more bytes on those rasters (179,216 to 185,587 B); 41 have none and keep their bytes.</p>
+    <p>The binary search makes 7 to 9 encodes per raster, median 7, against 26, and lands within 1,867 B (0.2%) of
+      trying them all. Per 512 px raster, encoding and scoring take a median 779 ms against 2,866 ms for every
+      candidate and 91 ms for one quality-80 encode. The edge clause of the bar costs 0.5% over pixel distance
+      alone, all of it on the 27 rasters where it refuses the smaller file.
+      See the <a href={`${repo}bench/search/README.md`}>search sweep report</a>.</p>
+  </section>
+
+  <section>
+    <h2>The byte manifest in CI</h2>
+    <p>CI rebuilds 11 fixtures at the default effort and checks every file’s bytes and hash. Their 44 rasters fell
+      from 70,800 B at quality 80 to 41,904 B with the search (−40.8%), from −1.2% on <code>tiles</code> to −53.4%
+      on <code>smil</code>. None grew, and every one passes both clauses of the bar against the suite’s independent
+      reference: worst pixel share 0.996%, worst edge error 1.289.
+      Read <a href={`${repo}docs/DECISIONS.md`}>decision 29</a> for the full account.</p>
+  </section>
+
+  <section>
+    <h2>Build time by effort</h2>
+    <p>Wall clock for <code>favseed</code> on the command line, one default set, three interleaved repetitions, median,
+      on an idle 8-core, 16-thread Ryzen 7 7840U:</p>
+    <div>
+      <table>
+        <thead><tr><th>Mark</th><th>fast</th><th>default</th><th>max</th></tr></thead>
+        <tbody>
+          {efforts.map((row) => (<tr>{row.map((cell, i) => (i ? <td>{cell}</td> : <td><code>{cell}</code></td>))}</tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>On <code>general</code> and <code>gradient</code>, <code>max</code> writes 18,670 raster bytes against the
+      default’s 18,780 (−0.6%) in 3.7 to 3.8 times the time. The default takes that 0.6% for a build of seconds
+      rather than tens of seconds; <code>--effort max</code> is there when bytes matter more.</p>
+  </section>
+
+  <section>
+    <h2>Zopfli iterations</h2>
+    <p>The finish alone, over the default encode of every 192 and 512 px render of the fixtures. 15 iterations is the
+      default effort’s count and 120 the maximum’s. Seconds are one pass each and move between runs; the bytes do not.
+      Generated on 8 November 2026 with Node 26.13.0.</p>
+    <div>
+      <table>
+        <thead><tr><th>Iterations</th><th>Bytes</th><th>Against 15</th><th>Seconds</th></tr></thead>
+        <tbody>
+          {zopfli.map((row) => (<tr>{row.map((cell) => (<td>{cell}</td>))}</tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>Zopfli is lossless: in a separate sweep all 792 measurements kept their decoded pixels. Sources:
+      the <a href={`${repo}docs/BENCHMARKS.md`}>generated benchmarks</a> and
+      the <a href={`${repo}bench/zopfli/EFFORT.md`}>iteration sweep</a>.</p>
+  </section>
+
+  <section>
+    <h2>A 48 px ICO instead of 32 px</h2>
+    <p>The same 20 fixtures with one 32 px or one 48 px entry, measured on 1 November 2026. Every other file was
+      byte-identical between the two.</p>
+    <div>
+      <table>
+        <thead><tr><th>Across 20 fixtures</th><th>32 px</th><th>48 px</th></tr></thead>
+        <tbody>
+          {ico.map((row) => (<tr>{row.map((cell) => (<td>{cell}</td>))}</tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>About 97 bytes a mark buys a lower worst error. The two marks still over 1% are the small-grid fixtures, the
+      suite’s accepted exception. The error is measured at the ICO’s own resolution, not after a browser
+      scales it down to 16 or 32 px. See the <a href={`${repo}bench/ico-size/README.md`}>ICO report</a>.</p>
+  </section>
+
+  <section>
+    <h2>Against Vite PWA assets-generator</h2>
+    <p>Version 2.0.0 with Sharp 0.35.5. To compare the encoders and not the sets, both received the same
+      already-placed, unquantised pixels for four fixtures: a 48 px ICO and the 180, 192 and 512 px PNGs of each,
+      16 files.</p>
+    <div>
+      <table>
+        <thead><tr><th>Encoder</th><th>Bytes</th><th>Worst PNG error</th><th>Worst ICO error</th></tr></thead>
+        <tbody>
+          {vite.map((row) => (<tr>{row.map((cell) => (<td>{cell}</td>))}</tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p>favseed’s quality-80 set is 176 bytes (0.5%) larger than Vite’s default, with lower measured error, and 31.2%
+      smaller than Vite at quality 100. Vite is smaller on two of the four marks and favseed on the other two. Vite’s
+      encoder is faster: 381 ms against 905 ms for these files. Quality numbers mean different things in the two
+      encoders, and the default effort, which came later, was not part of this comparison. The report has
+      the <a href={`${repo}bench/ico-size/README.md#matched-vite-pwa-comparison`}>comparison and method</a>.</p>
+  </section>
+
+  <section>
+    <h2>Reproduce</h2>
+    <p>From a checkout, after <code>pnpm install</code>. The search sweep fetches its open corpus first, and reads
+      private marks only from a directory you name.</p>
+    <pre>node bench/bench.mjs --write
+node bench/bench.mjs ico-size
+node bench/corpus/fetch.mjs
+node bench/search.mjs</pre>
+  </section>
+</Doc>

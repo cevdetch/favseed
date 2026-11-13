@@ -1,0 +1,126 @@
+---
+// The markup and the manifest are the library's own output, and the byte ranges come from the
+// byte manifest CI checks, so this page cannot drift from what a build writes.
+import Doc from '../layouts/Doc.astro';
+import { DEFAULT_BG, DEFAULT_SIZES, linkTags, manifestJson, manifestPurpose } from '../../../lib/core.mjs';
+import manifest from '../../../test/bytes.json';
+
+const title = 'Every file in a favicon set, and the HTML it needs - favseed';
+const description = 'Each file favseed writes, with its size, format and the HTML it needs, and which browser or platform reads it: tabs, iOS, Android and desktop installs.';
+const lede = 'A build writes five files, and a sixth with a manifest. This page lists each one, the markup it needs, and which browsers and platforms read it.';
+
+const marks = manifest.profiles.default.marks;
+const range = (file) => {
+  const sizes = marks.map((mark) => manifest.files[`default/${mark}/${file}`].bytes).sort((a, b) => a - b);
+  const n = (value) => value.toLocaleString('en-GB');
+  if (sizes[0] === sizes.at(-1)) return `${n(sizes[0])} B`;
+  return `${n(sizes[0])}–${n(sizes.at(-1))} B, median ${n(sizes[(sizes.length - 1) >> 1])}`;
+};
+const files = [
+  ['icon.svg', 'SVG', 'the source’s viewBox', range('icon.svg')],
+  ['favicon.ico', 'ICO, one PNG entry', '48×48', range('favicon.ico')],
+  ['apple-touch-icon.png', 'PNG, opaque', '180×180', range('apple-touch-icon.png')],
+  ...DEFAULT_SIZES.map((size) => [`icon-${size}.png`, 'PNG, opaque', `${size}×${size}`, range(`icon-${size}.png`)]),
+  ['site.webmanifest', 'JSON', 'icons only', range('site.webmanifest')],
+];
+const platforms = [
+  ['Browser tabs', '<link rel="icon">', 'none', 'icon.svg, favicon.ico'],
+  ['iOS, iPadOS, Safari Add to Dock', 'apple-touch-icon', 'rounded square, corners about 22%', 'apple-touch-icon.png'],
+  ['Android (Chrome, WebAPK)', 'manifest, any maskable', 'circle, squircle, rounded square', 'icon-192.png, icon-512.png'],
+  ['ChromeOS, macOS (Chrome installs)', 'manifest, any maskable', 'the system’s rounded shape', 'icon-192.png, icon-512.png'],
+  ['Windows, Linux desktops', 'manifest, any maskable', 'none: drawn as is, on light and dark', 'icon-192.png, icon-512.png'],
+];
+const links = linkTags('/', true).trim();
+const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAULT_BG) }).trim();
+---
+<Doc {title} {description} heading="Outputs" {lede}>
+  <section>
+    <h2>The set</h2>
+    <div>
+      <table>
+        <thead><tr><th>File</th><th>Format</th><th>Size</th><th>Bytes on the test marks</th></tr></thead>
+        <tbody>
+          {files.map(([name, format, size, bytes]) => (<tr><td><code>{name}</code></td><td>{format}</td><td>{size}</td><td>{bytes}</td></tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p><small>Bytes are from the {marks.length} marks CI builds at the default effort, on a black ground and with a
+      manifest. The smallest PNGs come from a mark of flat tiles and the largest from a gradient; yours depend on
+      your mark. The manifest is the icons-only one shown below.</small></p>
+  </section>
+
+  <section>
+    <h2>The markup</h2>
+    <p>Put these tags in your <code>&lt;head&gt;</code>. <code>favseed --html --manifest</code> prints them, with
+      the config's <code>base</code> in front of every <code>href</code> when the site is served under a path. The
+      Vite plugin and the Astro integration add them for you, to any page that does not already link an icon.</p>
+    <pre>{links}</pre>
+  </section>
+
+  <section>
+    <h2><code>icon.svg</code></h2>
+    <p>The favicon for browsers that take an SVG icon, and the file to use for the logo on your pages. It keeps
+      animation, styling and accessibility, and any <code>prefers-color-scheme</code> block, so a dark-mode rule
+      changes the favicon with the browser’s colour scheme. Use the same <code>/icon.svg</code> URL in the link and
+      in <code>&lt;img&gt;</code>, so one cached response serves both.</p>
+    <p>It is not in the manifest. An SVG entry makes Chrome’s Android install fail and fall back to a home-screen
+      bookmark (<a href="https://issues.chromium.org/issues/40925759">crbug.com/40925759</a>).</p>
+  </section>
+
+  <section>
+    <h2><code>favicon.ico</code></h2>
+    <p>The fallback for browsers that do not take the SVG, and the file a browser asks for
+      at <code>/favicon.ico</code> when a page declares no icon. It holds one 48×48 entry: a PNG inside a 22-byte
+      container, transparent and unpadded. The link says <code>sizes="48x48"</code>, the size of the bitmap that is
+      actually inside.</p>
+    <p>Why 48 and not 32: across 20 test marks the larger entry costs about 97 bytes a mark, and the worst error
+      against the source falls from 1.660% to 1.215%. A PNG payload rather than a BMP one, because the
+      BMP that <code>icotool</code> writes by default is 8.8 times larger. Like every raster, it shows the light
+      rules of the SVG; no platform asks a bitmap favicon for a colour scheme.</p>
+  </section>
+
+  <section>
+    <h2><code>apple-touch-icon.png</code></h2>
+    <p>iOS and iPadOS use it for the Home Screen, and Safari for Add to Dock. It is 180×180, 60 pt at @3x, the largest
+      size Apple documents for a web clip; no iPhone renders above @3x. iOS prefers this file to the manifest icons
+      and ignores their <code>purpose</code> and any SVG.</p>
+    <p>The mark sits in the safe zone on the <code>--bg</code> ground, so the rounded mask, its corners about 22% of
+      the tile, cuts nothing from it. It is opaque because iOS would composite a transparent icon onto black anyway.
+      Choose the ground to suit the mark: <code>--bg '#fff'</code> for one drawn on light.</p>
+  </section>
+
+  <section>
+    <h2><code>icon-192.png</code> and <code>icon-512.png</code></h2>
+    <p>The manifest’s icons, declared <code>any maskable</code>. Android masks them to a circle, squircle or rounded
+      square, ChromeOS and Chrome installs on macOS apply the system’s rounded shape, and Windows and Linux desktops
+      draw them as they are. web.dev’s install criteria, Chrome’s documentation and MDN all ask for a 192 and a
+      512 px icon, so those are the default sizes; <code>--sizes</code> takes other even sizes.</p>
+    <p>One file carries both purposes. Chrome will not install an app whose icons are all <code>maskable</code>,
+      and the mark is padded into the safe zone, so <code>any</code> is true as well. The cost is on desktops that
+      do not mask: there the icon shows a smaller mark on its ground, not edge to edge. <code>--bg none</code> opts
+      out of all of it, with a transparent, unpadded set declared <code>any</code> only.</p>
+  </section>
+
+  <section>
+    <h2><code>site.webmanifest</code></h2>
+    <p>Written with <code>--manifest</code>; the page on this site includes one by default. It lists the padded PNGs and nothing
+      else, one entry per line:</p>
+    <pre>{json}</pre>
+    <p>Merge your own <code>name</code>, <code>short_name</code> and <code>theme_color</code>, or give them in the
+      config’s <code>manifest</code> object, which writes them ahead of the icons. With vite-plugin-pwa, which writes
+      the manifest itself, pass <code>favseedIcons()</code> to it for the icon entries.</p>
+  </section>
+
+  <section>
+    <h2>Who reads what</h2>
+    <div>
+      <table>
+        <thead><tr><th>Platform</th><th>Reads</th><th>Shape</th><th>File</th></tr></thead>
+        <tbody>
+          {platforms.map(([platform, reads, shape, file]) => (<tr><td>{platform}</td><td>{reads}</td><td>{shape}</td><td><code>{file}</code></td></tr>))}
+        </tbody>
+      </table>
+    </div>
+    <p><a href="/how-it-works">How it works</a> explains the safe zone and how each file is encoded.</p>
+  </section>
+</Doc>
