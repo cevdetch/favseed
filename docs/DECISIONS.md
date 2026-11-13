@@ -696,7 +696,8 @@ for a build of seconds rather than tens of seconds. Every raster that can pass p
 either effort, and `--effort max` is one flag away.
 
 Decision 30 has since run the search's two walks at once, with the same bytes: `default` now
-takes 1.98 s and 4.07 s on `general` and `gradient`, `max` 7.50 s and 15.73 s.
+takes 1.98 s, 4.07 s and 2.11 s on `general`, `gradient` and `heavy`, `max` 7.50 s, 15.73 s and
+7.24 s.
 
 ### 30. The website shows the quick set first and searches behind it
 
