@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
-import { maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
+import { EFFORT_ITERATIONS, maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
 import { decode, header } from './lib/png.mjs';
 import { reference as suiteReference, score } from './lib/accuracy.mjs';
 import { passesBar } from '../lib/quality.mjs';
@@ -321,8 +321,8 @@ describe('buildSet', () => {
       });
       return peak;
     };
-    // Ungated, the four jobs' canvases fit one batch. Gated, the 512 px job's 42 B/px of
-    // reference (11 MB) leaves room for one sibling in each batch of the 16 MB budget.
+    // Ungated, the four jobs' canvases fit one batch. Gated, the 512 px job's 46 B/px of
+    // reference (12 MB) leaves room for one sibling in each batch of the 16 MB budget.
     assert.equal(await peakFor({}), 4);
     assert.equal(await peakFor({ quality: 80 }), 2);
   });
@@ -458,7 +458,8 @@ describe('raster search', () => {
       for (const file of rasters(set)) {
         const png = pngOf(file),
           image = rgba(decode(png));
-        const searched = seen.find((s) => s.png.equals(png));
+        // The first pass's fast encodes are searched without a reference; the final ones with.
+        const searched = seen.find((s) => s.reference && s.png.equals(png));
         assert.ok(searched, `${name}/${file.name}: no search produced these bytes`);
         // The pipeline's reference is a render of the job's own placement: it is the raster's
         // size, and it scores nothing against itself.
@@ -552,5 +553,106 @@ describe('raster search', () => {
       assert.deepEqual(q.setting, { quality: 90, colors: 256 });
       assert.equal(q.pass, true);
     }
+  });
+});
+
+// A default build with Zopfli on, so the early set only matches a separate fast build if it
+// is finished at effort 'fast''s own iterations rather than the build's.
+const defaultBuild = (extra) => opts({ effort: 'default', iterations: EFFORT_ITERATIONS.default, ...extra });
+
+describe('the fast set first', () => {
+  it("hands the set a separate effort 'fast' build gives to early, once, before the final set", async () => {
+    const early = [],
+      events = [];
+    let renders = 0;
+    const counted = {
+      ...engine,
+      render: (...args) => {
+        renders++;
+        return engine.render(...args);
+      },
+    };
+    const options = defaultBuild({ manifest: true });
+    const final = await buildSet(read('general'), options, {
+      engine: counted,
+      optimiseSvg,
+      early: (set) => early.push({ set, eventsSoFar: events.length }),
+      progress: (event) => events.push(event),
+    });
+    assert.equal(early.length, 1);
+    const fast = await buildSet(read('general'), opts({ manifest: true }), { engine, optimiseSvg });
+    assert.deepEqual(early[0].set, fast);
+    // Called during the build: the 'early' event follows it at once, and the final search after.
+    assert.deepEqual(events[early[0].eventsSoFar], { phase: 'early' });
+    assert.ok(events.slice(early[0].eventsSoFar).some((e) => e.phase === 'search'));
+    // One render per job: the final search reuses the first pass's render.
+    assert.equal(renders, 3);
+
+    // The final set is exactly what the search gives without a seed and without an early set.
+    const unseeded = {
+      ...engine,
+      search: (raw, reference, { seed: _seed, ...rest }) => engine.search(raw, reference, rest),
+    };
+    const today = await buildSet(read('general'), options, { engine: unseeded, optimiseSvg });
+    assert.deepEqual(final, today);
+  });
+
+  it("is not built at effort 'fast' or for a pinned setting", async () => {
+    for (const extra of [{}, { effort: 'default', quality: 90 }, { effort: 'max', colors: 64 }]) {
+      const events = [];
+      let called = 0;
+      await buildSet(read('general'), opts(extra), {
+        engine,
+        optimiseSvg,
+        early: () => called++,
+        progress: (event) => events.push(event),
+      });
+      assert.equal(called, 0, JSON.stringify(extra));
+      assert.ok(!events.some((e) => e.phase === 'early'), JSON.stringify(extra));
+    }
+  });
+
+  it('survives an early callback that throws, and builds the same set', async () => {
+    const options = defaultBuild();
+    const set = await buildSet(read('general'), options, {
+      engine,
+      optimiseSvg,
+      early: () => {
+        throw new Error('host failed');
+      },
+    });
+    assert.deepEqual(set, await buildSet(read('general'), options, { engine, optimiseSvg }));
+  });
+
+  it('reports each search probe per file, between the raster events', async () => {
+    const events = [];
+    await buildSet(read('general'), defaultBuild(), {
+      engine,
+      optimiseSvg,
+      progress: (event) => events.push(event),
+    });
+    const searches = events.filter((e) => e.phase === 'search');
+    const byFile = Map.groupBy(searches, (e) => e.file);
+    assert.deepEqual([...byFile.keys()].toSorted(), ['apple-touch-icon.png', 'favicon.ico', 'icon-32.png']);
+    for (const [file, list] of byFile) {
+      assert.deepEqual(
+        list.map((e) => e.done),
+        list.map((_, i) => i + 1),
+        file,
+      );
+      for (const e of list) {
+        assert.deepEqual(Object.keys(e), ['phase', 'file', 'done', 'total'], file);
+        assert.equal(e.total, 9, file);
+      }
+    }
+    const first = events.findIndex((e) => e.phase === 'search'),
+      last = events.findLastIndex((e) => e.phase === 'search');
+    assert.ok(events.slice(0, first).some((e) => e.phase === 'raster'));
+    assert.deepEqual(events.at(-1), { phase: 'complete', completed: 3, total: 3 });
+    assert.ok(last < events.length - 1);
+    assert.deepEqual(
+      events.filter((e) => e.phase === 'raster').map((e) => e.completed),
+      [0, 1, 2, 3],
+    );
   });
 });
