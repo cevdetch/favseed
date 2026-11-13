@@ -88,8 +88,19 @@ export interface SearchResult {
   pct: number | null;
   edge: number | null;
   pass: boolean | null;
-  /** How many distinct settings the search actually encoded. */
+  /** How many distinct settings the search actually encoded; a used `seed` is not one of them. */
   probes: number;
+}
+
+/** One completed encode of a search, as `onProbe` reports it. */
+export interface SearchProbe {
+  setting: RasterSetting;
+  bytes: number;
+  pass: boolean | null;
+  /** Encodes completed so far, 1 up to the result's `probes`. */
+  done: number;
+  /** An upper bound on the search's encodes. */
+  total: number;
 }
 
 /** The lazily loaded Node engine. Inputs are square SVGs with a valid viewBox or PNG bytes. */
@@ -103,12 +114,18 @@ export interface RasterEngine {
   /**
    * The smallest-passing encode of `raw`, gated against `reference` (required unless `effort`
    * is `'fast'` or `pinned` is given). `pinned` skips the search: one encode of exactly that
-   * setting.
+   * setting. `seed` is a candidate already encoded at `setting`, used in place of that encode
+   * only if the search asks for it. `onProbe` is called after each encode the search makes.
    */
   search(
     raw: Uint8Array,
     reference: RgbaImage | null,
-    options: { effort: Effort; pinned?: RasterSetting | null },
+    options: {
+      effort: Effort;
+      pinned?: RasterSetting | null;
+      seed?: { setting: Partial<RasterSetting>; png: Uint8Array } | null;
+      onProbe?: (probe: SearchProbe) => void;
+    },
   ): Promise<SearchResult>;
   finish(png: Uint8Array, options: { iterations: number }): Promise<Uint8Array>;
 }

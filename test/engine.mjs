@@ -8,10 +8,19 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { crc32, inflateSync } from 'node:zlib';
 import referenceZopfli from '@gfx/zopfli';
+import * as napi from '@napi-rs/image';
 import { Transformer } from '@napi-rs/image';
 
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
-import { DEFAULT_COLORS, DEFAULT_QUALITY, nestForMask, placeInSafeZone, squareIconSvg } from '../lib/core.mjs';
+import {
+  DEFAULT_COLORS,
+  DEFAULT_QUALITY,
+  SEARCH_COLORS,
+  SEARCH_QUALITIES,
+  nestForMask,
+  placeInSafeZone,
+  squareIconSvg,
+} from '../lib/core.mjs';
 import { createEngine, wrapForSize } from '../lib/engine.mjs';
 import { passesBar } from '../lib/quality.mjs';
 import { score } from './lib/accuracy.mjs';
@@ -567,5 +576,187 @@ describe('search', () => {
     assert.equal(result.probes, 1);
     assert.deepEqual(result.setting, pinned);
     assert.deepEqual([result.pct, result.edge, result.pass], [null, null, null]);
+  });
+});
+
+// Ties on bytes go to the higher quality, then the larger palette.
+const lessLossy = (a, b) =>
+  a.setting.quality !== b.setting.quality ? a.setting.quality > b.setting.quality : a.setting.colors > b.setting.colors;
+
+// The search as it ran when the two walks took turns: the quality walk, then the colour walk,
+// one encode at a time. The oracle the overlapped walks must match in bytes, setting and probes.
+const sequentialSearch = async (raw, reference) => {
+  const cache = new Map();
+  const probe = async ({ quality = 100, colors = DEFAULT_COLORS }) => {
+    const key = quality === 100 ? `colors:${colors}` : `quality:${quality}`;
+    if (!cache.has(key)) {
+      const png = await engine.encode(raw, { quality, colors });
+      const { pass, pct, edge } = passesBar(await engine.decode(png), reference);
+      cache.set(key, { png, setting: { quality, colors }, pct, edge, pass });
+    }
+    return cache.get(key);
+  };
+  const walk = async (settings) => {
+    const probed = [];
+    let lo = 0,
+      hi = settings.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const candidate = await probe(settings[mid]);
+      probed.push(candidate);
+      if (candidate.pass) hi = mid - 1;
+      else lo = mid + 1;
+    }
+    return probed;
+  };
+  const probed = [
+    ...(await walk(SEARCH_QUALITIES.map((quality) => ({ quality })))),
+    ...(await walk(SEARCH_COLORS.map((colors) => ({ colors })))),
+  ];
+  const winner =
+    probed
+      .filter((c) => c.pass)
+      .reduce((best, c) => {
+        if (!best || c.png.length < best.png.length) return c;
+        return c.png.length === best.png.length && lessLossy(c, best) ? c : best;
+      }, null) ?? (await probe({ quality: DEFAULT_QUALITY }));
+  return { ...winner, probes: cache.size };
+};
+
+// A leftmost-passing binary walk over n settings probes at most floor(log2 n) + 1 of them.
+const binaryBound = (n) => Math.floor(Math.log2(n)) + 1;
+
+describe('search, both walks at once', () => {
+  for (const name of SEARCH_FIXTURES) {
+    for (const px of [192, 512]) {
+      it(`${name} at ${px} px: default matches the sequential walks in bytes, setting and probes`, async () => {
+        const raw = await engine.render(icon(name), px, '#000000');
+        const reference = await engine.renderRgba(icon(name), px, '#000000');
+        const expected = await sequentialSearch(raw, reference);
+        const result = await engine.search(raw, reference, { effort: 'default', pinned: null });
+        assert.deepEqual([...result.png], [...expected.png]);
+        assert.deepEqual(result.setting, expected.setting);
+        assert.equal(result.probes, expected.probes);
+        assert.deepEqual([result.pct, result.edge, result.pass], [expected.pct, expected.edge, expected.pass]);
+      });
+    }
+
+    it(`${name}: a q80 seed saves exactly one encode and changes nothing else`, async () => {
+      const { raw, reference } = searchCaptures[name];
+      const plain = await engine.search(raw, reference, { effort: 'default', pinned: null });
+      const seed = {
+        setting: { quality: DEFAULT_QUALITY },
+        png: await engine.encode(raw, { quality: DEFAULT_QUALITY }),
+      };
+      const seeded = await engine.search(raw, reference, { effort: 'default', pinned: null, seed });
+      assert.deepEqual([...seeded.png], [...plain.png]);
+      assert.deepEqual(seeded.setting, plain.setting);
+      assert.deepEqual([seeded.pct, seeded.edge, seeded.pass], [plain.pct, plain.edge, plain.pass]);
+      assert.equal(seeded.probes, plain.probes - 1);
+    });
+
+    it(`${name}: onProbe reports every encode, done counting up to probes`, async () => {
+      const { raw, reference } = searchCaptures[name];
+      for (const effort of ['fast', 'default', 'max']) {
+        const calls = [];
+        const result = await engine.search(raw, reference, {
+          effort,
+          pinned: null,
+          onProbe: (p) => calls.push(p),
+        });
+        const total = {
+          fast: 1,
+          default: 1 + binaryBound(SEARCH_QUALITIES.length) + binaryBound(SEARCH_COLORS.length),
+          max: SEARCH_QUALITIES.length + SEARCH_COLORS.length,
+        }[effort];
+        assert.equal(calls.length, result.probes, effort);
+        assert.deepEqual(
+          calls.map((p) => p.done),
+          calls.map((_, i) => i + 1),
+          effort,
+        );
+        for (const p of calls) {
+          assert.equal(p.total, total, effort);
+          assert.equal(typeof p.bytes, 'number');
+          assert.equal(typeof p.pass, 'boolean');
+          assert.deepEqual(Object.keys(p.setting).toSorted(), ['colors', 'quality']);
+        }
+        const winner = calls.find(
+          (p) => p.setting.quality === result.setting.quality && p.setting.colors === result.setting.colors,
+        );
+        assert.equal(winner?.bytes, result.png.length, effort);
+      }
+    });
+  }
+
+  it('five concurrent default searches of one raster agree byte for byte', async () => {
+    const { raw, reference } = searchCaptures.gradient;
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => engine.search(raw, reference, { effort: 'default', pinned: null })),
+    );
+    for (const r of results.slice(1)) {
+      assert.deepEqual([...r.png], [...results[0].png]);
+      assert.deepEqual(r.setting, results[0].setting);
+      assert.equal(r.probes, results[0].probes);
+    }
+  });
+
+  it('overlaps the two walks: two quantisations in flight at once', async () => {
+    let inFlight = 0,
+      peak = 0;
+    const image = {
+      ...napi,
+      pngQuantize: async (...args) => {
+        peak = Math.max(peak, ++inFlight);
+        try {
+          return await napi.pngQuantize(...args);
+        } finally {
+          inFlight--;
+        }
+      },
+    };
+    const counted = createEngine({ image, zopfli: null, inflate: inflateSync });
+    const { raw, reference } = searchCaptures.general;
+    await counted.search(raw, reference, { effort: 'default', pinned: null });
+    assert.equal(peak, 2);
+  });
+
+  it('a seed no walk asks for is never gated, never counted and never wins', async () => {
+    const { raw, reference } = searchCaptures.general;
+    const plain = await engine.search(raw, reference, { effort: 'default', pinned: null });
+    // Not a PNG at all: decoding it would throw, so passing proves it was never touched.
+    const seed = { setting: { quality: 45 }, png: new Uint8Array([1, 2, 3]) };
+    const seeded = await engine.search(raw, reference, { effort: 'default', pinned: null, seed });
+    assert.deepEqual([...seeded.png], [...plain.png]);
+    assert.deepEqual(seeded.setting, plain.setting);
+    assert.equal(seeded.probes, plain.probes);
+  });
+
+  it('a seed matching the one encode fast or a pin needs leaves nothing to encode', async () => {
+    const { raw, reference } = searchCaptures.general;
+    const fastPng = await engine.encode(raw, { quality: DEFAULT_QUALITY });
+    const calls = [];
+    const fast = await engine.search(raw, null, {
+      effort: 'fast',
+      pinned: null,
+      seed: { setting: { quality: DEFAULT_QUALITY, colors: 8 }, png: fastPng },
+      onProbe: (p) => calls.push(p),
+    });
+    assert.deepEqual([...fast.png], [...fastPng]);
+    // The search reports the setting it asked for; quality below 100 ignores colours.
+    assert.deepEqual(fast.setting, { quality: DEFAULT_QUALITY, colors: DEFAULT_COLORS });
+    assert.equal(fast.probes, 0);
+    assert.deepEqual(calls, []);
+
+    const pinned = { quality: 100, colors: 4 };
+    const pinnedPng = await engine.encode(raw, pinned);
+    const result = await engine.search(raw, reference, {
+      effort: 'max',
+      pinned,
+      seed: { setting: pinned, png: pinnedPng },
+    });
+    assert.deepEqual([...result.png], [...pinnedPng]);
+    assert.equal(result.probes, 0);
+    assert.equal(typeof result.pass, 'boolean');
   });
 });
