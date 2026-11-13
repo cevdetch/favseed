@@ -223,3 +223,23 @@ test('cold startup stays small and defers engine loading until SVG selection', a
   await expect(page.locator('output')).toHaveText(/Done in/, { timeout: 120_000 });
   await expect(page.locator('#zip')).toBeVisible();
 });
+
+test('the engine starts loading when the pointer reaches the drop zone, with Zopfli alongside', async ({ page }) => {
+  const workers = [];
+  page.on('worker', (worker) => workers.push(worker.url()));
+  await page.goto('/', { waitUntil: 'networkidle' });
+  expect(workers, 'No worker before any sign of intent').toEqual([]);
+  // At the default effort the build will run Zopfli, so its WASM is fetched with the engine's.
+  const worker = page.waitForEvent('worker');
+  const wasm = (name) => page.waitForRequest((request) => new RegExp(`/${name}[^/]*\\.wasm$`).test(request.url()));
+  await page.locator('label.drop').hover();
+  await Promise.all([worker, wasm('image\\.wasm32-'), wasm('zopfli')]);
+  await expect(page.locator('output')).toHaveText('');
+});
+
+test('focusing the file input also starts the engine', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'networkidle' });
+  const worker = page.waitForEvent('worker');
+  await page.locator('input[name=file]').focus();
+  await worker;
+});

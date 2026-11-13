@@ -96,7 +96,7 @@ const efforts = [
     <p>This site runs the same pipeline in a worker, on the WebAssembly build of the same engine. It needs HTTPS or
       localhost, WebAssembly and <code>DecompressionStream</code>. Where the browser allows shared memory it uses
       the threaded engine, and otherwise a single-thread build that is slower but gives the same files. The engine
-      is about 10.3 MB before transfer compression and loads only after you choose an SVG. Your file never leaves the
+      is about 10.3 MB before transfer compression and loads only once you point at, focus or drag onto the file picker. Your file never leaves the
       tab.</p>
     <p>Matching self-contained SVGs and options give identical bytes everywhere. CI builds the test fixtures on
       Linux, macOS and Windows and compares the hashes, and runs this site in Chromium, Firefox and WebKit against

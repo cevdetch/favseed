@@ -304,12 +304,15 @@ test('a build that shows the quick set asks for it and receives it before the re
   assert.equal(events.length, 1);
 });
 
-test('a build without a quick-set callback is one pass', async () => {
+test('a build without a quick-set callback is one pass, and warm names the effort', async () => {
   const { client, workers } = setup();
+  const warming = client.warm('fast');
   const pending = client.build('svg', {});
-  const [build] = workers[0].messages;
+  const [warm, build] = workers[0].messages;
+  assert.equal(warm.effort, 'fast');
   assert.equal(build.early, false);
+  workers[0].reply({ id: warm.id, type: 'ready' });
   workers[0].reply({ id: build.id, type: 'result', result: result() });
-  await pending;
+  await Promise.all([warming, pending]);
   client.dispose();
 });

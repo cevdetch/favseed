@@ -8,7 +8,7 @@ const client = createWorkerClient({
   checkCapabilities,
 });
 
-export const warm = () => client.warm();
+export const warm = (effort) => client.warm(effort);
 export const dispose = () => client.dispose();
 
 const withArchive = ({ archiveBytes, ...result }) => ({ ...result, archive: () => new Uint8Array(archiveBytes) });

@@ -135,7 +135,7 @@ const outputs = [
       one encode at that setting and warns when it misses the bar. These
       match <code>--effort</code>, <code>--quality</code> and <code>--colors</code> in the CLI. This
       page includes a manifest; use <code>--manifest</code> for the matching CLI set.</p>
-    <p>The engine loads after you choose a file. Its WASM is about 10.3 MB before transfer
+    <p>The engine loads when you reach for the file picker, never before. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
       Browser privacy restrictions can select a slower compatibility mode.
       Your SVG and generated files stay in this tab.</p>
@@ -146,7 +146,7 @@ const outputs = [
 <script>
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
-  const { file, quality, colors } = form.elements;
+  const { file, quality, colors, effort } = form.elements;
   // A quality below 100 lets the quantiser choose the palette, so the two cannot be pinned together.
   const updatePalette = () => { colors.disabled = quality.value.trim() !== '' && Number(quality.value) < 100; };
   quality.addEventListener('input', updatePalette);
@@ -180,10 +180,13 @@ const outputs = [
 
   const say = (msg, kind = '') => { status.textContent = msg; status.className = kind; };
 
-  // Fetch the engine only after choosing a file, overlapping initialization with options.
+  // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
+  // or a chosen file. Never on page load. Each warm names the effort, so the worker fetches Zopfli
+  // alongside the engine when the build will need it.
   let pipeline;
   const load = () => (pipeline ??= import('../lib/pipeline.mjs').catch((e) => { pipeline = null; throw e; }));
-  const warm = () => load().then((m) => m.warm()).catch(() => {});   // reported by the submit that awaits load
+  const warm = () => load().then((m) => m.warm(effort.value)).catch(() => {});   // reported by the submit that awaits load
+  for (const type of ['pointerenter', 'focusin', 'dragenter']) drop.addEventListener(type, warm, { once: true });
 
   // The input covers the drop zone, so the browser does the picking and the dropping; all that
   // is left here is the highlight while something is dragged over it.

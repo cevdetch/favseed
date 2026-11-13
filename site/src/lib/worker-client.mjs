@@ -85,7 +85,8 @@ export function createWorkerClient({ createWorker, checkCapabilities }) {
       }
     });
   return {
-    warm: () => request('warm'),
+    // The effort lets the worker fetch Zopfli alongside the engine when the build will need it.
+    warm: (effort) => request('warm', { effort }),
     // Only a caller that shows the quick set asks for it: without one the build is one pass.
     build: (source, options, controls) =>
       request('build', { source, options, early: typeof controls?.onEarly === 'function' }, controls),

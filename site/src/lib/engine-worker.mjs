@@ -11,13 +11,22 @@ import { checkCapabilities } from './capabilities.mjs';
 globalThis.Buffer ??= Buffer;
 const { optimiseSvg } = createSvgStage({ optimize });
 const cache = createBuildCache();
-const zopfli = createZopfli({
-  loadWasm: async () => {
-    const response = await fetch(new URL('../../../lib/zopfli.wasm', import.meta.url));
-    if (!response.ok) throw new Error(`Could not load compression engine: HTTP ${response.status}`);
-    return response.arrayBuffer();
-  },
-});
+// One fetch, started as soon as a build that will run Zopfli is in sight (a warm or build
+// message at an effort other than 'fast') so it overlaps the image engine's much larger load,
+// rather than waiting for the first finish. Zopfli awaits that same fetch; a failure clears it
+// so the next attempt fetches again.
+let zopfliBytes;
+const fetchZopfli = () =>
+  (zopfliBytes ??= fetch(new URL('../../../lib/zopfli.wasm', import.meta.url))
+    .then((response) => {
+      if (!response.ok) throw new Error(`Could not load compression engine: HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .catch((error) => {
+      zopfliBytes = undefined;
+      throw error;
+    }));
+const zopfli = createZopfli({ loadWasm: fetchZopfli });
 let loading;
 const load = (parentThreaded) => {
   if (loading) return loading;
@@ -48,8 +57,10 @@ const total = (files) => files.reduce((n, f) => n + f.bytes.byteLength, 0);
 // apple and icon-180 can alias. Shared WASM memory is already copied by createEngine.
 const buffers = (set) => [...new Set([...set.files.map((f) => f.bytes.buffer), set.archiveBytes.buffer])];
 
-self.onmessage = async ({ data: { id, type, threaded, source, options, early } }) => {
+self.onmessage = async ({ data: { id, type, threaded, source, options, effort, early } }) => {
   let initialized = false;
+  // An unknown effort is the default one, which runs Zopfli; reported by the build if invalid.
+  if ((type === 'build' ? options?.effort : effort) !== 'fast') fetchZopfli().catch(() => {});
   try {
     const engine = await load(threaded);
     initialized = true;
