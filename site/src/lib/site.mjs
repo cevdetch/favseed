@@ -23,7 +23,10 @@ export const website = { '@type': 'WebSite', '@id': ids.website, name: 'favseed'
 
 // A page's slash-free path from the URL Astro renders it at: /docs.html and /docs/index.html
 // are /docs, the homepage is /. Canonical URLs, breadcrumbs and JSON-LD all start from it.
-export const pathOfUrl = (pathname) => pathname.replace(/(?:index)?\.html$/, '').replace(/(.)\/$/, '$1') || '/';
+export const pathOfUrl = (pathname) => pathname.replace(/(?:(^|\/)index)?\.html$/, '$1').replace(/(.)\/$/, '$1') || '/';
+
+// The canonical URL of the page Astro renders at pathname.
+export const pageUrl = (pathname) => new URL(pathOfUrl(pathname), SITE).href;
 
 // The header bar. A section joins it when its first page exists.
 export const nav = [

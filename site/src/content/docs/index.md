@@ -9,6 +9,8 @@ order: 0
 
 ## Install
 
+favseed is not on npm yet: the first published release will be 1.0.0, and until then [the generator on this site](/) runs the same pipeline in your browser.
+
 favseed needs Node 24 or newer and nothing else. Add it to a project:
 
 ```sh
@@ -16,8 +18,6 @@ npm install --save-dev favseed
 ```
 
 Or run it once with `npx favseed`. The image engine, `@napi-rs/image`, installs with the package: resvg, oxipng and a quantiser in one native module, prebuilt for Linux, macOS and Windows on x64 and arm64, and FreeBSD on x64. Zopfli, which recompresses the PNGs, is bundled as WebAssembly built from Google's source, and the command line and this website share it.
-
-favseed is not on npm yet: the first published release will be 1.0.0, and until then [the generator on this site](/) runs the same pipeline in your browser.
 
 ## Start in 30 seconds
 

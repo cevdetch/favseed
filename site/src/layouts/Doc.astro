@@ -2,7 +2,7 @@
 // A documentation page: the shared document, a breadcrumb trail, and the page's cards. Each
 // direct child of the slot is a card, as on the homepage.
 import Page from './Page.astro';
-import { breadcrumbList, ids, jsonLd, pathOfUrl, person, SITE, website } from '../lib/site.mjs';
+import { breadcrumbList, ids, jsonLd, pageUrl, pathOfUrl, person, website } from '../lib/site.mjs';
 import { gitDates, pageSources } from '../../build/lastmod.mjs';
 
 interface Props {
@@ -18,7 +18,7 @@ interface Props {
 
 const { title, description, heading, lede, crumbs = [], label = heading, markdown, pager } = Astro.props;
 const path = pathOfUrl(Astro.url.pathname);
-const url = new URL(path, SITE).href;
+const url = pageUrl(Astro.url.pathname);
 // The newest and oldest commit to the page's own source; none in a shallow clone.
 const { published, modified } = gitDates(pageSources(path));
 const trail: [string, string][] = [['/', 'Home'], ...crumbs, [path, label]];

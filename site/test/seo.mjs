@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
+import { pageSources } from '../build/lastmod.mjs';
 
 const SITE = 'https://favseed.cevdet.ch';
 const HOME_TITLE = 'SVG favicon generator: one SVG, an optimised set - favseed';
@@ -224,7 +225,7 @@ test('every Markdown page links its .md alternate, which exists and starts with 
     const markdown = readFileSync(join(dist, `${path}.md`), 'utf8');
     const heading = /<h1>([^<]*)<\/h1>/.exec(html)[1];
     assert.ok(markdown.startsWith(`# ${decode(heading)}\n`), `${path}.md starts with its heading`);
-    assert.doesNotMatch(markdown, /^---$/m, `${path}.md carries no frontmatter`);
+    assert.ok(!markdown.startsWith('---'), `${path}.md carries no frontmatter`);
   }
 });
 
@@ -237,9 +238,18 @@ test('Markdown pages are drawn as cards: <main> holds only <section> elements', 
   }
 });
 
-const shallow = execFileSync('git', ['rev-parse', '--is-shallow-repository'], { encoding: 'utf8' }).trim() === 'true';
+const site = fileURLToPath(new URL('..', import.meta.url));
+const git = (...args) =>
+  execFileSync('git', args, { cwd: site, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+// Without git, or in a shallow clone, the build leaves the dates out, so there is nothing to check.
+let shallow;
+try {
+  shallow = git('rev-parse', '--is-shallow-repository') === 'true' && 'shallow clone';
+} catch {
+  shallow = 'no git repository';
+}
 
-test('the sitemap dates every page from git, unless the clone is shallow', { skip: shallow && 'shallow clone' }, () => {
+test('the sitemap dates every page from git, unless the clone is shallow', { skip: shallow }, () => {
   const xml = readFileSync(join(dist, 'sitemap-0.xml'), 'utf8');
   const entries = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((match) => match[1]);
   assert.equal(entries.length, indexable.length);
@@ -252,7 +262,7 @@ test('the sitemap dates every page from git, unless the clone is shallow', { ski
 
 test(
   'every article is dated from git, matching its sitemap lastmod, unless the clone is shallow',
-  { skip: shallow && 'shallow clone' },
+  { skip: shallow },
   () => {
     const xml = readFileSync(join(dist, 'sitemap-0.xml'), 'utf8');
     const lastmods = new Map(
@@ -266,3 +276,13 @@ test(
     }
   },
 );
+
+test('an article is published on the first commit of its own source file', { skip: shallow }, () => {
+  for (const path of articles) {
+    const article = graphOf(pages.get(path))['@graph'].find((node) => node['@type'] === 'TechArticle');
+    const [own] = pageSources(path);
+    assert.ok(own, `${path}: no source file`);
+    const first = git('log', '--follow', '--format=%cI', '--', own).split('\n').at(-1);
+    assert.equal(article.datePublished, new Date(first).toISOString(), `${path}: datePublished`);
+  }
+});

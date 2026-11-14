@@ -1,5 +1,6 @@
-// Dates for a page from git: the newest and the oldest commit that touched its source. Used for
-// the sitemap's lastmod and the articles' dateModified and datePublished.
+// Dates for a page from git: modified is the newest commit to any of its sources, published the
+// first commit of its own file. Used for the sitemap's lastmod and the articles' dateModified and
+// datePublished.
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 const rootOf = (dir) =>
   existsSync(join(dir, 'astro.config.mjs')) || dirname(dir) === dir ? dir : rootOf(dirname(dir));
 const site = rootOf(dirname(fileURLToPath(import.meta.url)));
-const git = (...args) => execFileSync('git', args, { cwd: site, encoding: 'utf8' }).trim();
+// stderr is dropped so a checkout without git history does not print `fatal:` into the build.
+const git = (...args) =>
+  execFileSync('git', args, { cwd: site, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 
 // A shallow clone reports its one commit as the last change to every file, which would date
 // every page to the newest commit; no date is better than a wrong one.
@@ -42,11 +45,20 @@ export const pageSources = (pathname) => {
 
 const iso = (date) => new Date(date).toISOString();
 
-export const gitDates = (files) => {
-  if (files.length === 0 || !gitUsable()) return {};
-  const dates = git('log', '--format=%cI', '--', ...files)
+const commits = (...args) =>
+  git('log', '--format=%cI', ...args)
     .split('\n')
     .filter(Boolean);
-  if (dates.length === 0) return {};
-  return { modified: iso(dates[0]), published: iso(dates.at(-1)) };
+
+// The page was published when its own file first appeared, so an older extra source such as the
+// byte manifest cannot date it earlier; --follow carries the date across a rename.
+export const gitDates = (files) => {
+  if (files.length === 0 || !gitUsable()) return {};
+  try {
+    const modified = commits('--', ...files)[0];
+    const published = commits('--follow', '--', files[0]).at(-1);
+    return { ...(modified && { modified: iso(modified) }), ...(published && { published: iso(published) }) };
+  } catch {
+    return {};
+  }
 };

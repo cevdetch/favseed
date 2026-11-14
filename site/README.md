@@ -207,8 +207,8 @@ character description, canonical URL and single H1, the same header bar, a JSON-
 anchor. Pages other than the homepage carry a breadcrumb trail that matches their
 BreadcrumbList and ship no JavaScript. Markdown pages link a `.md` alternate that starts with
 the page's heading, and their `<main>` holds only cards. The sitemap lists exactly the
-indexable pages, each with a `lastmod` unless the clone is shallow, which every article's
-`dateModified` matches. `robots.txt` names the sitemap.
+indexable pages, each with a `lastmod` unless the clone is shallow, and every article's
+`dateModified` equals its page's `lastmod`. `robots.txt` names the sitemap.
 
 The harness serves `dist/` with the required headers and drives real Chromium through Node's
 built-in DevTools WebSocket. It compares every file hash and shared metadata against native
@@ -248,9 +248,10 @@ The documentation pages (`/docs`, `/how-it-works`, `/outputs`, `/benchmarks`) ea
 description and slash-free canonical URL.
 It also guards cold startup before any sign of intent, including form edits and a rejected PNG:
 no workers or engine/WASM requests, at most 5.25 KiB gzipped HTML, 4 KiB gzipped JavaScript,
-8.5 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. The header bar and the
-homepage's structured data (WebSite, WebApplication, SoftwareSourceCode) added 431 bytes gzipped,
-taking the homepage from 4,673 to 5,104 B of HTML and 8,131 to 8,562 B combined. Actual responses include
+8.5 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. The HTML and combined
+budgets were 5 KiB and 8 KiB until the header bar, the homepage's structured data (WebSite,
+WebApplication, SoftwareSourceCode) and its new title and H1 took the homepage from 4,673 to
+5,119 B of gzipped HTML and from 8,131 to 8,526 B combined. Actual responses include
 imports and preloads; each body is compressed separately with gzip level 9. Inline CSS is
 already included in HTML for the combined budget. Images, headers and protocol overhead are
 excluded; these are reproducible size comparisons, not Cloudflare transfer measurements or
