@@ -47,16 +47,13 @@ contain.
   measurements.
 - TypeScript declarations for the package root, `favseed/core`, and the Vite and Astro
   integrations.
-- One image engine: `@napi-rs/image` renders, quantises and recompresses, and favseed's own
-  `lib/zopfli.wasm` (built from Zopfli 1.0.15) finishes the result, both pinned exact, so the
-  CLI needs only Node 24 and no external binaries to install.
-- `@napi-rs/image` is pinned at 1.16.0, with no output change: every file the byte manifest
-  covers renders identical to 1.15.0.
+- One image engine: `@napi-rs/image`, pinned at 1.16.0, renders, quantises and recompresses,
+  and favseed's own `lib/zopfli.wasm` (built from Zopfli 1.0.15) finishes the result, both
+  pinned exact, so the CLI needs only Node 24 and no external binaries to install.
 - The website's two image engines are built from the 1.16.0 source with the codecs favseed
-  never calls (AVIF, WebP, lossless JPEG, JPEG XL) removed, instead of importing the published
-  package. The threaded engine drops from 2,481,262 to 1,460,499 bytes over Brotli 11, the
-  compatibility engine from 2,470,599 to 1,436,532. `docs/DECISIONS.md` (decision 31) has the
-  measurements.
+  never calls (AVIF, WebP encoding, lossless JPEG, JPEG XL decoding) removed, instead of
+  importing the published package: the threaded engine is 1,460,499 bytes over Brotli 11, the
+  compatibility engine 1,436,532. `docs/DECISIONS.md` (decision 31) has the measurements.
 - `--sizes` defaults to `192 512`, the pair Chrome's install criteria document; and `--bg`
   defaults to `#000000`, matching how iOS composites a transparent Home Screen icon.
 - Each PNG and the ICO payload is the smallest encode favseed finds that passes its accuracy

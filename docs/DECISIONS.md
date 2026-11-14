@@ -792,18 +792,25 @@ On a touch screen `pointerenter` fires when a finger goes down, so a scroll that
 on the drop zone also loads the engine. That is accepted: a touch there is still a sign of
 intent, and the engine is cached afterwards, so an idle scroll costs the download once.
 
-**Slim engine, shipped in decision 31.** The WASM carried AVIF, WebP, lossless-JPEG and JPEG XL
-codecs favseed never calls. Decision 31 builds both engines from the image source with those
-codecs removed and vendors the result, in place of the npm package this decision shipped.
+**Recorded next step: a slim engine.** The WASM carries AVIF, WebP and lossless-JPEG codecs
+favseed never calls. Built without them, the engine is 1 433 110 B at Brotli 11 against
+2 470 599 for the single-thread build (−42 %), and 1 456 603 against 2 481 262 for the
+threaded one, with 6 000 of 6 000 engine outputs identical in each mode over every fixture;
+on the 9 Mbps link it is ready about a second sooner (−32 %), and the first set moves by the
+same second ([bench/browser-compat/SLIM.md](https://github.com/cevdetch/favseed/blob/d7c4f41/bench/browser-compat/SLIM.md)). It is not shipped
+here. The single-thread engine's build recipe exists and gains only a patch step; the threaded
+engine is the published npm package today, so a slim one means building and vendoring it, with
+the same both-mode parity checks the single-thread engine carries. That is its own change.
+Shipped in decision 31.
 
 ### 31. The website builds its own engines
 
 favseed calls `@napi-rs/image` four ways: `Transformer.fromSvg` (resvg rendering), PNG decode
 (`crop`, `png`, `rawPixels`, `metadata`), `pngQuantize` and `losslessCompressPng`. It never
 encodes or decodes AVIF or WebP, and never recompresses a lossless JPEG or decodes a JPEG XL.
-Those four codecs are still compiled into both of the website's WASM engines, because the
-compatibility engine (decision 26) vendored the published build unpatched and the threaded
-engine was the published npm package (decision 30). `bench/wasm-engine/slim.patch`, applied to
+Those four codecs had been compiled into both of the website's WASM engines: the compatibility
+engine (decision 21) was built from the 1.15.0 source by the existing recipe, unpatched, and the
+threaded engine was the published npm package (decision 30). `bench/wasm-engine/slim.patch`, applied to
 `packages/binding` of the image 1.16.0 source, removes libavif/libaom, mozjpeg, libwebp and the
 JPEG XL decoder (about 636 lines removed, 52 added across Cargo.toml and five `.rs` files).
 Every export and `index.d.ts` stay as they are; a removed codec's entry point now rejects at
@@ -835,8 +842,9 @@ resvg renders with system fonts the WASI sandbox does not have.
 
 **Browser timing**, choose→ready, choose→first set and choose→final set medians at default
 effort, three interleaved repetitions, before (`0089ea0`, the published/vendored 1.15.0
-engines of decisions 26 and 30) against after (`3160cc3`, the slim 1.16.0 engines), Chromium
-158.0.8127.18, Ryzen 7 7840U ([bench/browser](../bench/browser/README.md)):
+engines of decisions 26 and 30) against after (the same site with the slim 1.16.0 engines
+recorded in `site/vendor/image/build.json`), Chromium 158.0.8127.18, Ryzen 7 7840U
+([bench/browser](../bench/browser/2026-11-14-slim-engines.md)):
 
 | network, mode | mark | choose→ready | choose→first set | choose→final set |
 |---|---|---|---|---|
@@ -881,12 +889,12 @@ deploy path is a maintainer decision: an ordinary site build stays free of Rust,
 or a CI runner without a Rust toolchain can still build and ship the site, and a broken engine
 rebuild cannot block a deploy that changes nothing about the engine. The cost is git history: a
 vendored `.wasm` pair is committed at every image upgrade that changes bytes, and git keeps the
-superseded blobs alongside the new ones rather than diffing them, so each such upgrade adds
-roughly 2 × the pair's raw size to the repository's history: about 22.8 MB for this upgrade's
-pair (5,722,390 + 5,653,958 B), rather than reproducing the engines from source on every
-deploy.
+superseded blobs alongside the new ones rather than diffing them. Git stores each blob zlib-
+compressed, so the pair this upgrade adds is about 4.1 MB in the packed history (2,072,747 +
+2,036,802 B at zlib's default level, less again if a pack finds deltas against the superseded
+pair), rather than reproducing the engines from source on every deploy.
 
-This supersedes the "measured, not shipped" status of the slim-engine findings decision 30
+This supersedes decision 30's "not shipped here" status for the slim-engine findings it
 recorded: the comparison that ran against the published 1.15.0 build and reported it as a
 follow-up now ships, rebuilt against the 1.16.0 source.
 

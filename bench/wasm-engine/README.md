@@ -37,9 +37,10 @@ libwebp (WebP encoding) and the JPEG XL decoder. `bench/wasm-engine/slim.patch`,
 
 Every export and `index.d.ts` stay as they are: a codec entry point rejects at call time with a
 message naming it as not built into this engine, instead of disappearing from the surface. The
-`image` crate's own pure-Rust decoders, including its WebP and JPEG decoders, are unaffected.
-AVIF, WebP and lossless JPEG stop working in the website's two engines only; the CLI, Vite and
-Astro are unaffected, because favseed never asks for any of them.
+`image` crate's own pure-Rust decoders, including its WebP and lossy JPEG decoders, are
+unaffected: only WebP *encoding* goes with libwebp. AVIF (decode and encode), WebP encoding,
+lossless JPEG recompression and JPEG XL decoding stop working in the website's two engines only;
+the CLI, Vite and Astro are unaffected, because favseed never asks for any of them.
 
 ## Sizes
 
@@ -152,7 +153,7 @@ published threaded WASM. These are local asset compression measurements, excludi
 headers; they are not Cloudflare transfer sizes. Generated icon sizes match the CLI. The slim
 engines built from image 1.16.0 (above) replace both of these.
 
-## Production verification
+## Production verification (2026-11-04, image 1.15.0)
 
 The automatic selector passed the same 30-case desktop matrix (179 files per mode) and
 12-case mobile matrix (71 files per mode), comparing filenames, SHA-256, sizes and metadata
@@ -163,6 +164,6 @@ handling are covered in the existing browser suite. Cold startup budgets still p
 A temporary system Firefox 161.0a1 profile with shared memory disabled also automatically
 selected compatibility under production headers, matching four default fixture sets and
 passing cancellation/retry. This is separate from the Playwright Firefox project: local
-bundled Firefox/WebKit binaries cannot launch on this host because of system-library
-incompatibilities. The existing Ubuntu CI matrix remains the full Firefox/WebKit gate;
-mobile emulation does not replace real-device checks.
+bundled Firefox/WebKit binaries would not launch, for unrelated system-library reasons. The
+existing Ubuntu CI matrix remains the full Firefox/WebKit gate; mobile emulation does not
+replace real-device checks.

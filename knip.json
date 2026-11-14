@@ -16,8 +16,8 @@
       // compatibility build; nothing imports it by name, so knip cannot see it is used.
       // The vendored engines in vendor/image/ import @emnapi/core, @emnapi/runtime and
       // @napi-rs/wasm-runtime directly, and knip resolves those imports on its own now that
-      // image.wasi-browser.js and image.wasip1-browser.js are real files again — listing them
-      // here as well would be a stale no-op, so they are left off.
+      // image.wasi-browser.js and image.wasip1-browser.js exist in vendor/image/; listing them
+      // here too would be a stale no-op, so they are left off.
       "ignoreDependencies": ["buffer"]
     }
   }
