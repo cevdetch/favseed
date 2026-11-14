@@ -1,16 +1,113 @@
-# Browser compatibility engine
+# The browser's two image engines
 
-The browser uses the threaded image engine when both document and worker can create and
-transfer shared WASM memory. Otherwise it loads a single-thread build of the same image
-1.15.0 source. Only one image loader/WASM is fetched per engine worker. Missing common
-WebAssembly/DecompressionStream support still reports a CLI alternative; download and
-initialization failures are not reasons to switch encoders.
+The website never imports the published `@napi-rs/image-wasm32-wasi` package. Both WASM engines
+in `site/vendor/image/` are built from the `@napi-rs/image` source with a patch that removes the
+codecs favseed never calls, then vendored and hash-checked at every site build.
 
-Both modes start with 64 MiB of growable memory. Compatibility mode runs image work inside
-one dedicated worker, with no child workers. Cancelling terminates that worker; retry starts
-fresh. The CLI and its dependencies do not use this vendored artifact.
+- **Threaded** (`image.wasi-browser.js`, `wasi-worker-browser.mjs`, `image.wasm32-wasi.wasm`) is
+  the default: it shares WASM memory with its worker threads and runs the quality and colour
+  search walks side by side (decision 30). It loads when the document and worker can both create
+  and transfer shared memory.
+- **Compatibility** (`image.wasip1-browser.js`, `image.wasm32-wasip1.wasm`) is the fallback
+  (`?no-isolation`), one dedicated worker, no child workers, no shared memory. It loads when the
+  page is not cross-origin isolated.
 
-## Measured tradeoff
+Only one engine is fetched per page load. Missing `SharedArrayBuffer`/`DecompressionStream`
+support still reports a CLI alternative; a download or initialization failure is not a reason to
+switch engines. Neither engine touches the CLI, Vite or Astro: they import the native
+`@napi-rs/image` package, unpatched, with every codec it ships.
+
+## Why the codecs come out
+
+favseed calls four things on the engine: `Transformer.fromSvg` (resvg rendering), PNG decode
+(`crop`, `png`, `rawPixels`, `metadata`), `pngQuantize` and `losslessCompressPng`. It never
+encodes or decodes AVIF, WebP or JPEG, lossy or lossless. Four codecs exist in the image source
+only for those formats: libavif with libaom (AVIF), mozjpeg (lossless JPEG recompression),
+libwebp (WebP encoding) and the JPEG XL decoder. `bench/wasm-engine/slim.patch`, applied to
+`packages/binding` of the reviewed source, removes all four:
+
+| File | Change |
+|---|---|
+| Cargo.toml | drops libavif, mozjpeg-sys, both libwebp-sys, jxl, moxcms and bytemuck |
+| src/avif.rs | keeps `AvifConfig`/`ChromaSubsampling`; `encode_avif_inner` errors |
+| src/jpeg.rs | lossy path (the `image` crate's own encoder) kept; mozjpeg lossless errors |
+| src/lib.rs | `mod jxl`/`mod jxl_hdr` removed; the files stay on disk, uncompiled |
+| src/transformer.rs | JPEG XL input and AVIF input rejected; `EncodeOutput::Avif(Vec<u8>)` holds a plain buffer |
+| src/webp.rs | both encoders error |
+
+Every export and `index.d.ts` stay as they are: a codec entry point rejects at call time with a
+message naming it as not built into this engine, instead of disappearing from the surface. The
+`image` crate's own pure-Rust decoders, including its WebP and JPEG decoders, are unaffected.
+AVIF, WebP and lossless JPEG stop working in the website's two engines only; the CLI, Vite and
+Astro are unaffected, because favseed never asks for any of them.
+
+## Sizes
+
+Raw bytes, then Node's zlib at gzip 9 and Brotli 11:
+
+| Engine | Raw | gzip 9 | Brotli 11 |
+|---|---:|---:|---:|
+| threaded, published 1.15.0 | 10,322,976 | 3,488,533 | 2,481,262 |
+| threaded, published 1.16.0 | 12,210,498 | 4,173,498 | 2,953,703 |
+| threaded, slim 1.16.0 (vendored) | 5,722,390 | 2,044,471 | 1,460,499 |
+| compatibility, vendored 1.15.0 | 10,285,192 | 3,463,405 | 2,470,599 |
+| compatibility, slim 1.16.0 (vendored) | 5,653,958 | 2,009,857 | 1,436,532 |
+
+See `docs/DECISIONS.md` (decision 31) for the full writeup, parity totals and browser timing.
+
+## Rebuilding
+
+Rebuild on Linux x64 with Rust 1.99.0 (`b940084d7`, 2026-09-28), the `wasm32-wasip1` and
+`wasm32-wasip1-threads` targets, Node/npm, and the WASI SDK 33 archive (its threads sysroot is
+under `share/wasi-sysroot/lib/wasm32-wasip1-threads`; the threaded build fails early if that
+directory is missing). Download these reviewed archives:
+
+- [Image source a57319b7506405d991696459830f1a0e60cc88bf](https://codeload.github.com/Brooooooklyn/Image/tar.gz/a57319b7506405d991696459830f1a0e60cc88bf)
+- [WASI SDK 33.0 Linux x64](https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-33.0-x86_64-linux.tar.gz)
+
+```sh
+rustup target add --toolchain 1.99.0 wasm32-wasip1 wasm32-wasip1-threads
+node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz
+# To replace the vendored engines, manifest and notices after reviewing an upgrade:
+node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz --write
+pnpm --filter favseed-site build
+pnpm --filter favseed-site test:browser
+```
+
+`build.mjs` checks the archive hashes and the Rust version before building, fetches both
+targets' crates with `cargo fetch --locked`, applies `slim.patch` with `patch -p1 --forward
+--fuzz=0`, and builds offline with `SOURCE_DATE_EPOCH=0` and normalized build/Cargo paths:
+threaded first (`wasm32-wasip1-threads`, default features, so oxipng's `parallel` stays on, with
+`--target=wasm32-wasi-threads -pthread` in the C flags), then compatibility (`wasm32-wasip1`,
+`--no-default-features --features binding`). Each engine's output moves to its own directory
+inside the source tree immediately after its build, because the napi CLI deletes the other WASI
+flavour's output as stale.
+
+**The parity gate.** Before anything is written, `compareEngines()` (`bench/wasm-engine/
+parity.mjs`) runs favseed's own `lib/engine.mjs` calls — `render`, `renderRgba`, `decode`,
+`losslessCompressPng`, `encode` and `pngQuantize` — over every fixture in `test/fixtures/` at six
+sizes, with and without a background, and hashes every output. Nothing is accepted unless both
+engines match the native `@napi-rs/image` module byte for byte; one fixture that draws text is
+skipped on both sides as host-dependent, since native resvg renders it with system fonts and the
+WASI sandbox has none. Without `--write`, the same build is checked against the committed
+`build.json` and artifacts instead of replacing them, so a rebuild with no intended change proves
+it is reproducible rather than merely passing parity again.
+
+Without `--write`, a failing check means one of: the archive hashes, the Rust version, a changed
+`Cargo.lock` (the recipe copies the reviewed lock in and fails if the build would change it), a
+runtime version drift (`@emnapi/core`, `@emnapi/runtime` or `@napi-rs/wasm-runtime` against
+`build.json`'s `runtime` block), or an artifact hash. `--write` regenerates `build.json`, copies
+the five engine files into `site/vendor/image/`, and collects `LICENSE` plus
+`THIRD-PARTY-NOTICES.txt` from the union of `cargo tree` over both targets and feature sets, the
+tooling lock's packages, wasi-libc and the Rust standard library notice.
+
+**The guard.** `site/build/wasi-runtime.mjs` runs `verifyEngines()` at `buildStart`: the native
+`@napi-rs/image` version against `build.json.imageVersion`, each runtime package's installed
+version against `build.json.runtime`, and every vendored file's SHA-256 against
+`build.json.artifacts`. Any drift fails the site build with a message pointing back here, rather
+than shipping an engine that silently stopped matching the CLI.
+
+## Measured tradeoff (2026-11-04, image 1.15.0)
 
 The 2026-11-04 investigation compared the published threaded image 1.15.0 package with a
 threadless prototype from its source revision. Linux, Ryzen 7 7840U (16 logical CPUs),
@@ -49,51 +146,11 @@ parity remains the acceptance check. Artifact path normalization for production 
 WASM bytes relative to the measured prototype. Generated icon bytes are checked separately.
 Raw prototype results are in [investigation.json](investigation.json).
 
-The committed compatibility WASM is 10,285,192 bytes raw, 3,463,405 bytes with gzip 9 and
-2,470,599 bytes with Brotli 11, versus 10,322,976/3,488,533/2,481,262 bytes for the published
-threaded WASM. These are local asset compression measurements, excluding JS and HTTP
-headers; they are not Cloudflare transfer sizes. Generated icon sizes match the CLI.
-
-## Rebuilding the vendored artifact
-
-Ordinary site builds use the checked-in files in `site/vendor/image-wasm32-wasip1/`.
-`site/build/wasi-runtime.mjs` rejects image/runtime version or artifact hash drift. A dependency
-upgrade must rebuild this candidate and pass both-mode native parity before updating the
-manifest. The generated loader is upstream output, with initial memory configured through
-`napi.wasm.threadlessInitialMemory=1024`; no image Rust source is patched.
-
-Rebuild on Linux x64 with Rust 1.99.0 (`b940084d7`, 2026-09-28), the `wasm32-wasip1`
-target, Node/npm, CMake, make and the host C/Clang toolchain. Download these reviewed archives:
-
-- [Image source 7bad478bfe647bca75d4c05db8726ca3d5335e80](https://codeload.github.com/Brooooooklyn/Image/tar.gz/7bad478bfe647bca75d4c05db8726ca3d5335e80)
-- [WASI SDK 33.0 Linux x64](https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-33.0-x86_64-linux.tar.gz)
-
-`build.json` records both archive SHA-256 hashes, lock hashes, runtime versions and artifact
-hashes. The recipe verifies archive hashes and the Rust version before building. npm uses the
-committed tooling lock with lifecycle scripts disabled. Cargo fetches the locked target
-inputs, then builds offline with SIMD128, a 16 MiB stack, SOURCE_DATE_EPOCH=0 and normalized
-build/Cargo paths.
-The fixed epoch removes mozjpeg-sys's embedded wall-clock build timestamp.
-The image build disables default features and enables `binding` for `wasm32-wasip1`.
-This removes oxipng's parallel feature; the upstream WASM quantizer is already serial.
-
-```sh
-rustup target add --toolchain 1.99.0 wasm32-wasip1
-node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz
-# To explicitly replace the candidate, manifest and notices after reviewing an upgrade:
-node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz --write
-pnpm --filter favseed-site build
-pnpm --filter favseed-site test:browser
-```
-
-Run from the repository root with the pinned toolchain active. The default command compares
-fresh output with the vendored artifacts; `--write` replaces them. Two clean builds in
-different temporary directories reproduced both committed artifact hashes. The site build
-publishes `engine-licenses.txt` from the upstream image license and collected
-third-party notices. The vendored binary is excluded from the npm package's file allowlist.
-The standard `~/.cargo` home remains supported. A custom `CARGO_HOME` must be inside the
-checkout or system temporary directory, like the archive paths; symlink escapes are rejected
-before archives are read or build tools run.
+The committed compatibility WASM at the time was 10,285,192 bytes raw, 3,463,405 bytes with
+gzip 9 and 2,470,599 bytes with Brotli 11, versus 10,322,976/3,488,533/2,481,262 bytes for the
+published threaded WASM. These are local asset compression measurements, excluding JS and HTTP
+headers; they are not Cloudflare transfer sizes. Generated icon sizes match the CLI. The slim
+engines built from image 1.16.0 (above) replace both of these.
 
 ## Production verification
 
@@ -109,7 +166,3 @@ passing cancellation/retry. This is separate from the Playwright Firefox project
 bundled Firefox/WebKit binaries cannot launch on this host because of system-library
 incompatibilities. The existing Ubuntu CI matrix remains the full Firefox/WebKit gate;
 mobile emulation does not replace real-device checks.
-
-The site build, 14 worker tests, 392 root tests and the existing CDP parity/lifecycle
-harness passed. A manual build-guard probe rejected changed image/runtime versions and both loader/WASM hashes, then accepted the restored
-manifest. Production response headers and real-device behavior need checking after deployment.

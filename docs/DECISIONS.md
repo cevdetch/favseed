@@ -772,7 +772,8 @@ decoded candidate: 46 B/px over its canvas, up from 42 (`referenceBytes`).
 
 **The engine loads on intent, not on idle.** The page fetches no JavaScript worker and no WASM
 before the visitor does something: the image engine is the page's largest download, 2.5 MB at
-Brotli 11 ([bench/wasm-engine/SLIM.md](../bench/wasm-engine/SLIM.md)), and a visitor who
+Brotli 11 ([bench/wasm-engine](../bench/wasm-engine/README.md); decision 31 brings that down to
+1.5 MB), and a visitor who
 only reads the documentation should not pay for it, nor should it sit in a page-weight audit
 such as Lighthouse's, which counts what the page transfers while it loads. An idle-time
 preload would spend that on every visit. Loading starts instead on the first pointer, focus or
@@ -791,15 +792,103 @@ On a touch screen `pointerenter` fires when a finger goes down, so a scroll that
 on the drop zone also loads the engine. That is accepted: a touch there is still a sign of
 intent, and the engine is cached afterwards, so an idle scroll costs the download once.
 
-**Recorded next step: a slim engine.** The WASM carries AVIF, WebP and lossless-JPEG codecs
-favseed never calls. Built without them, the engine is 1 433 110 B at Brotli 11 against
-2 470 599 for the single-thread build (−42 %), and 1 456 603 against 2 481 262 for the
-threaded one, with 6 000 of 6 000 engine outputs identical in each mode over every fixture;
-on the 9 Mbps link it is ready about a second sooner (−32 %), and the first set moves by the
-same second ([bench/wasm-engine/SLIM.md](../bench/wasm-engine/SLIM.md)). It is not shipped
-here. The single-thread engine's build recipe exists and gains only a patch step; the threaded
-engine is the published npm package today, so a slim one means building and vendoring it, with
-the same both-mode parity checks the single-thread engine carries. That is its own change.
+**Slim engine, shipped in decision 31.** The WASM carried AVIF, WebP, lossless-JPEG and JPEG XL
+codecs favseed never calls. Decision 31 builds both engines from the image source with those
+codecs removed and vendors the result, in place of the npm package this decision shipped.
+
+### 31. The website builds its own engines
+
+favseed calls `@napi-rs/image` four ways: `Transformer.fromSvg` (resvg rendering), PNG decode
+(`crop`, `png`, `rawPixels`, `metadata`), `pngQuantize` and `losslessCompressPng`. It never
+encodes or decodes AVIF or WebP, and never recompresses a lossless JPEG or decodes a JPEG XL.
+Those four codecs are still compiled into both of the website's WASM engines, because the
+compatibility engine (decision 26) vendored the published build unpatched and the threaded
+engine was the published npm package (decision 30). `bench/wasm-engine/slim.patch`, applied to
+`packages/binding` of the image 1.16.0 source, removes libavif/libaom, mozjpeg, libwebp and the
+JPEG XL decoder (about 636 lines removed, 52 added across Cargo.toml and five `.rs` files).
+Every export and `index.d.ts` stay as they are; a removed codec's entry point now rejects at
+call time with a message naming it as not built into this engine, rather than disappearing.
+
+**Sizes**, raw bytes then Node's zlib at gzip 9 and Brotli 11:
+
+| Engine | Raw | gzip 9 | Brotli 11 |
+|---|---:|---:|---:|
+| threaded, published 1.15.0 (shipped by decision 30) | 10,322,976 | 3,488,533 | 2,481,262 |
+| threaded, published 1.16.0 | 12,210,498 | 4,173,498 | 2,953,703 |
+| threaded, slim 1.16.0 (now vendored) | 5,722,390 | 2,044,471 | 1,460,499 |
+| compatibility, vendored 1.15.0 (shipped by decision 26) | 10,285,192 | 3,463,405 | 2,470,599 |
+| compatibility, slim 1.16.0 (now vendored) | 5,653,958 | 2,009,857 | 1,436,532 |
+
+The slim threaded engine is 53 % smaller raw than the published 1.16.0 package and 51 % smaller
+over Brotli, −1.49 MB. The slim compatibility engine is 45 % smaller raw than the engine it
+replaces and 42 % smaller over Brotli, −1.03 MB. Both loaders embed `initial: 1024` pages (64
+MiB); the slim modules import a minimum of 993 (threaded) and 992 (compatibility) pages, so
+both run on the unmodified loader, as the published modules did at 1012 and 1010.
+
+**Parity.** `bench/wasm-engine/parity.mjs` runs favseed's own `lib/engine.mjs` calls — render,
+decode, `losslessCompressPng` and `encode`/`pngQuantize` at several quality and colour settings
+— over every fixture in `test/fixtures/` at six sizes, with and without a background, and
+hashes every output: 5,760 cases per engine. Confirmed on two independent clean builds: threaded
+5,760 of 5,760 identical to native 1.16.0, compatibility 5,760 of 5,760 identical, with one
+fixture (`dependent.svg`) skipped on both sides as host-dependent — it draws text, which native
+resvg renders with system fonts the WASI sandbox does not have.
+
+**Browser timing**, choose→ready, choose→first set and choose→final set medians at default
+effort, three interleaved repetitions, before (`0089ea0`, the published/vendored 1.15.0
+engines of decisions 26 and 30) against after (`3160cc3`, the slim 1.16.0 engines), Chromium
+158.0.8127.18, Ryzen 7 7840U ([bench/browser](../bench/browser/README.md)):
+
+| network, mode | mark | choose→ready | choose→first set | choose→final set |
+|---|---|---|---|---|
+| unthrottled, threaded | `general` | 147 → 130 ms (−12 %) | 648 → 653 ms (+1 %) | 2,790 → 2,715 ms (−3 %) |
+| | `gradient` | 145 → 126 ms (−13 %) | 1,045 → 1,039 ms (−1 %) | 6,137 → 6,082 ms (−1 %) |
+| unthrottled, compat | `general` | 124 → 114 ms (−8 %) | 780 → 764 ms (−2 %) | 3,959 → 3,973 ms (±0 %) |
+| | `gradient` | 120 → 108 ms (−10 %) | 1,604 → 1,611 ms (±0 %) | 10,104 → 10,348 ms (+2 %) |
+| throttled, threaded | `general` | 3,155 → 2,062 ms (−35 %) | 4,052 → 2,559 ms (−37 %) | 6,240 → 4,932 ms (−21 %) |
+| | `gradient` | 2,979 → 2,065 ms (−31 %) | 3,893 → 2,990 ms (−23 %) | 9,621 → 8,701 ms (−10 %) |
+| throttled, compat | `general` | 2,862 → 1,927 ms (−33 %) | 3,490 → 2,558 ms (−27 %) | 6,640 → 5,723 ms (−14 %) |
+| | `gradient` | 2,859 → 1,922 ms (−33 %) | 4,324 → 3,462 ms (−20 %) | 12,779 → 12,036 ms (−6 %) |
+
+Unthrottled, the engine itself is 8–13 % quicker to report ready, but the page was already
+showing a set in well under a second, so the final set moves by at most 3 %, inside the
+machine's own run-to-run noise. The gain is on the throttled link, where the engine is the
+page's largest fetch: ready arrives 31–35 % sooner on both fixtures in both modes, the quick
+set 20–37 % sooner, and even the final set, which still waits on the search rather than the
+download, lands 6–21 % sooner because less of its wall clock is spent waiting on bytes that
+have not arrived yet.
+
+**Reproducibility.** A `--write` run was followed by two separate runs without `--write`, each
+checking the recipe's own inputs (archive hashes, the Rust version, the reviewed `Cargo.lock`,
+the tooling lock, the runtime package versions) against `build.json`, and every artifact's
+bytes against its recorded SHA-256, instead of replacing them. Both reported a match, and the
+five vendored files were byte-identical across all three runs. A rebuild takes about 6 minutes
+on a Ryzen 7 7840U.
+
+**Cost.** `slim.patch` is reapplied, by hand, at every `@napi-rs/image` upgrade; a hunk that no
+longer matches the upstream source stops the build rather than silently dropping out. The
+threaded engine is now a second vendored artifact, built here rather than downloaded, so it
+carries the same hash-and-version guard the compatibility engine already had — and, patch or
+no patch, it is no longer byte-identical to anything upstream publishes: a local build's Rust
+toolchain and locked dependency resolution differ from napi's own CI, down to how many
+allocator and runtime-hook exports the napi macro generates. The four removed codecs are
+unavailable in the website's two engines only: the CLI, Vite and Astro import the native,
+unpatched package and keep every codec it ships, which costs favseed nothing because it never
+calls them there either.
+
+**Why vendored, not built during deploy.** The patch, the Rust toolchain, the WASI SDK and the
+parity gate could run as a deploy step instead of a one-time rebuild. Keeping them out of the
+deploy path is a maintainer decision: an ordinary site build stays free of Rust, so a contributor
+or a CI runner without a Rust toolchain can still build and ship the site, and a broken engine
+rebuild cannot block a deploy that changes nothing about the engine. The cost is git history: a
+vendored `.wasm` pair is committed at every image upgrade that changes bytes, and git keeps the
+superseded blobs alongside the new ones rather than diffing them, so each such upgrade adds
+roughly 2 × the pair's raw size to the repository's history — about 22.8 MB for this upgrade's
+pair (5,722,390 + 5,653,958 B) — rather than reproducing the engines from source on every
+deploy.
+
+This supersedes the "measured, not shipped" status of the slim-engine findings decision 30
+recorded: the comparison that ran against the published 1.15.0 build and reported it as a
+follow-up now ships, rebuilt against the 1.16.0 source.
 
 ---
 

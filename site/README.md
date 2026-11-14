@@ -52,8 +52,10 @@ regenerated card before committing it. The site build copies the committed PNG.
 ## One engine and identical output
 
 The browser imports the same `lib/core.mjs`, `lib/config.mjs`, `lib/engine.mjs`, and
-`lib/pipeline.mjs` as the CLI. The host adapters inject native or WASI
-`@napi-rs/image` 1.15.0, the shared rebuilt Google Zopfli WASM, SVGO, and a deflate decoder.
+`lib/pipeline.mjs` as the CLI. The host adapters inject native `@napi-rs/image` 1.16.0, or a
+browser build of the same 1.16.0 source with the codecs favseed never calls removed
+([bench/wasm-engine](../bench/wasm-engine/README.md)), the shared rebuilt Google Zopfli WASM,
+SVGO, and a deflate decoder.
 Matching self-contained source and normalized options produce identical files, links, and placement.
 The browser includes a manifest by default; the CLI needs `--manifest` to match.
 
@@ -159,10 +161,12 @@ Vite keeps JavaScript chunks external even when they fall below its inlining thr
 Other hosts must apply the security headers too; the local browser harnesses test the production
 policy. After deployment, verify the actual document and worker response headers on Cloudflare.
 
-`build/wasi-runtime.mjs` tunes the pinned threaded image1.15.0 loader's initial memory and spare
-worker preload, and verifies the compatibility artifact hashes and image/runtime versions. It rejects changed package versions or loader defaults, retaining the memory
-maximum, growth synchronization and cleanup. Both hosts load `lib/zopfli.wasm` through the same
-adapter; the rebuild recipe and licenses live in `bench/zopfli/` and `lib/`.
+`build/wasi-runtime.mjs` verifies both vendored image 1.16.0 engines' artifact hashes and the
+image/runtime package versions at build start, and caps the threaded loader's spare worker
+preload. Initial memory is set when the engines are built (`bench/wasm-engine`), not rewritten
+here; the pool cap is still a build-time transform. It rejects a changed package version, loader
+default or artifact hash. Both hosts load `lib/zopfli.wasm` through the same adapter; the
+rebuild recipe and licenses live in `bench/zopfli/` and `lib/`.
 
 The compatibility loader also starts at 64 MiB, with unshared growable memory and no child
 workers. Its pinned rebuild recipe, provenance and benchmark are in
