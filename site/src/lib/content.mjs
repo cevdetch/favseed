@@ -1,7 +1,7 @@
 // URLs, breadcrumbs and neighbours for the Markdown pages, from their collection entries.
 export const slugOf = (entry) => entry.id.replace(/(^|\/)index$/, '');
 export const pathOf = (entry) => `/${slugOf(entry)}`;
-const sectionOf = (entry) => slugOf(entry).split('/')[0];
+export const sectionOf = (entry) => slugOf(entry).split('/')[0];
 
 const siblings = (entry, entries) =>
   entries.filter((other) => sectionOf(other) === sectionOf(entry)).toSorted((a, b) => a.data.order - b.data.order);

@@ -238,6 +238,32 @@ test('Markdown pages are drawn as cards: <main> holds only <section> elements', 
   }
 });
 
+test('llms.txt links every indexable page once: Markdown pages by their .md alternate', () => {
+  const text = readFileSync(join(dist, 'llms.txt'), 'utf8');
+  assert.match(text, /^# favseed\n\n> /);
+  const links = [...text.matchAll(/\]\((https:\/\/favseed\.cevdet\.ch\/[^)]*)\)/g)].map((match) => match[1]);
+  const listed = links
+    .map((href) => new URL(href).pathname.replace(/\.md$/, ''))
+    .map((path) => (path === '' ? '/' : path));
+  const pagesListed = listed.filter((path) => pages.has(path));
+  assert.deepEqual([...new Set(pagesListed)].sort(), indexable, 'llms.txt lists exactly the indexable pages');
+  assert.equal(new Set(pagesListed).size, pagesListed.length, 'a page is listed twice');
+  for (const href of links) {
+    const path = new URL(href).pathname;
+    if (path.endsWith('.md')) assert.ok(existsSync(join(dist, path)), `${href} does not exist`);
+    else if (pages.has(path === '/' ? '/' : path))
+      assert.ok(!markdownPages.includes(path), `${href} should link the .md alternate`);
+  }
+});
+
+test('llms-full.txt holds every Markdown page in full', () => {
+  const text = readFileSync(join(dist, 'llms-full.txt'), 'utf8');
+  for (const path of markdownPages) {
+    const markdown = readFileSync(join(dist, `${path}.md`), 'utf8');
+    assert.ok(text.includes(markdown.trim()), `${path} is missing from llms-full.txt`);
+  }
+});
+
 const site = fileURLToPath(new URL('..', import.meta.url));
 const git = (...args) =>
   execFileSync('git', args, { cwd: site, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
