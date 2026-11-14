@@ -9,7 +9,7 @@
     "test": "node --test test/worker.mjs test/sections.mjs",
     "test:browser": "playwright test",
     "test:dist": "node --test test/seo.mjs",
-    "build": "astro build && deadhead dist --fail-on=harmful",
+    "build": "node build/unshallow.mjs && astro build && deadhead dist --fail-on=harmful",
     "preview": "astro preview"
   },
   "dependencies": {
