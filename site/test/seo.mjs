@@ -161,6 +161,48 @@ test('every indexable page has the same header bar, and it links only indexable 
   assert.deepEqual(current('/docs/cli'), ['/docs'], 'one current link on /docs/cli');
 });
 
+test('the header bar lists the sections in the order the site promises', () => {
+  const labels = all(navOf(pages.get('/')), /<a [^>]*>([^<]+)<\/a>/g);
+  assert.deepEqual(labels, ['Generator', 'Docs', 'Guides', 'Benchmarks', 'GitHub']);
+  // The flex layout ignores the whitespace; a text-only reader and a copy-paste do not.
+  assert.doesNotMatch(navOf(pages.get('/')), /<\/a><a/, 'two header links with no whitespace between them');
+});
+
+// A guide is any page whose breadcrumb passes through the Guides hub, /outputs included.
+export const guides = articles.filter((path) => {
+  const shown = /<nav aria-label="Breadcrumb"[^>]*>([\s\S]*?)<\/nav>/.exec(pages.get(path))?.[1] ?? '';
+  return path !== '/guides' && /href="\/guides"/.test(shown);
+});
+
+test('every guide links the generator and a docs page', () => {
+  assert.ok(guides.includes('/outputs'), '/outputs sits under Guides');
+  for (const path of guides) {
+    const main = /<main>([\s\S]*)<\/main>/.exec(pages.get(path))[1];
+    const links = hrefs(main);
+    assert.ok(links.includes('/'), `${path} links the generator`);
+    assert.ok(
+      links.some((href) => href.startsWith('/docs')),
+      `${path} links a docs page`,
+    );
+  }
+});
+
+test('an inline tag does not run into the word before or after it', () => {
+  // Astro's compiler can drop a source line break that sits directly before an opening inline
+  // tag or directly after a closing one, gluing two words together with no space (e.g.
+  // "with<a href=...>" renders as "withfavseed"). Checked inside <main>, where every page's
+  // prose lives.
+  const glued = (html, re) => [...html.matchAll(re)].map((match) => match[0]);
+  const beforeOpen = /[A-Za-z0-9](?=<(?:a|code|strong|em)[ >])/g;
+  const afterClose = /<\/(?:a|code|strong|em)>(?=[A-Za-z0-9])/g;
+  for (const path of indexable) {
+    const main = /<main>([\s\S]*)<\/main>/.exec(pages.get(path))?.[1];
+    if (!main) continue;
+    assert.deepEqual(glued(main, beforeOpen), [], `${path}: a word runs into an opening tag`);
+    assert.deepEqual(glued(main, afterClose), [], `${path}: a closing tag runs into a word`);
+  }
+});
+
 test('pages other than the homepage ship no JavaScript', () => {
   for (const path of articles) {
     const html = pages.get(path);
@@ -247,6 +289,14 @@ const markdownPages = walk(content)
         .replace(/\/?index$/, ''),
   )
   .toSorted();
+
+test('the Guides hub links /outputs and every page of the guides collection', () => {
+  const collection = markdownPages.filter((path) => path.startsWith('/guides/'));
+  assert.ok(collection.length > 0, 'the guides collection has pages');
+  const main = /<main>([\s\S]*)<\/main>/.exec(pages.get('/guides'))[1];
+  const links = hrefs(main);
+  for (const path of ['/outputs', ...collection]) assert.ok(links.includes(path), `/guides does not link ${path}`);
+});
 
 test('exactly the Markdown pages link a .md alternate', () => {
   assert.ok(markdownPages.includes('/docs'), 'the docs hub is a Markdown page');

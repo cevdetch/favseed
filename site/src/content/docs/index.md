@@ -87,6 +87,7 @@ Use the same `/icon.svg` URL in `<link rel="icon">` and `<img>`, so the browser 
 - [Astro integration](/docs/astro): setup, options, caching and head injection.
 - [Node API](/docs/node-api): `build()`, `buildFiles()`, the TypeScript types and the portable core.
 - [Troubleshooting](/docs/troubleshooting): common problems and how to upgrade safely.
+- [Guides](/guides): the minimal favicon set, maskable icons and dark-mode favicons.
 - [How it works](/how-it-works): the steps from one SVG to the finished set, from SVG optimisation and safe-zone placement to the accuracy bar and Zopfli.
 - [Outputs](/outputs): each file favseed writes, the HTML it needs, and which browser or platform reads it.
 - [Benchmarks](/benchmarks): measured bytes, accuracy and build time behind favseed's defaults.

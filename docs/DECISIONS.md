@@ -368,8 +368,8 @@ The advice is real and the cost is real (decision 22 states it in full): on a pl
 does not mask, the padded icon shows a smaller mark on its ground. But two files cost a second
 512 px render, a second manifest entry, and (the deciding point) a mark that can only ever be
 in one of the two places: padded for the mask or full-bleed for the desktop. The set is padded
-into the safe zone, so it is both in fact. Chrome also will not install a PWA whose icons are
-all `maskable`; it needs at least one `any`. `--bg none` opts out of all of it: transparent,
+into the safe zone, so it is both in fact. Chrome also will not offer to install a PWA whose icons
+are all `maskable`; it needs at least one `any`. `--bg none` opts out of all of it: transparent,
 unpadded, `"any"` only.
 
 **Measured placement.** The farthest opaque pixel's outer corner, found on a render at the
@@ -466,7 +466,7 @@ crisper size *near* the measured fit and moving a number the caller chose would 
 mean something different from what it says. Capped at 45: 50 leaves no mark at all, and a
 value that produces an empty icon should be a message rather than a blank PNG.
 
-**`"any maskable"` on one file.** Chrome will not install a PWA whose icons are all
+**`"any maskable"` on one file.** Chrome will not offer to install a PWA whose icons are all
 `maskable` (it needs at least one `any`), so the padded set cannot be `maskable` alone, and
 maintaining a second unpadded file doubles the 512 px cost for a mark that can only sit in one
 place. The set is padded into the safe zone, so `"any maskable"` is honest.

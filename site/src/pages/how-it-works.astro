@@ -32,8 +32,8 @@ const efforts = [
 
   <section>
     <h2 id="2-placement-in-the-safe-zone">2. Placement in the safe zone</h2>
-    <p>Every platform that installs a web app shows the icon through a shape of its own: a circle, a squircle, a
-      rounded square. The W3C Web App Manifest names the area every one of those masks shows, a circle centred on the
+    <p>Android, ChromeOS and macOS show an installed web app's icon through a shape of their own: a circle, a
+      squircle, a rounded square. Windows and Linux draw it as it is. The W3C Web App Manifest names the area every one of those masks shows, a circle centred on the
       icon with a radius of 40% of its size. iOS's rounded square contains that circle whole, so the apple-touch-icon
       and the manifest icons are all placed the same way.</p>
     <p>With <code>--padding auto</code>, the default, favseed renders the mark at each icon's own size, finds the
@@ -110,8 +110,7 @@ const efforts = [
 
   <section>
     <h2 id="why-each-step-is-this-way">Why each step is this way</h2>
-    <p>Each step was chosen by measurement. <a href="https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md">docs/DECISIONS.md</a>
-      records the decisions in force and the ones they replaced,
+    <p>Each step was chosen by measurement. <a href="https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md">docs/DECISIONS.md</a> records the decisions in force and the ones they replaced,
       and <a href="https://github.com/cevdetch/favseed/blob/main/docs/BENCHMARKS.md">docs/BENCHMARKS.md</a> holds the
       reproducible sweeps.</p>
     <p>One engine, nothing to install. <code>@napi-rs/image</code> bundles the resvg and oxipng versions favseed was
@@ -134,8 +133,7 @@ const efforts = [
       use your ground and the safe-zone fit.
       The <a href="https://github.com/cevdetch/favseed/blob/main/bench/framing/README.md">framing report</a> records
       the raster proportions, bytes and timings.
-      The <a href="https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md">precision report</a>
-      records the SVG rounding policy and the matched Vite PWA comparison. The rounding check covers the static base
+      The <a href="https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md">precision report</a> records the SVG rounding policy and the matched Vite PWA comparison. The rounding check covers the static base
       appearance before PNG quantisation; it is not a guarantee for every display size, animation frame or media
       state.</p>
   </section>

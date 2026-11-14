@@ -2,8 +2,10 @@
 // removed flag fails here rather than in a reader's terminal.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildFiles } from '../bin/favseed.mjs';
 import { linkTags } from '../lib/core.mjs';
 
 const root = new URL('..', import.meta.url);
@@ -81,4 +83,27 @@ test('the README byte table matches the byte manifest for the general fixture', 
     const bytes = manifest.files[`default/general/${file}`].bytes.toLocaleString('en-GB');
     assert.match(readme, new RegExp(`\\| \`${file.replace('.', '\\.')}\` \\|[^\\n]*\\| ${bytes} B \\|`), file);
   }
+});
+
+// The dark-mode guide's example is a real source: built with favseed, its icon.svg still holds
+// the prefers-color-scheme block the guide says survives (decision 25).
+test('the dark-mode guide example keeps its dark rules in icon.svg', async () => {
+  const guide = read('site/src/content/guides/dark-mode-favicon.md');
+  const svg = /```svg\n([\s\S]*?)\n```/.exec(guide)?.[1];
+  assert.ok(svg, 'the guide has an svg code block');
+  const dir = mkdtempSync(join(tmpdir(), 'favseed-guide-'));
+  try {
+    writeFileSync(join(dir, 'icon.svg'), svg);
+    const { files } = await buildFiles({ input: join(dir, 'icon.svg'), effort: 'fast' });
+    const icon = new TextDecoder().decode(files.find((file) => file.name === 'icon.svg').bytes);
+    assert.match(icon, /prefers-color-scheme:\s*dark/);
+    assert.ok(guide.includes(`\`\`\`text\n${icon}\n\`\`\``), 'the guide shows the icon.svg favseed builds');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the dark-mode guide links block is what favseed --html prints', () => {
+  const guide = read('site/src/content/guides/dark-mode-favicon.md');
+  assert.ok(guide.includes(linkTags('/', false).trim()), 'guide <link> block differs from linkTags()');
 });

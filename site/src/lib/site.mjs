@@ -32,6 +32,7 @@ export const pageUrl = (pathname) => new URL(pathOfUrl(pathname), SITE).href;
 export const nav = [
   ['/', 'Generator'],
   ['/docs', 'Docs'],
+  ['/guides', 'Guides'],
   ['/benchmarks', 'Benchmarks'],
   ['https://github.com/cevdetch/favseed', 'GitHub'],
 ];
