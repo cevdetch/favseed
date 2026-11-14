@@ -7,7 +7,10 @@ import { join } from 'node:path';
 import { linkTags } from '../lib/core.mjs';
 
 const root = new URL('..', import.meta.url);
-const read = (path) => readFileSync(new URL(path, root), 'utf8');
+// A Windows checkout carries CRLF line endings; every comparison in this file is against text
+// built or written with \n, so normalise before comparing rather than let the test depend on
+// the checkout's line endings.
+const read = (path) => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n', '\n');
 const source = read('bin/favseed.mjs');
 const flags = new Set(
   [...source.match(/const CLI_FLAGS = new Set\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]),

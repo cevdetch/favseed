@@ -56,7 +56,7 @@ export const meta = (html, key) =>
   decode(one(html, new RegExp(`<meta (?:name|property)="${key}" content="([^"]*)"`, 'g'), key));
 export const titleOf = (html) => decode(one(html, /<title>([^<]*)<\/title>/g, 'title'));
 export const graphOf = (html) =>
-  JSON.parse(one(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, 'JSON-LD'));
+  JSON.parse(one(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script\s*>/gi, 'JSON-LD'));
 // Anything that renders a page without a header bar is not one of the site's pages.
 const navOf = (html) => one(html, /<nav aria-label="Site"[^>]*>([\s\S]*?)<\/nav>/g, 'header bar');
 const hrefs = (html) => all(html, /<a [^>]*href="([^"]+)"/g).map(decode);
@@ -164,7 +164,7 @@ test('every indexable page has the same header bar, and it links only indexable 
 test('pages other than the homepage ship no JavaScript', () => {
   for (const path of articles) {
     const html = pages.get(path);
-    const scripts = all(html, /<script([^>]*)>/g).filter(
+    const scripts = all(html, /<script([^>]*)>/gi).filter(
       (attributes) => !/type="application\/ld\+json"/.test(attributes),
     );
     assert.deepEqual(scripts, [], `${path}: script elements`);
