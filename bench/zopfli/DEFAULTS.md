@@ -105,7 +105,7 @@ failures and invalid Astro options on cache hits. The deleted logo asset's 404 r
 Run CPU benchmarks sequentially without browser tests competing for CPU. Competitor dependencies
 must be installed outside the pnpm workspace. Save the four pre-change modules before modifying
 production; `default-performance.mjs` accepts that directory. The exact local snapshot/raw outputs
-are retained under ignored `.superpowers/sdd/2026-10-31-default-performance/`; their source hashes
+are kept locally and not committed; their source hashes
 are in [default-environment.json](default-environment.json). Reconstructing that uncommitted baseline
 on a fresh clone requires those saved modules.
 

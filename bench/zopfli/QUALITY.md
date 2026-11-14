@@ -100,7 +100,7 @@ pnpm --filter favseed-site build
 pnpm --filter favseed-site test:browser
 ```
 
-The local before snapshot/raw results remain ignored at `.superpowers/sdd/2026-10-31-png-quality/`.
+The before snapshot/raw results are kept locally and not committed.
 Recreating that uncommitted baseline on a fresh clone requires the saved modules. Compact evidence:
 [pipeline timings](quality-pipeline.csv), [output hashes](quality-files.csv),
 [full quality/source-accuracy screen](quality-screen.csv), [environment and source hashes](quality-environment.json).
@@ -112,5 +112,4 @@ outputs byte-for-byte: 69,291 PNG/ICO bytes, including 35,560 bytes for the four
 Normal builds and cache identity resolve to 80; supplying custom colors alone retains the quality 100
 fixed-palette path. Explicit lower quality plus colors remains an error. Current native 225 tests
 (223 pass, two optional skips), site 10 tests/build and 16 desktop/mobile Chromium checks pass. Firefox/WebKit
-still require supported CI validation. Raw proof remains ignored under
-`.superpowers/sdd/2026-10-31-default-quality 80/`.
+still require supported CI validation. Raw proof is kept locally and not committed.

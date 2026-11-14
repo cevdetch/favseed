@@ -63,7 +63,7 @@ improves at 30. Fixture frequencies cannot predict which setting will win for an
 
 ## Controlled Vite PWA encoder comparison
 
-The user identified `@vite-pwa/assets-generator` as the competitor. This comparison pins
+`@vite-pwa/assets-generator` is the competitor. This comparison pins
 version 2.0.0 with Sharp 0.35.5. Its [PNG defaults](https://github.com/vite-pwa/assets-generator/blob/main/src/api/defaults.ts)
 are `compressionLevel: 9, quality: 60`. The
 [minimal-2023 preset](https://github.com/vite-pwa/assets-generator/blob/main/src/presets/minimal-2023.ts)
@@ -140,8 +140,7 @@ The original temporary competitor dependency installation no longer exists; envi
 records the measured native library versions. A new install can resolve different transitive
 JavaScript dependencies even with the generator and Sharp versions pinned above.
 
-Raw local metadata, PNGs and measurement rows remain under
-`.superpowers/sdd/2026-10-30-zopfli-effort/{full,vite-control,vite-quality}/` (git-ignored).
+Raw local metadata, PNGs and measurement rows are kept locally and not committed.
 Independent checks recomputed the aggregate timings, byte totals, minima and repeated hashes
 from all 1,112 measurement rows, checked saved outputs against those hashes, and decoded all
 396 effort outputs again to verify losslessness. They also confirmed that the four Favseed

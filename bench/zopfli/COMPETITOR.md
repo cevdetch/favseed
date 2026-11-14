@@ -172,9 +172,8 @@ node bench/pipeline-concurrency.mjs /fresh/concurrency-results 0
 
 Compact data: [generator timings](generator.csv), [Vite builds](vite-build.csv),
 [experiment summary](experiments.csv), [palette regression](palette-regression.csv).
-Raw rows, output PNGs, logs, dependency lockfile and validation live under the git-ignored
-`.superpowers/sdd/2026-10-31-generator-performance/`. The earlier 44-PNG iteration sweep and
-16-PNG encoder controls remain in `.superpowers/sdd/2026-10-30-zopfli-effort/`.
+Raw rows, output PNGs, logs, dependency lockfile and validation are kept locally and not
+committed, as are the earlier 44-PNG iteration sweep and 16-PNG encoder controls.
 
 Fresh native validation passes: 206 tests, two optional skips; site unit tests pass 10/10
 and the production build succeeds. Full Chromium parity passes all 104 files across 15

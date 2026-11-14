@@ -72,7 +72,7 @@ node bench/vite-pwa-accuracy.mjs /fresh/results
 Use the pinned isolated dependencies above. The low-effort argument 3 is retained for the historical
 harness interface; the selected arms here use only 0/120 iterations. `matched-summary.json` and
 `matched-files/` include the real ICO step. `summary.json` contains PNG-only encoder timings/totals.
-Raw files and source scores are retained under ignored `.superpowers/sdd/2026-10-31-matched-preset/`.
+Raw files and source scores are kept locally and not committed.
 The main run used the pre-existing PNG harness, then the identical new matched-ICO phase separately;
 a short full-harness run validates the reusable path and reproduces the saved hashes.
 
