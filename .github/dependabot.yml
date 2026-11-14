@@ -9,6 +9,11 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: deps
+    # The site pins these to the exact versions @napi-rs/image-wasm32-wasi depends on, so the
+    # threaded and compatibility engines share one runtime. They move with that package.
+    ignore:
+      - dependency-name: '@emnapi/*'
+      - dependency-name: '@napi-rs/wasm-runtime'
 
   - package-ecosystem: github-actions
     directory: /
