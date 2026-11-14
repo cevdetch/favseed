@@ -17,7 +17,7 @@ favseed needs Node 24 or newer and nothing else. Add it to a project:
 npm install --save-dev favseed
 ```
 
-Or run it once with `npx favseed`. The image engine, `@napi-rs/image`, installs with the package: resvg, oxipng and a quantiser in one native module, prebuilt for Linux, macOS and Windows on x64 and arm64, and FreeBSD on x64. Zopfli, which recompresses the PNGs, is bundled as WebAssembly built from Google's source, and the command line and this website share it.
+Or run it once with `npx favseed`. The image engine, `@napi-rs/image`, installs with the package: resvg, oxipng and a quantiser in one native module, prebuilt for Linux, macOS and Windows on x64 and arm64, and FreeBSD on x64. Zopfli, which recompresses the PNGs, is bundled as WebAssembly, and the command line and this website share it. It is built from the same Google source as `@gfx/zopfli` 1.0.15, rebuilt with a modern LLVM; [bench/zopfli](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/README.md) holds its source, toolchain checksums and build recipe. Zopfli finishing also tries a guarded lossless palette pass, and the [Vite PWA comparison](https://github.com/cevdetch/favseed/blob/main/bench/zopfli/COMPETITOR.md) records its byte savings and its speed, size and accuracy tradeoffs.
 
 ## Start in 30 seconds
 
@@ -63,7 +63,9 @@ Astro installs the package and adds the integration to `astro.config.mjs`. The `
 
 ### Website
 
-Open [the generator](/), choose an SVG and download the set as a zip. The build runs in your browser tab, so nothing is uploaded. If it will not start, [Troubleshooting](/docs/troubleshooting#common-problems) lists what the browser needs.
+Open [the generator](/), choose an SVG and download the set as a zip. The build runs in a worker in your browser tab, so nothing is uploaded, and you can cancel it. At the default and maximum efforts the page shows a quick set first, the `--effort fast` files, ready to download, and replaces it with the final set when the search ends. Progress counts each encode, and each file shows the setting it kept.
+
+The page includes a manifest; use `--manifest` for the matching CLI set. The [site's README](https://github.com/cevdetch/favseed/blob/main/site/README.md) lists the browser requirements and measurements. If the generator will not start, [Troubleshooting](/docs/troubleshooting#common-problems) lists what the browser needs.
 
 ## What you get
 

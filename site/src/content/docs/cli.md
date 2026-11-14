@@ -13,7 +13,7 @@ order: 1
 npx favseed logo.svg --out public
 ```
 
-The build writes the set to the output directory and prints each file's size. These are all the flags:
+The build writes the set to the output directory, prints each file's size and tells you if your mark is animated. These are all the flags:
 
 ```text
 -o, --out DIR     Output directory (default: current)
@@ -75,7 +75,7 @@ A `var()` with no fallback and no override is an error, not a black square. resv
 
 The padded icons get an opaque ground, `#000000` by default. iOS composites a transparent Home Screen icon onto black anyway, and a maskable icon should be opaque, so the alpha channel would be lost regardless. Black is what the platform would have done to a transparent icon, minus the tRNS chunk.
 
-favseed warns when you did not choose a ground, because the right one depends on your mark, not on the format. Use `--bg '#fff'` for a mark drawn on light, or `--bg none` to keep the alpha. `--bg none` also makes the set unpadded and declares it `"any"` only: a platform composites a transparent icon onto a colour of its own choosing, so the safe zone would mean nothing, and padding the ICO fallback only makes the mark smaller.
+favseed warns when you did not choose a ground, because the right one depends on your mark, not on the format. Use `--bg '#fff'` for a mark drawn on light, or `--bg none` to keep the alpha. `--bg none` also leaves the numbered PNGs and `favicon.ico` unpadded, declared `"any"` only, while `apple-touch-icon.png` is still placed in the safe zone: a platform composites a transparent icon onto a colour of its own choosing, so the safe zone would mean nothing, and padding the ICO fallback only makes the mark smaller.
 
 With `--bg none`, an explicit `--padding` affects only `apple-touch-icon.png`; the numbered PNGs and `favicon.ico` stay unpadded. The CLI warns about this after a successful build, even when the options come from a config file or `--quiet` is set.
 
@@ -89,7 +89,7 @@ favseed validates the colour by asking resvg to render a 1×1 pixel with it, so 
 
 `auto` then snaps a mark drawn on a grid to whole pixels: a seven-block grid mark at 512 px drops from 1,905 partly covered edge pixels to none, and at 180 px the same mark snaps from 116 to 112 px and the apple icon is 151 B.
 
-A number, such as `--padding 12`, sets a fixed percentage per side, applied as given and never snapped. A source that is opaque in all four corners is full-bleed: it is drawn with its own ground and used as it is. `--bg none` turns placement off: the set stays transparent and unpadded, declared `"any"` only.
+A number, such as `--padding 12`, sets a fixed percentage per side, applied as given and never snapped. A source that is opaque in all four corners is full-bleed: it is drawn with its own ground and used as it is. Under `--bg none` the numbered PNGs and `favicon.ico` stay transparent and unpadded, declared `"any"` only; `apple-touch-icon.png` is still placed in the safe zone.
 
 ## Effort and pinned settings
 
@@ -101,7 +101,7 @@ Every PNG and the ICO payload must pass the accuracy bar: at most 1% of pixels o
 | `default` | A binary search over quality 40 to 99 at the full palette, then over palettes of 2 to 256 colours at quality 100. The smallest candidate that passes wins. | 15 iterations |
 | `max` | Every one of those candidates; the smallest that passes wins. | 120 iterations |
 
-When no candidate passes, as with a 48 px ICO of a dense grid, favseed keeps the `fast` encode; when quality 80 fails and another candidate passes, that candidate wins even if it is larger. Builds are deterministic at every effort. The Vite plugin and the Astro integration use `fast` in dev and the configured effort in a build.
+When no candidate passes, for a mark too fine for its pixel grid such as a 48 px ICO of a dense grid, favseed keeps the `fast` encode; when quality 80 fails and another candidate passes, that candidate wins even if it is larger. Builds are deterministic at every effort. The Vite plugin and the Astro integration use `fast` in dev and the configured effort in a build.
 
 `--quality N` or `--colors N` (`quality` and `colors` in a config, the Node API, Vite and Astro) pins that exact setting instead: one encode, no search, at the effort's Zopfli iterations. Quality alone pins that quality at the full palette. Colours alone pin that palette at quality 100. Both together are allowed only at quality 100.
 
@@ -111,6 +111,6 @@ SVG optimisation, SVG precision selection and safe-zone placement are the same a
 
 ## How files are written
 
-The CLI and `build()` stage the complete set before publishing it. When a write fails, favseed restores the previous file contents and symlinks and removes the files it had newly installed. If the filesystem also refuses the restoration, the error names the recovery directory it kept: keep that directory until you have recovered the affected files. Cleanup failures name any staging directories left behind.
+The CLI and `build()` stage the complete set before publishing it. After a handled write failure, favseed restores the previous file contents and symlinks and removes the files it had newly installed. If the filesystem also refuses the restoration, the error names the recovery directory it kept: keep that directory until you have recovered the affected files. Cleanup failures name any staging directories left behind.
 
 Unrelated files in the output directory are left alone. Use one writer per output directory: each file is replaced individually, so the set as a whole is not atomic and a crash is not covered. Rollback copies keep file contents, but timestamps, extended attributes and hardlink relationships may change.

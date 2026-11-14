@@ -1,4 +1,4 @@
-// Every CLI flag the README or a docs page names is one bin/favseed.mjs accepts. A renamed or
+// Every CLI flag the README or a site page names is one bin/favseed.mjs accepts. A renamed or
 // removed flag fails here rather than in a reader's terminal.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,29 +12,52 @@ const flags = new Set(
   [...source.match(/const CLI_FLAGS = new Set\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]),
 );
 
-// Tokens that look like flags but are not favseed's: CSS custom properties written as their own
-// code span, and the option-syntax placeholders the CLI page explains.
-const notFlags = new Set(['--opt', '--brand', '--loop']);
+// Tokens that look like flags but are not favseed's: a CSS custom property written as its own
+// code span, and the option-syntax placeholder the CLI page explains.
+const notFlags = new Set(['--opt', '--brand']);
 
-const docs = readdirSync(new URL('site/src/content/', root), { recursive: true })
-  .filter((name) => name.endsWith('.md'))
-  .map((name) => join('site/src/content', name));
+const list = (dir, extension) =>
+  readdirSync(new URL(dir, root), { recursive: true })
+    .filter((name) => name.endsWith(extension))
+    .map((name) => join(dir, name));
+const docs = list('site/src/content', '.md');
+const pages = list('site/src/pages', '.astro');
 
-// A flag in prose is always code: an inline code span starting with it, or a favseed command line.
-const named = (markdown) => {
+const FLAG = /(?:^|\s)(--?[a-zA-Z][\w-]*)/g;
+const COMMAND = /^\s*(?:\$ )?(?:npx |pnpm (?:exec |dlx )?)?favseed\b/;
+
+// Inline code: a span that starts with a flag names it, and a span that is a favseed command
+// names every flag in it.
+const fromCode = (span, found) => {
+  const flag = /^(--?[a-zA-Z][\w-]*)/.exec(span)?.[1];
+  if (flag) found.add(flag);
+  if (COMMAND.test(span)) for (const [, each] of span.matchAll(FLAG)) found.add(each);
+};
+
+// A flag in prose is always code: an inline code span (`…` in Markdown, <code>…</code> in a
+// hand-written page), a favseed command line, or a line of a fenced flag reference, which starts
+// with `-x,` or `--flag`.
+const named = (text) => {
   const found = new Set();
-  for (const [, span] of markdown.matchAll(/`([^`\n]+)`/g)) {
-    const flag = /^(--?[a-zA-Z][\w-]*)/.exec(span)?.[1];
-    if (flag) found.add(flag);
+  for (const [, span] of text.matchAll(/`([^`\n]+)`/g)) fromCode(span, found);
+  for (const [, span] of text.matchAll(/<code>([\s\S]*?)<\/code>/g)) fromCode(span, found);
+  for (const [line] of text.matchAll(/^.*\bfavseed\b(?! *\().*$/gm)) {
+    if (COMMAND.test(line)) for (const [, flag] of line.matchAll(FLAG)) found.add(flag);
   }
-  for (const [line] of markdown.matchAll(/^.*\bfavseed\b(?! *\().*$/gm)) {
-    if (!/^\s*(?:\$ )?(?:npx |pnpm (?:exec |dlx )?)?favseed\b/.test(line)) continue;
-    for (const [, flag] of line.matchAll(/\s(--?[a-zA-Z][\w-]*)/g)) found.add(flag);
+  for (const [, block] of text.matchAll(/^```[^\n]*\n([\s\S]*?)^```/gm)) {
+    for (const line of block.split('\n')) {
+      if (/^\s*(?:-[a-zA-Z],|--[a-zA-Z])/.test(line)) for (const [, flag] of line.matchAll(FLAG)) found.add(flag);
+    }
   }
   return [...found].filter((flag) => !notFlags.has(flag));
 };
 
-for (const file of ['README.md', ...docs]) {
+test('the parser finds the flag reference, short forms included', () => {
+  const found = new Set(named(read('README.md')));
+  for (const flag of ['-o', '--sizes', '-q', '-V', '--version', '-h', '--help']) assert.ok(found.has(flag), flag);
+});
+
+for (const file of ['README.md', ...docs, ...pages]) {
   test(`${file} names only flags the CLI accepts`, () => {
     for (const flag of named(read(file))) assert.ok(flags.has(flag), `${file}: ${flag} is not a favseed flag`);
   });

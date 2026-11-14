@@ -48,8 +48,9 @@ const efforts = [
       size, keeps its exact fit. A source that is opaque in all four corners is full-bleed and is used as drawn.</p>
     <p>The padded icons sit on the <code>--bg</code> ground, <code>#000000</code> unless you choose another. That is
       what iOS composites a transparent icon onto anyway, and a maskable icon has to be opaque, so a colour with
-      transparency is refused. <code>--bg none</code> keeps the whole set transparent and unpadded,
-      declared <code>any</code> only. The ICO is never padded.</p>
+      transparency is refused. <code>--bg none</code> keeps the whole set transparent: the numbered icons
+      are then unpadded and declared <code>any</code> only, while the apple-touch-icon is still placed in the safe
+      zone. The ICO is never padded.</p>
   </section>
 
   <section>
@@ -115,7 +116,7 @@ const efforts = [
       reproducible sweeps.</p>
     <p>One engine, nothing to install. <code>@napi-rs/image</code> bundles the resvg and oxipng versions favseed was
       measured with, and its renders match the resvg CLI pixel for pixel. Against the native pipeline of resvg,
-      pngquant and oxipng it replaced, it came out 9% smaller on a gradient and 0.46% larger across nine flat marks
+      pngquant and oxipng it replaced, the earlier engine comparison found it 9% smaller on a gradient and 0.46% larger across nine flat marks
       (decision 26). Writing the ICO header in favseed removed the only dependency with no npm package and no
       Windows build.</p>
     <p>The search pays for itself. At the default effort, over 568 rasters, the smallest passing candidate came to
