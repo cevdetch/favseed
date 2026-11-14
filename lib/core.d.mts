@@ -84,8 +84,6 @@ export function placeInSafeZone(
 export function linkTags(base?: string, manifest?: boolean): string;
 export function declaresIcon(html: string): boolean;
 export function squareIconSvg(iconData: string): { data: string; warning: string | null };
-export function viewBoxNumbers(value: string): number[];
-export function manifestPurpose(bg: string | null): 'any maskable' | null;
 
 export interface ManifestIcon {
   src: string;
