@@ -1,15 +1,20 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { satteri } from '@astrojs/markdown-satteri';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { siteHeaders, developmentHeaders, productionHeaders } from './headers.mjs';
 import { wasiRuntime } from './build/wasi-runtime.mjs';
+import { gitDates, pageSources } from './build/lastmod.mjs';
+import sections from './src/lib/sections.mjs';
+import { SITE } from './src/lib/site.mjs';
 
 // A static site on Cloudflare Pages, built from main by the Pages dashboard: no adapter, no
 // deploy workflow. Everything that touches an SVG runs in the visitor's tab: there is no
 // endpoint to upload a mark to, because there is no server to receive it.
 export default defineConfig({
-  site: 'https://favseed.cevdet.ch',
+  // One origin for the sitemap, robots.txt, canonical URLs and the JSON-LD graphs.
+  site: SITE,
   output: 'static',
   // Astro owns document/preview responses and forwards these headers to Vite's assets.
   server: { headers: siteHeaders },
@@ -25,11 +30,19 @@ export default defineConfig({
     // unnoticed.
     inlineStylesheets: 'always',
   },
+  // Markdown pages are drawn as cards like the .astro ones, and code stays plain <pre>: the
+  // existing pages carry no highlighter, and Shiki's inline colours would be a new look.
+  markdown: { processor: satteri({ hastPlugins: [sections] }), syntaxHighlight: false },
   integrations: [
     sitemap({
       // The homepage and the documentation pages are indexable; /check and the 404 page are
       // noindex and stay out.
       filter: (page) => !['/check', '/404'].includes(new URL(page).pathname),
+      // lastmod is the last commit to the page's own source, left out when git cannot say.
+      serialize: (item) => {
+        const { modified } = gitDates(pageSources(new URL(item.url).pathname));
+        return modified ? { ...item, lastmod: modified } : item;
+      },
     }),
     {
       name: 'favseed-host',

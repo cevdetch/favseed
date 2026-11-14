@@ -115,6 +115,13 @@ On an up-to-date `main` with a clean working tree and CI green:
 9. Submit to the [Astro integrations directory](https://astro.build/integrations/): it indexes
    npm packages carrying the `astro-integration` keyword, which `package.json` has.
 
+10. Point the docs at the published package, in one PR:
+    - remove the "favseed is not on npm yet" sentences from `README.md` and
+      `site/src/content/docs/index.md`;
+    - add <https://www.npmjs.com/package/favseed> to the homepage's `SoftwareSourceCode`
+      JSON-LD in `site/src/pages/index.astro` and to the links in
+      `site/src/pages/llms.txt.ts`.
+
 ## Every later release
 
 1. On a branch, set the new version in `package.json`, and move the `## [Unreleased]` entries
