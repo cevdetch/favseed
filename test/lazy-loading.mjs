@@ -2,6 +2,7 @@
 // replacing the optimizer: reject only loads these entry paths must not need.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { describe, it } from 'node:test';
@@ -69,7 +70,13 @@ describe('lazy build dependencies', () => {
     `,
     );
     assert.match(stdout, /Usage:\s+favseed/);
-    assert.match(stdout, /favseed \d+\.\d+\.\d+ \(@napi-rs\/image 1\.15\.0/);
+    const imageVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dependencies[
+      '@napi-rs/image'
+    ];
+    assert.match(
+      stdout,
+      new RegExp(`favseed \\d+\\.\\d+\\.\\d+ \\(@napi-rs/image ${imageVersion.replaceAll('.', '\\.')}`),
+    );
   });
 
   it('rejects invalid build options and non-SVG input without loading build engines', async () => {

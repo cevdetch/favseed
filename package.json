@@ -80,7 +80,7 @@
     "format:check": "oxfmt --check ."
   },
   "dependencies": {
-    "@napi-rs/image": "1.15.0",
+    "@napi-rs/image": "1.16.0",
     "svgo": "^4.1.0"
   },
   "devDependencies": {
