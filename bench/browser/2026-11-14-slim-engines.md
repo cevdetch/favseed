@@ -2,7 +2,8 @@
 
 Two builds of the same site, measured side by side on 2026-11-14 with Chromium 158.0.8127.18,
 Node v26.13.1, on AMD Ryzen 7 7840U with Radeon 780M Graphics (16 logical CPUs), load average
-2.3 at the start of the sweep and 3.9 by the time it started (two unrelated builds were running
+2.3 when measurement began and 3.9 when the browser sweep started, after both site
+builds (two unrelated builds were running
 on the machine throughout; nothing in this repository competed for the CPU): **before** is the
 site at `0089ea0`, with the published `@napi-rs/image` 1.15.0 threaded engine and the 1.15.0
 compatibility engine vendored by decision 26; **after** is the same site with the slim 1.16.0

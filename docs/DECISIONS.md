@@ -823,7 +823,7 @@ call time with a message naming it as not built into this engine, rather than di
 | threaded, published 1.15.0 (shipped by decision 30) | 10,322,976 | 3,488,533 | 2,481,262 |
 | threaded, published 1.16.0 | 12,210,498 | 4,173,498 | 2,953,703 |
 | threaded, slim 1.16.0 (now vendored) | 5,722,390 | 2,044,471 | 1,460,499 |
-| compatibility, vendored 1.15.0 (shipped by decision 26) | 10,285,192 | 3,463,405 | 2,470,599 |
+| compatibility, vendored 1.15.0 (shipped by decision 21) | 10,285,192 | 3,463,405 | 2,470,599 |
 | compatibility, slim 1.16.0 (now vendored) | 5,653,958 | 2,009,857 | 1,436,532 |
 
 The slim threaded engine is 53 % smaller raw than the published 1.16.0 package and 51 % smaller
