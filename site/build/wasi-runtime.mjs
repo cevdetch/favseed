@@ -12,7 +12,7 @@ const vendor = new URL('../vendor/image-wasm32-wasip1/', import.meta.url);
 const verifyThreadless = () => {
   const manifest = JSON.parse(readFileSync(new URL('build.json', vendor), 'utf8'));
   const fail = () => {
-    throw new Error('Compatibility engine changed; rebuild and verify parity using bench/browser-compat/README.md');
+    throw new Error('Compatibility engine changed; rebuild and verify parity using bench/wasm-engine/README.md');
   };
   for (const name of ['@napi-rs/image', '@napi-rs/image-wasm32-wasi']) {
     if (require(`${name}/package.json`).version !== manifest.imageVersion) fail();

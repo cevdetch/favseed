@@ -166,7 +166,7 @@ adapter; the rebuild recipe and licenses live in `bench/zopfli/` and `lib/`.
 
 The compatibility loader also starts at 64 MiB, with unshared growable memory and no child
 workers. Its pinned rebuild recipe, provenance and benchmark are in
-[bench/browser-compat](../bench/browser-compat/README.md); license notices ship at
+[bench/wasm-engine](../bench/wasm-engine/README.md); license notices ship at
 `/engine-licenses.txt`. It reduced sampled renderer memory but generated more slowly in the
 local investigation, so it is a fallback rather than the default.
 

@@ -79,9 +79,9 @@ This removes oxipng's parallel feature; the upstream WASM quantizer is already s
 
 ```sh
 rustup target add --toolchain 1.99.0 wasm32-wasip1
-node bench/browser-compat/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz
+node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz
 # To explicitly replace the candidate, manifest and notices after reviewing an upgrade:
-node bench/browser-compat/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz --write
+node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz --write
 pnpm --filter favseed-site build
 pnpm --filter favseed-site test:browser
 ```

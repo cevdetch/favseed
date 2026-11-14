@@ -433,7 +433,7 @@ without Zopfli, and its PNGs came out 2.4–6.2 % larger than the CLI's on typic
 matching self-contained input and options, effort included, produce identical bytes, links and placement
 ([site/README.md](../site/README.md)). The browser's single-thread compatibility build matched
 native SHA-256 on 184 files across 31 fixture and option cases
-([bench/browser-compat](../bench/browser-compat/README.md)).
+([bench/wasm-engine](../bench/wasm-engine/README.md)).
 
 **The split also broke the published package, for a short while.** `bin/favseed.mjs` imports
 `../lib/core.mjs`, and `files` shipped only `bin` and `astro`, so the tarball would have
@@ -772,7 +772,7 @@ decoded candidate: 46 B/px over its canvas, up from 42 (`referenceBytes`).
 
 **The engine loads on intent, not on idle.** The page fetches no JavaScript worker and no WASM
 before the visitor does something: the image engine is the page's largest download, 2.5 MB at
-Brotli 11 ([bench/browser-compat/SLIM.md](../bench/browser-compat/SLIM.md)), and a visitor who
+Brotli 11 ([bench/wasm-engine/SLIM.md](../bench/wasm-engine/SLIM.md)), and a visitor who
 only reads the documentation should not pay for it, nor should it sit in a page-weight audit
 such as Lighthouse's, which counts what the page transfers while it loads. An idle-time
 preload would spend that on every visit. Loading starts instead on the first pointer, focus or
@@ -796,7 +796,7 @@ favseed never calls. Built without them, the engine is 1 433 110 B at Brotli 11 
 2 470 599 for the single-thread build (−42 %), and 1 456 603 against 2 481 262 for the
 threaded one, with 6 000 of 6 000 engine outputs identical in each mode over every fixture;
 on the 9 Mbps link it is ready about a second sooner (−32 %), and the first set moves by the
-same second ([bench/browser-compat/SLIM.md](../bench/browser-compat/SLIM.md)). It is not shipped
+same second ([bench/wasm-engine/SLIM.md](../bench/wasm-engine/SLIM.md)). It is not shipped
 here. The single-thread engine's build recipe exists and gains only a patch step; the threaded
 engine is the published npm package today, so a slim one means building and vendoring it, with
 the same both-mode parity checks the single-thread engine carries. That is its own change.

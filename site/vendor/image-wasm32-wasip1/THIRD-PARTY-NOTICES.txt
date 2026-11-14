@@ -6933,7 +6933,7 @@ SOFTWARE.
 
 ----------------
 
-WASI SDK33 libc (see bench/browser-compat/WASI-LICENSE)
+WASI SDK33 libc (see bench/wasm-engine/WASI-LICENSE)
 
 WASI SDK33 libc notices (source 161b3195fc2558d2b1ba3eb9ffae3b2b47407623)
 https://github.com/WebAssembly/wasi-libc/tree/161b3195fc2558d2b1ba3eb9ffae3b2b47407623

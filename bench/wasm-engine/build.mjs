@@ -1,5 +1,5 @@
 // Rebuild only; ordinary site builds use the checked-in, hash-verified artifact.
-// Linux x64: node bench/browser-compat/build.mjs IMAGE.tar.gz WASI-SDK.tar.gz [--write]
+// Linux x64: node bench/wasm-engine/build.mjs IMAGE.tar.gz WASI-SDK.tar.gz [--write]
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import {
@@ -175,7 +175,7 @@ try {
       if (existsSync(file)) notices.set(name, { labels: [name + '/LICENSE'], text: readFileSync(file, 'utf8') });
     }
     notices.set('wasi-libc', {
-      labels: ['WASI SDK33 libc (see bench/browser-compat/WASI-LICENSE)'],
+      labels: ['WASI SDK33 libc (see bench/wasm-engine/WASI-LICENSE)'],
       text: readFileSync(join(here, 'WASI-LICENSE'), 'utf8'),
     });
     const sysroot = execFileSync('rustc', ['--print', 'sysroot'], { encoding: 'utf8' }).trim();
