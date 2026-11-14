@@ -1,7 +1,8 @@
 // Checks on the built site (run `pnpm --filter favseed-site build` first): every indexable page
 // has its own title, description and canonical URL, one H1, a JSON-LD graph whose @id links
 // resolve, the header bar, and links that land on a built page and an existing anchor. Markdown
-// pages also have their .md alternate and are drawn as cards, and the sitemap dates every page.
+// pages also have their .md alternate and are drawn as cards, the sitemap dates every page, and
+// every site link in the README lands on a built page.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -195,6 +196,18 @@ test('every internal link lands on a built file, and every fragment on an existi
       if (resolved.fragment)
         assert.ok(resolved.html && ids(resolved.html).has(resolved.fragment), `${path}: ${href} has no target`);
     }
+  }
+});
+
+test('every site link in the README lands on a built page and an existing anchor', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  const links = [...readme.matchAll(/https:\/\/favseed\.cevdet\.ch(\/[^\s)>"]*)?/g)].map((match) => match[1] ?? '/');
+  assert.ok(links.length >= 8, 'the README links the docs pages');
+  for (const href of links) {
+    const resolved = resolveLink(href);
+    assert.ok(resolved, `README links ${href}, which the site does not build`);
+    if (resolved.fragment)
+      assert.ok(resolved.html && ids(resolved.html).has(resolved.fragment), `README: ${href} has no target`);
   }
 });
 

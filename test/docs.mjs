@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { linkTags } from '../lib/core.mjs';
 
 const root = new URL('..', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -53,7 +54,7 @@ const named = (text) => {
 };
 
 test('the parser finds the flag reference, short forms included', () => {
-  const found = new Set(named(read('README.md')));
+  const found = new Set(named(read('site/src/content/docs/cli.md')));
   for (const flag of ['-o', '--sizes', '-q', '-V', '--version', '-h', '--help']) assert.ok(found.has(flag), flag);
 });
 
@@ -62,3 +63,19 @@ for (const file of ['README.md', ...docs, ...pages]) {
     for (const flag of named(read(file))) assert.ok(flags.has(flag), `${file}: ${flag} is not a favseed flag`);
   });
 }
+
+// The README's quickstart shows real output: the <link> block --html prints and the bytes of the
+// general fixture at the default effort, which test/hashes.mjs keeps in test/bytes.json.
+const manifest = JSON.parse(read('test/bytes.json'));
+
+test('the README links block is what favseed --html prints', () => {
+  assert.ok(read('README.md').includes(linkTags('/', false).trim()), 'README <link> block differs from linkTags()');
+});
+
+test('the README byte table matches the byte manifest for the general fixture', () => {
+  const readme = read('README.md');
+  for (const file of ['icon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) {
+    const bytes = manifest.files[`default/general/${file}`].bytes.toLocaleString('en-GB');
+    assert.match(readme, new RegExp(`\\| \`${file.replace('.', '\\.')}\` \\|[^\\n]*\\| ${bytes} B \\|`), file);
+  }
+});
