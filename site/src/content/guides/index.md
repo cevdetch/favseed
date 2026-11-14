@@ -11,6 +11,7 @@ order: 0
 
 - [The minimal favicon set](/outputs): which five files a site needs in 2026, and the HTML that links them.
 - [Maskable icons](/guides/maskable-icons): the safe zone, which platforms apply a mask, what Chrome needs to offer an install, and what one `any maskable` icon costs.
+- [Dark-mode favicon](/guides/dark-mode-favicon): an SVG favicon that switches colours with `prefers-color-scheme`, which browsers take one, and why the bitmap fallbacks keep the light colours.
 
 ## Make the set
 
