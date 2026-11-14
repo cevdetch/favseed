@@ -8,6 +8,7 @@
     "icons": "node ../bin/favseed.mjs",
     "test": "node --test test/worker.mjs",
     "test:browser": "playwright test",
+    "test:dist": "node --test test/seo.mjs",
     "build": "astro build && deadhead dist --fail-on=harmful",
     "preview": "astro preview"
   },

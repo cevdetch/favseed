@@ -187,8 +187,16 @@ From the repository root:
 ```sh
 pnpm --filter favseed-site test
 pnpm --filter favseed-site build
+pnpm --filter favseed-site test:dist
 node site/test/cdp-check.mjs
 ```
+
+`test:dist` reads the built `dist/`: every indexable page has its own title, 120 to 160
+character description, canonical URL and single H1, the same header bar, a JSON-LD graph whose
+`@id` references resolve within the page, and links that land on a built file and an existing
+anchor. Pages other than the homepage carry a breadcrumb trail that matches their
+BreadcrumbList and ship no JavaScript. The sitemap lists exactly the indexable pages, and
+`robots.txt` names it.
 
 The harness serves `dist/` with the required headers and drives real Chromium through Node's
 built-in DevTools WebSocket. It compares every file hash and shared metadata against native
@@ -225,10 +233,12 @@ capabilities, and the document can require compatibility even if its worker perm
 `test/page.spec.mjs` checks homepage title/description, canonical/Open Graph/JSON-LD
 consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.
 The documentation pages (`/how-it-works`, `/outputs`, `/benchmarks`) each get their own title,
-description and slash-free canonical URL, and the sitemap lists those pages and the homepage only.
+description and slash-free canonical URL.
 It also guards cold startup before any sign of intent, including form edits and a rejected PNG:
-no workers or engine/WASM requests, at most 5 KiB gzipped HTML, 4 KiB gzipped JavaScript,
-8 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. Actual responses include
+no workers or engine/WASM requests, at most 5.25 KiB gzipped HTML, 4 KiB gzipped JavaScript,
+8.5 KiB combined HTML/JavaScript/CSS and 5 KiB raw inline/external CSS. The header bar and the
+homepage's structured data (WebSite, WebApplication, SoftwareSourceCode) added 431 bytes gzipped,
+taking the homepage from 4,673 to 5,104 B of HTML and 8,131 to 8,562 B combined. Actual responses include
 imports and preloads; each body is compressed separately with gzip level 9. Inline CSS is
 already included in HTML for the combined budget. Images, headers and protocol overhead are
 excluded; these are reproducible size comparisons, not Cloudflare transfer measurements or

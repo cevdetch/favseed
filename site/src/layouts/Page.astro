@@ -3,6 +3,7 @@
 // and the footer. A page passes its title and description; the canonical URL is the page's own
 // slash-free path, the form Cloudflare Pages serves with 'never' and the file format.
 import '../styles/app.css';
+import { nav } from '../lib/site.mjs';
 
 interface Props {
   title: string;
@@ -10,7 +11,8 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const url = new URL(Astro.url.pathname.replace(/(?:index)?\.html$/, ''), Astro.site).href;
+const path = Astro.url.pathname.replace(/(?:index)?\.html$/, '') || '/';
+const url = new URL(path, Astro.site).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -36,6 +38,9 @@ const url = new URL(Astro.url.pathname.replace(/(?:index)?\.html$/, ''), Astro.s
 <slot name="head" />
 </head>
 <body>
+<nav aria-label="Site" class="site">
+  {nav.map(([href, label]) => <a href={href} aria-current={href === path ? 'page' : undefined}>{label}</a>)}
+</nav>
 <slot />
 
 <footer>

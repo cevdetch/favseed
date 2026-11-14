@@ -13,7 +13,7 @@ const efforts = [
 ---
 <Doc {title} {description} heading="How it works" {lede}>
   <section>
-    <h2>1. The SVG stage</h2>
+    <h2 id="1-the-svg-stage">1. The SVG stage</h2>
     <p>favseed checks that the file holds an <code>&lt;svg&gt;</code> element, then optimises it with SVGO. CSS custom
       properties are resolved first: <code>var(--brand, #0E7C68)</code> becomes its fallback unless you
       set <code>--var brand=…</code>. The renderer has no <code>var()</code> support and would draw the whole mark
@@ -31,7 +31,7 @@ const efforts = [
   </section>
 
   <section>
-    <h2>2. Placement in the safe zone</h2>
+    <h2 id="2-placement-in-the-safe-zone">2. Placement in the safe zone</h2>
     <p>Every platform that installs a web app shows the icon through a shape of its own: a circle, a squircle, a
       rounded square. The W3C Web App Manifest names the area every one of those masks shows, a circle centred on the
       icon with a radius of 40% of its size. iOS's rounded square contains that circle whole, so the apple-touch-icon
@@ -53,7 +53,7 @@ const efforts = [
   </section>
 
   <section>
-    <h2>3. Each raster against the accuracy bar</h2>
+    <h2 id="3-each-raster-against-the-accuracy-bar">3. Each raster against the accuracy bar</h2>
     <p>Each raster is rendered at its own size and scored against an unquantised render of your source, placed
       exactly like it. It passes when at most 1% of pixels are off by more than 8/255
       in any channel, and the edge-weighted luma error is at most 1.5883, on both a black and a white background.
@@ -76,7 +76,7 @@ const efforts = [
   </section>
 
   <section>
-    <h2>4. Finishing and packing</h2>
+    <h2 id="4-finishing-and-packing">4. Finishing and packing</h2>
     <p>Zopfli re-deflates each chosen PNG once, after the choice, so it never runs on a losing candidate. It is
       lossless: the decoded pixels are unchanged. The order matters, because the quantiser re-encodes from scratch
       and would throw away any recompression done before it. Measured at 192 px, the wrong order is 21.0% bigger.</p>
@@ -88,7 +88,7 @@ const efforts = [
   </section>
 
   <section>
-    <h2>Where it runs</h2>
+    <h2 id="where-it-runs">Where it runs</h2>
     <p>The command line needs Node 24 or newer. Its image engine, <code>@napi-rs/image</code>, carries resvg, oxipng
       and a quantiser in one native module, prebuilt for Linux, macOS and Windows on x64 and arm64, and FreeBSD on
       x64. Zopfli is a WebAssembly build of Google's source. The Vite plugin and the Astro integration run the same
