@@ -17,7 +17,7 @@
     "@emnapi/runtime": "2.0.0-alpha.5",
     "@napi-rs/image-wasm32-wasi": "1.15.0",
     "@napi-rs/wasm-runtime": "1.2.5",
-    "astro": "^7.3.8",
+    "astro": "^7.4.7",
     "buffer": "^6.0.3",
     "svgo": "^4.1.0"
   },
