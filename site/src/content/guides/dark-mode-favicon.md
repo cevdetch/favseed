@@ -50,7 +50,7 @@ The `viewBox` lets the icon scale to any size, and the `xmlns` makes it a standa
 | Firefox | 41 |
 | Safari on macOS | 26.0 |
 | Safari on iOS | 26.0 |
-| Chrome for Android | Supported (caniuse tracks only the current version, 157) |
+| Chrome for Android | Supported (caniuse tracks only the current version) |
 | Samsung Internet | 13.0 |
 
 Firefox 4 to 40 had partial support, "only loading the SVG favicon the first time, but not on subsequent loads". WebKit announced the Safari change with the [Safari 26 beta](https://webkit.org/blog/16993/news-from-wwdc25-web-technology-coming-this-fall-in-safari-26-beta/): "Safari 26 beta now supports the SVG file format for icons everyplace there are icons in the interface, including favicons." The announcement does not mention colour schemes.
@@ -63,7 +63,7 @@ Test with the real setting, not a simulated one. Chrome DevTools can [emulate `p
 
 `favicon.ico`, `apple-touch-icon.png` and the manifest PNGs are bitmaps, each with one appearance. A browser that does not take the SVG shows `favicon.ico`, in light and dark mode alike, so the light rules are what those visitors see on a dark tab strip.
 
-The query also reports the visitor's preference, not the colour behind the icon. In Firefox's New Tab shortcuts, an icon with dark rules once showed white on a white tile ([bug 1936587](https://bugzilla.mozilla.org/show_bug.cgi?id=1936587)).
+The query also reports the visitor's preference, not the colour behind the icon. An open Firefox bug reports an icon with dark rules showing white on a white New Tab shortcut tile ([bug 1936587](https://bugzilla.mozilla.org/show_bug.cgi?id=1936587)); a comment from October 2026 says the tiles now turn dark with a dark page background.
 
 So choose light colours that still read on a dark background, such as a mid-tone or a mark with a light outline, or draw the mark on a filled shape of its own so it carries its contrast with it. The example's mid blue passes that test; its dark rule only raises the contrast.
 
