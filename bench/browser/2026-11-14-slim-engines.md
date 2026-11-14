@@ -2,13 +2,12 @@
 
 Two builds of the same site, measured side by side on 2026-11-14 with Chromium 158.0.8127.18,
 Node v26.13.1, on AMD Ryzen 7 7840U with Radeon 780M Graphics (16 logical CPUs), load average
-2.3 when measurement began and 3.9 when the browser sweep started, after both site
-builds (two unrelated builds were running
-on the machine throughout; nothing in this repository competed for the CPU): **before** is the
-site at `0089ea0`, with the published `@napi-rs/image` 1.15.0 threaded engine and the 1.15.0
-compatibility engine vendored by decision 26; **after** is the same site with the slim 1.16.0
-engines recorded in `site/vendor/image/build.json` (`image.wasm32-wasi.wasm` 860d0610…4189,
-`image.wasm32-wasip1.wasm` e62b0ed8…f2cc).
+2.3 when measurement began and 3.9 when the browser sweep started, after both site builds
+(two unrelated builds were running on the machine throughout; nothing in this repository
+competed for the CPU): **before** is the site at `0089ea0`, with the published `@napi-rs/image`
+1.15.0 threaded engine and the 1.15.0 compatibility engine vendored by decision 21; **after**
+is the same site with the slim 1.16.0 engines recorded in `site/vendor/image/build.json`
+(`image.wasm32-wasi.wasm` 860d0610…4189, `image.wasm32-wasip1.wasm` e62b0ed8…f2cc).
 3 repetitions per fixture/effort cell and build, interleaved cell by cell with the builds taking
 turns to go first; the figure is the median in milliseconds, the range in parentheses is
 min–max, and the last two columns are the change in the median.
@@ -26,7 +25,7 @@ set differ at every effort but fast on both sides; only the image engines differ
 
 Only the image engines changed between before and after; the site code is identical at both
 points. Before, the threaded engine is the published `@napi-rs/image` 1.15.0 npm package and the
-compatibility engine is the 1.15.0 build vendored by decision 26. After, both are the slim 1.16.0
+compatibility engine is the 1.15.0 build vendored by decision 21. After, both are the slim 1.16.0
 engines: `bench/wasm-engine/build.mjs` applies `slim.patch` to the image 1.16.0 source and leaves
 out AVIF, WebP encoding, lossless JPEG (mozjpeg) and the JPEG XL decoder, none of which favseed
 calls. Every raster the search settles on is still byte for byte the one it chose before
