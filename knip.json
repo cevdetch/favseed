@@ -10,7 +10,13 @@
       "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"]
     },
     "site": {
-      "entry": ["src/pages/**/*.astro", "src/lib/engine-worker.mjs", "test/*.mjs", "headers.mjs"],
+      "entry": [
+        "src/pages/**/*.astro",
+        "src/content.config.mjs",
+        "src/lib/engine-worker.mjs",
+        "test/*.mjs",
+        "headers.mjs"
+      ],
       "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"],
       // buffer is the polyfill engine-worker.mjs installs as globalThis.Buffer for the
       // compatibility build; nothing imports it by name, so knip cannot see it is used.

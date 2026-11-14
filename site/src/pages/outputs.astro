@@ -36,7 +36,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
 ---
 <Doc {title} {description} heading="Outputs" {lede}>
   <section>
-    <h2>The set</h2>
+    <h2 id="the-set">The set</h2>
     <div>
       <table>
         <thead><tr><th>File</th><th>Format</th><th>Size</th><th>Bytes on the test marks</th></tr></thead>
@@ -51,7 +51,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2>The markup</h2>
+    <h2 id="the-markup">The markup</h2>
     <p>Put these tags in your <code>&lt;head&gt;</code>. <code>favseed --html --manifest</code> prints them, with
       the config's <code>base</code> in front of every <code>href</code> when the site is served under a path. The
       Vite plugin and the Astro integration add them for you, to any page that does not already link an icon.</p>
@@ -59,7 +59,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2><code>icon.svg</code></h2>
+    <h2 id="iconsvg"><code>icon.svg</code></h2>
     <p>The favicon for browsers that take an SVG icon, and the file to use for the logo on your pages. It keeps
       animation, styling and accessibility, and any <code>prefers-color-scheme</code> block, so a dark-mode rule
       changes the favicon with the browser’s colour scheme. Use the same <code>/icon.svg</code> URL in the link and
@@ -69,7 +69,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2><code>favicon.ico</code></h2>
+    <h2 id="faviconico"><code>favicon.ico</code></h2>
     <p>The fallback for browsers that do not take the SVG, and the file a browser asks for
       at <code>/favicon.ico</code> when a page declares no icon. It holds one 48×48 entry: a PNG inside a 22-byte
       container, transparent and unpadded. The link says <code>sizes="48x48"</code>, the size of the bitmap that is
@@ -81,7 +81,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2><code>apple-touch-icon.png</code></h2>
+    <h2 id="apple-touch-iconpng"><code>apple-touch-icon.png</code></h2>
     <p>iOS and iPadOS use it for the Home Screen, and Safari for Add to Dock. It is 180×180, 60 pt at @3x, the largest
       size Apple documents for a web clip; no iPhone renders above @3x. iOS prefers this file to the manifest icons
       and ignores their <code>purpose</code> and any SVG.</p>
@@ -91,7 +91,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2><code>icon-192.png</code> and <code>icon-512.png</code></h2>
+    <h2 id="icon-192png-and-icon-512png"><code>icon-192.png</code> and <code>icon-512.png</code></h2>
     <p>The manifest’s icons, declared <code>any maskable</code>. Android masks them to a circle, squircle or rounded
       square, ChromeOS and Chrome installs on macOS apply the system’s rounded shape, and Windows and Linux desktops
       draw them as they are. web.dev’s install criteria, Chrome’s documentation and MDN all ask for a 192 and a
@@ -103,7 +103,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2><code>site.webmanifest</code></h2>
+    <h2 id="sitewebmanifest"><code>site.webmanifest</code></h2>
     <p>Written with <code>--manifest</code>; the page on this site includes one by default. It lists the padded PNGs and nothing
       else, one entry per line:</p>
     <pre>{json}</pre>
@@ -113,7 +113,7 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   </section>
 
   <section>
-    <h2>Who reads what</h2>
+    <h2 id="who-reads-what">Who reads what</h2>
     <div>
       <table>
         <thead><tr><th>Platform</th><th>Reads</th><th>Shape</th><th>File</th></tr></thead>

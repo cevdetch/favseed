@@ -22,6 +22,19 @@ body {
   margin: 0 auto;
   padding: clamp(1.5rem, 6vw, 3rem) 1rem 4rem;
 }
+/* The header bar: plain links, the current page in the text colour. */
+nav.site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-block-end: 1.5rem;
+  font-size: 0.9rem;
+  & [aria-current] {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+}
 h1 {
   display: flex;
   align-items: center;

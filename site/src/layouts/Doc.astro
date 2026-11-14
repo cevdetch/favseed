@@ -1,20 +1,60 @@
 ---
-// A documentation page: the shared document, a way back to the tool, and the page's cards. Each
+// A documentation page: the shared document, a breadcrumb trail, and the page's cards. Each
 // direct child of the slot is a card, as on the homepage.
 import Page from './Page.astro';
+import { breadcrumbList, ids, jsonLd, pageUrl, pathOfUrl, person, website } from '../lib/site.mjs';
+import { gitDates, pageSources } from '../../build/lastmod.mjs';
 
 interface Props {
   title: string;
   description: string;
   heading: string;
   lede: string;
+  crumbs?: [string, string][];
+  label?: string;
+  markdown?: string;
+  pager?: { prev?: [string, string]; next?: [string, string] };
 }
 
-const { title, description, heading, lede } = Astro.props;
+const { title, description, heading, lede, crumbs = [], label = heading, markdown, pager } = Astro.props;
+const path = pathOfUrl(Astro.url.pathname);
+const url = pageUrl(Astro.url.pathname);
+// The newest and oldest commit to the page's own source; none in a shallow clone.
+const { published, modified } = gitDates(pageSources(path));
+const trail: [string, string][] = [['/', 'Home'], ...crumbs, [path, label]];
+const graph = jsonLd([
+  {
+    '@type': 'TechArticle',
+    '@id': `${url}#article`,
+    headline: heading,
+    description,
+    url,
+    inLanguage: 'en',
+    isPartOf: { '@id': ids.website },
+    author: { '@id': ids.person },
+    publisher: { '@id': ids.person },
+    breadcrumb: { '@id': `${url}#breadcrumb` },
+    ...(published && { datePublished: published }),
+    ...(modified && { dateModified: modified }),
+  },
+  breadcrumbList(url, trail),
+  website,
+  person,
+]);
 ---
 <Page {title} {description}>
+<Fragment slot="head">
+  <script type="application/ld+json" set:html={graph} />
+  {markdown && <link rel="alternate" type="text/markdown" href={markdown} />}
+</Fragment>
 <header>
-  <p><a href="/">favseed</a>: make a favicon set from one SVG, in your browser.</p>
+  <nav aria-label="Breadcrumb" class="crumbs">
+    <ol>
+      {trail.map(([href, name], index) =>
+        index < trail.length - 1 ? <li><a href={href}>{name}</a></li> : <li aria-current="page">{name}</li>,
+      )}
+    </ol>
+  </nav>
   <h1>{heading}</h1>
   <p>{lede}</p>
 </header>
@@ -22,4 +62,35 @@ const { title, description, heading, lede } = Astro.props;
 <main>
   <slot />
 </main>
+
+{pager && (pager.prev || pager.next) && (
+  <nav aria-label="Pages in this section" class="pager">
+    {pager.prev ? <a href={pager.prev[0]} rel="prev">← {pager.prev[1]}</a> : <span />}
+    {pager.next && <a href={pager.next[0]} rel="next">{pager.next[1]} →</a>}
+  </nav>
+)}
 </Page>
+
+<style is:global>
+  .crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+    color: var(--quiet);
+  }
+  .crumbs li + li::before {
+    content: '›';
+    content: '›' / '';
+    margin-inline-end: 0.4rem;
+  }
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 2rem;
+  }
+</style>

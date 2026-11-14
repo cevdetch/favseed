@@ -3,26 +3,40 @@
 // and something has to resolve and bundle them; the documentation pages share this page's
 // layout.
 import Page from '../layouts/Page.astro';
+import { ids, jsonLd, person } from '../lib/site.mjs';
 
-const title = 'favseed: one SVG in, an optimised favicon set out';
+const title = 'SVG favicon generator: one SVG, an optimised set - favseed';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
 const url = new URL('/', Astro.site).href;
-// JSON inside <script> ends at the first "</script", so every "<" is escaped.
-const jsonLd = JSON.stringify({
-  '@context': 'https://schema.org',
-  '@type': 'WebSite',
-  name: 'favseed',
-  url,
-  description,
-  inLanguage: 'en',
-  publisher: {
-    '@type': 'Person',
-    '@id': 'https://cevdet.ch/#person',
-    name: 'Cevdet',
-    url: 'https://cevdet.ch/',
-    sameAs: ['https://github.com/cevdetch'],
+const graph = jsonLd([
+  { '@type': 'WebSite', '@id': ids.website, name: 'favseed', url, description, inLanguage: 'en', publisher: { '@id': ids.person } },
+  {
+    '@type': 'WebApplication',
+    '@id': ids.app,
+    name: 'favseed',
+    url,
+    description: 'Makes favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons from one SVG, in the browser. The SVG is never uploaded.',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any',
+    browserRequirements: 'Requires WebAssembly and DecompressionStream, over HTTPS',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    author: { '@id': ids.person },
+    isPartOf: { '@id': ids.website },
   },
-}).replaceAll('<', '\\u003c');
+  {
+    '@type': 'SoftwareSourceCode',
+    '@id': ids.source,
+    name: 'favseed',
+    description: 'The favseed CLI, Vite plugin and Astro integration: one SVG in, an optimised favicon set out.',
+    codeRepository: 'https://github.com/cevdetch/favseed',
+    programmingLanguage: 'JavaScript',
+    runtimePlatform: 'Node.js 24',
+    license: 'https://opensource.org/license/mit',
+    author: { '@id': ids.person },
+  },
+  person,
+]);
 
 const outputs = [
   ['icon.svg', 'One optimized SVG for the favicon and page images, preserving animation and styling.'],
@@ -33,11 +47,11 @@ const outputs = [
 ];
 ---
 <Page {title} {description}>
-  <script slot="head" type="application/ld+json" set:html={jsonLd} />
+  <script slot="head" type="application/ld+json" set:html={graph} />
 
 <header>
-  <h1><img src="/icon.svg" alt="" width="40" height="40" />favseed</h1>
-  <p>One SVG in, an optimised favicon set out.</p>
+  <h1><img src="/icon.svg" alt="" width="40" height="40" />SVG favicon generator</h1>
+  <p>favseed turns one SVG into an optimised favicon set.</p>
   <p><small>
     Everything below runs in this tab. There is no upload endpoint, because there is no server
     to receive one: the page is static files.

@@ -1,0 +1,28 @@
+---
+// Every Markdown page under src/content/, drawn through the documentation layout.
+import { getCollection, render } from 'astro:content';
+import Doc from '../layouts/Doc.astro';
+import { pagerOf, pathOf, slugOf, trailOf } from '../lib/content.mjs';
+import { SITE } from '../lib/site.mjs';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('pages');
+  return entries.map((entry) => ({ params: { slug: slugOf(entry) }, props: { entry, entries } }));
+}
+
+const { entry, entries } = Astro.props;
+const { Content } = await render(entry);
+const { title, description, heading, label, lede } = entry.data;
+---
+<Doc
+  {title}
+  {description}
+  {heading}
+  {lede}
+  {label}
+  crumbs={trailOf(entry, entries)}
+  pager={pagerOf(entry, entries)}
+  markdown={new URL(`${pathOf(entry)}.md`, SITE).href}
+>
+  <Content />
+</Doc>

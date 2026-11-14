@@ -40,7 +40,7 @@ const vite = [
 ---
 <Doc {title} {description} heading="Benchmarks" {lede}>
   <section>
-    <h2>The smallest passing file against quality 80</h2>
+    <h2 id="the-smallest-passing-file-against-quality-80">The smallest passing file against quality 80</h2>
     <p>Before the search, every raster was one encode at quality 80. The search sweep built every raster a default set
       contains (the ICO payload, the apple-touch-icon and the 192 and 512 px icons) for 23 test fixtures, 80 openly
       licensed icons from four Iconify sets, and 39 private marks that are reported only as totals. It tried all 26
@@ -66,7 +66,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>The byte manifest in CI</h2>
+    <h2 id="the-byte-manifest-in-ci">The byte manifest in CI</h2>
     <p>CI rebuilds 11 fixtures at the default effort and checks every file’s bytes and hash. Their 44 rasters fell
       from 70,800 B at quality 80 to 41,904 B with the search (−40.8%), from −1.2% on <code>tiles</code> to −53.4%
       on <code>smil</code>. None grew, and every one passes both clauses of the bar against the suite’s independent
@@ -75,7 +75,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>Build time by effort</h2>
+    <h2 id="build-time-by-effort">Build time by effort</h2>
     <p>Wall clock for <code>favseed</code> on the command line, one default set, interleaved repetitions, median,
       on an 8-core, 16-thread Ryzen 7 7840U, load average about 2. The default and max figures below run the
       search's two walks at once (decision 30):</p>
@@ -94,7 +94,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>Zopfli iterations</h2>
+    <h2 id="zopfli-iterations">Zopfli iterations</h2>
     <p>The finish alone, over the default encode of every 192 and 512 px render of the fixtures. 15 iterations is the
       default effort’s count and 120 the maximum’s. Seconds are one pass each and move between runs; the bytes do not.
       Generated on 8 November 2026 with Node 26.13.0.</p>
@@ -112,7 +112,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>A 48 px ICO instead of 32 px</h2>
+    <h2 id="a-48-px-ico-instead-of-32-px">A 48 px ICO instead of 32 px</h2>
     <p>The same 20 fixtures with one 32 px or one 48 px entry, measured on 1 November 2026. Every other file was
       byte-identical between the two.</p>
     <div>
@@ -129,7 +129,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>Against Vite PWA assets-generator</h2>
+    <h2 id="against-vite-pwa-assets-generator">Against Vite PWA assets-generator</h2>
     <p>Version 2.0.0 with Sharp 0.35.5. To compare the encoders and not the sets, both received the same
       already-placed, unquantised pixels for four fixtures: a 48 px ICO and the 180, 192 and 512 px PNGs of each,
       16 files.</p>
@@ -149,7 +149,7 @@ const vite = [
   </section>
 
   <section>
-    <h2>Reproduce</h2>
+    <h2 id="reproduce">Reproduce</h2>
     <p>From a checkout, after <code>pnpm install</code>. The search sweep fetches its open corpus first, and reads
       private marks only from a directory you name.</p>
     <pre>node bench/bench.mjs --write
