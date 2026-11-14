@@ -12,11 +12,13 @@
     "site": {
       "entry": ["src/pages/**/*.astro", "src/lib/engine-worker.mjs", "test/*.mjs", "headers.mjs"],
       "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"],
-      // Loaded only from vendor/image-wasm32-wasip1/image.wasip1-browser.js (the single-threaded
-      // fallback build) and its dependency @napi-rs/wasm-runtime's own entry point, both outside
-      // knip's project glob, so static analysis never sees the import. buffer is the polyfill
-      // engine-worker.mjs installs as globalThis.Buffer for that same vendored build.
-      "ignoreDependencies": ["buffer", "@emnapi/core", "@emnapi/runtime", "@napi-rs/wasm-runtime"]
+      // buffer is the polyfill engine-worker.mjs installs as globalThis.Buffer for the
+      // compatibility build; nothing imports it by name, so knip cannot see it is used.
+      // The vendored engines in vendor/image/ import @emnapi/core, @emnapi/runtime and
+      // @napi-rs/wasm-runtime directly, and knip resolves those imports on its own now that
+      // image.wasi-browser.js and image.wasip1-browser.js are real files again — listing them
+      // here as well would be a stale no-op, so they are left off.
+      "ignoreDependencies": ["buffer"]
     }
   }
 }

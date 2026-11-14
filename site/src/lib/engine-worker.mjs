@@ -32,8 +32,8 @@ const load = (parentThreaded) => {
   if (loading) return loading;
   const threaded = checkCapabilities() && parentThreaded !== false;
   const image = threaded
-    ? import('@napi-rs/image-wasm32-wasi')
-    : import('../../vendor/image-wasm32-wasip1/image.wasip1-browser.js');
+    ? import('../../vendor/image/image.wasi-browser.js')
+    : import('../../vendor/image/image.wasip1-browser.js');
   return (loading = image
     .then((image) =>
       createEngine({

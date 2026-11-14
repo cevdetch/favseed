@@ -5,7 +5,7 @@ import { createWorkerClient } from '../src/lib/worker-client.mjs';
 import { normaliseOptions } from '../../lib/config.mjs';
 import { zip } from '../src/lib/zip.mjs';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { wasiRuntime } from '../build/wasi-runtime.mjs';
 import { checkCapabilities } from '../src/lib/capabilities.mjs';
 
@@ -89,20 +89,22 @@ test('worker requests retain the document decision to disable threads', async ()
 });
 
 test('WASI tuning accepts only the pinned loader and refuses unexpected defaults', () => {
-  const require = createRequire(import.meta.url);
-  const id = require.resolve('@napi-rs/image-wasm32-wasi/image.wasi-browser.js');
+  const id = fileURLToPath(new URL('../vendor/image/image.wasi-browser.js', import.meta.url));
   const source = readFileSync(id, 'utf8');
+  // The build already sets initial: 1024 (image 1.16.0 needs at least 993 pages threaded,
+  // 992 compatibility; see build.json), so the plugin no longer rewrites memory at all.
+  assert.ok(source.includes('initial: 1024'));
   const plugin = wasiRuntime();
   const result = plugin.transform(source, id);
   assert.ok(result.code.includes('initial: 1024'));
   assert.ok(result.code.includes('Math.min(4, Math.max('));
   assert.equal(plugin.transform(source, '/unrelated/image.wasi-browser.js'), undefined);
   assert.equal(plugin.transform(source, '/unrelated/index.js'), undefined);
-  assert.throws(() => plugin.transform(source.replace('initial: 4000', 'initial: 4096'), id), /WASI loader/);
   assert.throws(
     () => plugin.transform(source.replace('const __workerPoolSize', 'const __otherPoolSize'), id),
     /WASI loader/,
   );
+  assert.throws(() => plugin.transform(source.replace('const __asyncWorkPoolSize = 4\n', ''), id), /WASI loader/);
   assert.deepEqual(plugin.transform(source, id.replaceAll('/', '\\')), result);
 });
 

@@ -9,8 +9,9 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: deps
-    # The site pins these to the exact versions @napi-rs/image-wasm32-wasi depends on, so the
-    # threaded and compatibility engines share one runtime. They move with that package.
+    # The site pins these to the runtime the vendored engines in site/vendor/image/ were built
+    # and verified against, so the threaded and compatibility engines share one runtime. They
+    # move with a rebuild, not with an independent bump.
     ignore:
       - dependency-name: '@emnapi/*'
       - dependency-name: '@napi-rs/wasm-runtime'
