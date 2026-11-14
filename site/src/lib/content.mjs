@@ -1,4 +1,6 @@
 // URLs, breadcrumbs and neighbours for the Markdown pages, from their collection entries.
+import { SITE } from './site.mjs';
+
 export const slugOf = (entry) => entry.id.replace(/(^|\/)index$/, '');
 export const pathOf = (entry) => `/${slugOf(entry)}`;
 export const sectionOf = (entry) => slugOf(entry).split('/')[0];
@@ -21,5 +23,7 @@ export const pagerOf = (entry, entries) => {
 };
 
 // The raw page for the .md alternate and llms-full.txt: the heading and lede the layout shows,
-// then the Markdown as written.
-export const markdownOf = (entry) => `# ${entry.data.heading}\n\n${entry.data.lede}\n\n${entry.body.trim()}\n`;
+// then the Markdown as written. Read away from the site, a root-relative link has no host, so
+// links to the site's own pages become absolute here; the HTML pages keep them relative.
+export const markdownOf = (entry) =>
+  `# ${entry.data.heading}\n\n${entry.data.lede}\n\n${entry.body.trim()}\n`.replaceAll('](/', `](${SITE}/`);

@@ -147,13 +147,18 @@ test('every page but the homepage is an article with a breadcrumb trail matching
 });
 
 test('every indexable page has the same header bar, and it links only indexable pages', () => {
-  const bars = indexable.map((path) => navOf(pages.get(path)).replace(/ aria-current="page"/g, ''));
+  const bars = indexable.map((path) => navOf(pages.get(path)).replace(/ aria-current="[^"]*"/g, ''));
   assert.equal(new Set(bars).size, 1, 'the header bar differs between pages');
   const local = hrefs(bars[0]).filter((link) => link.startsWith('/'));
   assert.ok(local.length > 0, 'the header bar links no page of the site');
   for (const href of local) {
     assert.ok(indexable.includes(href), `header bar links ${href}, which is not an indexable page`);
   }
+  // A section's link marks the section on its sub-pages, and the page itself on its own page.
+  const current = (path) => all(navOf(pages.get(path)), /<a href="([^"]+)" aria-current="([^"]+)"/g);
+  assert.match(navOf(pages.get('/docs')), /<a href="\/docs" aria-current="page"/);
+  assert.match(navOf(pages.get('/docs/cli')), /<a href="\/docs" aria-current="true"/);
+  assert.deepEqual(current('/docs/cli'), ['/docs'], 'one current link on /docs/cli');
 });
 
 test('pages other than the homepage ship no JavaScript', () => {
@@ -227,10 +232,29 @@ test('robots.txt allows every crawler and names the sitemap', () => {
   assert.match(robots, new RegExp(`^Sitemap: ${SITE}/sitemap-index\\.xml$`, 'm'));
 });
 
-const markdownPages = indexable.filter((path) => /<link rel="alternate" type="text\/markdown"/.test(pages.get(path)));
+// The Markdown pages come from their sources: src/content/docs/cli.md is /docs/cli, and an
+// index.md is its directory's page.
+const content = fileURLToPath(new URL('../src/content/', import.meta.url));
+const markdownPages = walk(content)
+  .filter((file) => file.endsWith('.md'))
+  .map(
+    (file) =>
+      '/' +
+      relative(content, file)
+        .split(sep)
+        .join('/')
+        .replace(/\.md$/, '')
+        .replace(/\/?index$/, ''),
+  )
+  .toSorted();
 
-test('every Markdown page links its .md alternate, which exists and starts with the page heading', () => {
+test('exactly the Markdown pages link a .md alternate', () => {
   assert.ok(markdownPages.includes('/docs'), 'the docs hub is a Markdown page');
+  const linking = indexable.filter((path) => /<link rel="alternate" type="text\/markdown"/.test(pages.get(path)));
+  assert.deepEqual(linking, markdownPages);
+});
+
+test('every Markdown page links its .md alternate, which exists, starts with the page heading and links absolutely', () => {
   for (const path of markdownPages) {
     const html = pages.get(path);
     const href = /<link rel="alternate" type="text\/markdown" href="([^"]+)"/.exec(html)[1];
@@ -239,6 +263,7 @@ test('every Markdown page links its .md alternate, which exists and starts with 
     const heading = /<h1>([^<]*)<\/h1>/.exec(html)[1];
     assert.ok(markdown.startsWith(`# ${decode(heading)}\n`), `${path}.md starts with its heading`);
     assert.ok(!markdown.startsWith('---'), `${path}.md carries no frontmatter`);
+    assert.doesNotMatch(markdown, /\]\(\//, `${path}.md links the site by absolute URL`);
   }
 });
 
@@ -275,6 +300,7 @@ test('llms-full.txt holds every Markdown page in full', () => {
     const markdown = readFileSync(join(dist, `${path}.md`), 'utf8');
     assert.ok(text.includes(markdown.trim()), `${path} is missing from llms-full.txt`);
   }
+  assert.doesNotMatch(text, /\]\(\//, 'llms-full.txt links the site by absolute URL');
 });
 
 const site = fileURLToPath(new URL('..', import.meta.url));

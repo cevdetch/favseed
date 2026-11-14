@@ -14,6 +14,8 @@ interface Props {
 const { title, description } = Astro.props;
 const path = pathOfUrl(Astro.url.pathname);
 const url = pageUrl(Astro.url.pathname);
+// The link to this page is the current page; a section's link is also current on its sub-pages.
+const current = (href: string) => (href === path ? 'page' : path.startsWith(`${href}/`) ? 'true' : undefined);
 ---
 <!doctype html>
 <html lang="en">
@@ -40,14 +42,14 @@ const url = pageUrl(Astro.url.pathname);
 </head>
 <body>
 <nav aria-label="Site" class="site">
-  {nav.map(([href, label]) => <a href={href} aria-current={href === path ? 'page' : undefined}>{label}</a>)}
+  {nav.map(([href, label]) => <a href={href} aria-current={current(href)}>{label}</a>)}
 </nav>
 <slot />
 
 <footer>
   <nav><a href="/docs">Docs</a> · <a href="/how-it-works">How it works</a> · <a href="/outputs">Outputs</a> · <a href="/benchmarks">Benchmarks</a></nav>
   By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
-  favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
+  favseed also ships a CLI, a Vite plugin and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
   checks the rest of your <code>&lt;head&gt;</code>.
 </footer>
 <slot name="end" />
