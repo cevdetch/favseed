@@ -1,4 +1,4 @@
-// Rebuild only; ordinary site builds use the checked-in, hash-verified artifact.
+// Rebuild only; ordinary site builds use the checked-in, hash-verified artifacts.
 // Linux x64: node bench/wasm-engine/build.mjs IMAGE.tar.gz WASI-SDK.tar.gz [--write]
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -17,8 +17,9 @@ import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { benchmarkPath } from '../path.mjs';
+import { compareEngines, loadImage } from './parity.mjs';
 
-const revision = '7bad478bfe647bca75d4c05db8726ca3d5335e80';
+const revision = 'a57319b7506405d991696459830f1a0e60cc88bf';
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const defaultCargoHome = join(homedir(), '.cargo');
 // Cargo's standard home is trusted; custom homes obey the same physical path
@@ -28,7 +29,7 @@ const cargoHome =
     ? defaultCargoHome
     : benchmarkPath(process.env.CARGO_HOME);
 const archives = [
-  { path: benchmarkPath(process.argv[2]), sha: '9be63180155c7f4fc77caf856dba5d4f75acf4980d8c18fe6b1efedda02ee8aa' },
+  { path: benchmarkPath(process.argv[2]), sha: '40489c6d73249797aa8efb0ff029b94c8ec269b33c8f72ff759714f611e608e1' },
   { path: benchmarkPath(process.argv[3]), sha: '0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce' },
 ];
 if (process.argv.length > 5 || (process.argv[4] && process.argv[4] !== '--write'))
@@ -40,7 +41,90 @@ if (rustc !== 'rustc 1.99.0 (b940084d7 2026-09-28)')
   throw new Error('Rebuild requires the reviewed Rust 1.99.0 toolchain');
 if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('Rebuild requires Linux x64');
 const here = fileURLToPath(new URL('./', import.meta.url));
-const destination = fileURLToPath(new URL('../../site/vendor/image-wasm32-wasip1/', import.meta.url));
+const destination = fileURLToPath(new URL('../../site/vendor/image/', import.meta.url));
+
+// Both loaders start at 1024 pages (64 MiB) of growable memory. A module whose link-time floor
+// (static data plus the 16 MiB stack) exceeds that would fail to instantiate, so the build reads
+// each module's memory import rather than trusting the setting. The image 1.16.0 engines import
+// 993 (threaded) and 992 (compatibility) pages; the published threaded 1.16.0 module imports 1012.
+const initialPages = 1024;
+// One engine per mode. The threaded one is built as upstream's CI builds it (default features, so
+// oxipng's `parallel` is on); the compatibility one has no threads, so it drops oxipng's
+// `parallel` with the default features and keeps `binding`.
+const engines = [
+  {
+    name: 'threaded',
+    target: 'wasm32-wasip1-threads',
+    cflags: '--target=wasm32-wasi-threads -pthread',
+    features: [],
+    loader: 'image.wasi.cjs',
+    files: ['image.wasi-browser.js', 'wasi-worker-browser.mjs', 'image.wasm32-wasi.wasm'],
+    node: ['wasi-worker.mjs'],
+  },
+  {
+    name: 'compatibility',
+    target: 'wasm32-wasip1',
+    cflags: '--target=wasm32-wasi',
+    features: ['--no-default-features', '--features', 'binding'],
+    loader: 'image.wasip1.cjs',
+    files: ['image.wasip1-browser.js', 'image.wasm32-wasip1.wasm'],
+    node: [],
+  },
+];
+
+// The minimum page count of a module's imported memory, from its import section. The JS API
+// lists imports without their limits, so this reads the binary.
+const importedMemoryPages = (bytes) => {
+  let at = 8;
+  const leb = () => {
+    let value = 0,
+      shift = 0,
+      byte;
+    do {
+      byte = bytes[at++];
+      value += (byte & 0x7f) * 2 ** shift;
+      shift += 7;
+    } while (byte & 0x80);
+    return value;
+  };
+  const skipName = () => {
+    const length = leb();
+    at += length;
+  };
+  const skipLimits = () => {
+    const flags = bytes[at++];
+    leb();
+    if (flags & 1) leb();
+  };
+  while (at < bytes.length) {
+    const id = bytes[at++],
+      size = leb(),
+      end = at + size;
+    if (id === 2) {
+      for (let count = leb(); count > 0; count--) {
+        skipName();
+        skipName();
+        const kind = bytes[at++];
+        if (kind === 2) {
+          at++;
+          return leb();
+        }
+        if (kind === 0) leb();
+        else if (kind === 1) {
+          at++;
+          skipLimits();
+        } else if (kind === 3) at += 2;
+        else if (kind === 4) {
+          at++;
+          leb();
+        } else throw new Error(`Unknown import kind ${kind}`);
+      }
+    }
+    at = end;
+  }
+  throw new Error('Module imports no memory');
+};
+
 const scratch = mkdtempSync(join(tmpdir(), 'favseed-image-build.'));
 const run = (command, args, options = {}) => execFileSync(command, args, { stdio: 'inherit', ...options });
 try {
@@ -49,6 +133,10 @@ try {
     binding = join(source, 'packages/binding');
   const sdk = join(scratch, 'wasi-sdk-33.0-x86_64-linux'),
     tooling = join(scratch, 'tooling');
+  // Leave out the codecs favseed never calls (AVIF, WebP encoding, lossless JPEG, JPEG XL); every
+  // export stays and rejects. No fuzz, so an upstream change under a hunk stops the build.
+  const patch = join(here, 'slim.patch');
+  run('patch', ['-p1', '--forward', '--fuzz=0', '--no-backup-if-mismatch', '-i', patch], { cwd: binding });
   mkdirSync(tooling);
   const lock = JSON.parse(readFileSync(join(here, 'package-lock.json')));
   writeFileSync(
@@ -58,11 +146,23 @@ try {
   copyFileSync(join(here, 'package-lock.json'), join(tooling, 'package-lock.json'));
   run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefix', tooling]);
   symlinkSync(join(tooling, 'node_modules'), join(source, 'node_modules'));
+  // The loaders' runtime is what the tooling lock installed, so the manifest cannot drift from it.
+  const runtime = Object.fromEntries(
+    ['@emnapi/core', '@emnapi/runtime', '@napi-rs/wasm-runtime'].map((name) => [
+      name,
+      lock.packages[`node_modules/${name}`].version,
+    ]),
+  );
+  // emnapi's link-time library and its JS runtime are released together and must match.
+  const emnapi = lock.packages['node_modules/emnapi'].version;
+  if (runtime['@emnapi/core'] !== emnapi || runtime['@emnapi/runtime'] !== emnapi)
+    throw new Error(`Tooling lock pairs emnapi ${emnapi} with a different @emnapi runtime`);
   copyFileSync(join(here, 'Cargo.lock'), join(source, 'Cargo.lock'));
   const pkg = JSON.parse(readFileSync(join(binding, 'package.json')));
-  pkg.napi.wasm.threadlessInitialMemory = 1024;
+  pkg.napi.wasm.threadlessInitialMemory = initialPages;
+  pkg.napi.wasm.initialMemory = initialPages;
   writeFileSync(join(binding, 'package.json'), JSON.stringify(pkg, null, 2));
-  const flags = `--target=wasm32-wasi --sysroot=${sdk}/share/wasi-sysroot -mllvm -wasm-enable-sjlj -lsetjmp -ffile-prefix-map=${scratch}=/favseed-build -ffile-prefix-map=${cargoHome}=/cargo`;
+  const prefixMaps = `-ffile-prefix-map=${scratch}=/favseed-build -ffile-prefix-map=${cargoHome}=/cargo`;
   const env = {
     ...process.env,
     CARGO_HOME: cargoHome,
@@ -73,74 +173,112 @@ try {
     CARGO_TARGET_DIR: join(scratch, 'target'),
     CARGO_NET_OFFLINE: 'true',
     SOURCE_DATE_EPOCH: '0',
-    TARGET_CFLAGS: flags,
-    TARGET_CXXFLAGS: flags,
     RUSTFLAGS: `-C target-feature=+simd128 -C link-arg=-zstack-size=16777216 --remap-path-prefix=${scratch}=/favseed-build --remap-path-prefix=${cargoHome}=/cargo`,
   };
   // Fetch only the locked Rust inputs, then build with networking disabled.
-  run('cargo', ['fetch', '--locked', '--target', 'wasm32-wasip1'], {
-    cwd: source,
-    env: { ...process.env, CARGO_HOME: cargoHome },
-  });
-  run(
-    'node',
-    [
-      join(tooling, 'node_modules/@napi-rs/cli/dist/cli.js'),
-      'build',
-      '--cwd',
-      binding,
-      '--target',
-      'wasm32-wasip1',
-      '--platform',
-      '--no-const-enum',
-      '--release',
-      '--no-default-features',
-      '--features',
-      'binding',
-    ],
-    { env },
-  );
+  for (const { target } of engines)
+    run('cargo', ['fetch', '--locked', '--target', target], {
+      cwd: source,
+      env: { ...process.env, CARGO_HOME: cargoHome },
+    });
+  const pages = {};
+  for (const engine of engines) {
+    const flags = `${engine.cflags} --sysroot=${sdk}/share/wasi-sysroot -mllvm -wasm-enable-sjlj -lsetjmp ${prefixMaps}`;
+    run(
+      'node',
+      [
+        join(tooling, 'node_modules/@napi-rs/cli/dist/cli.js'),
+        'build',
+        '--cwd',
+        binding,
+        '--target',
+        engine.target,
+        '--platform',
+        '--no-const-enum',
+        '--release',
+        ...engine.features,
+      ],
+      { env: { ...env, TARGET_CFLAGS: flags, TARGET_CXXFLAGS: flags } },
+    );
+    // Each build removes the other WASI flavour's outputs from the package directory, so every
+    // engine moves to its own directory inside the source tree, where its Node loader still
+    // resolves the tooling runtime.
+    engine.dir = join(source, 'engines', engine.name);
+    mkdirSync(engine.dir, { recursive: true });
+    for (const name of [...engine.files, engine.loader, ...engine.node])
+      copyFileSync(join(binding, name), join(engine.dir, name));
+    const wasm = engine.files.find((name) => name.endsWith('.wasm'));
+    pages[engine.name] = importedMemoryPages(readFileSync(join(engine.dir, wasm)));
+    if (pages[engine.name] > initialPages)
+      throw new Error(`${wasm} needs ${pages[engine.name]} pages, more than the loader's ${initialPages}`);
+  }
+  console.log('Minimum memory pages imported', pages);
   if (hash(readFileSync(join(source, 'Cargo.lock'))) !== hash(readFileSync(join(here, 'Cargo.lock'))))
     throw new Error('Build changed the reviewed Cargo.lock');
-  const names = ['image.wasip1-browser.js', 'image.wasm32-wasip1.wasm'];
-  const artifacts = Object.fromEntries(names.map((name) => [name, hash(readFileSync(join(binding, name)))]));
+  // Nothing is written or accepted unless both engines reproduce the native module byte for byte.
+  const native = loadImage();
+  for (const engine of engines) {
+    const { total, mismatches, skipped, hostDependent } = await compareEngines(
+      native,
+      loadImage(join(engine.dir, engine.loader)),
+    );
+    console.log(
+      `${engine.name}: ${total - mismatches.length} of ${total} identical` +
+        (skipped ? `; ${skipped} fixture(s) skipped` : '') +
+        (hostDependent ? `; host-dependent, skipped: ${hostDependent}` : ''),
+    );
+    if (mismatches.length)
+      throw new Error(
+        `${engine.name} differs from native:\n` +
+          mismatches
+            .slice(0, 10)
+            .map(({ case: label, nativeSha, wasmSha }) => `  ${label}: native ${nativeSha} != wasm ${wasmSha}`)
+            .join('\n'),
+      );
+  }
+  const shipped = engines.flatMap((engine) => engine.files.map((name) => ({ name, path: join(engine.dir, name) })));
+  const artifacts = Object.fromEntries(shipped.map(({ name, path }) => [name, hash(readFileSync(path))]));
   const manifest = {
     sourceDateEpoch: 0,
-    imageVersion: '1.15.0',
+    imageVersion: pkg.version,
     revision,
     rustc,
     sourceArchiveSha256: archives[0].sha,
     sdkArchiveSha256: archives[1].sha,
     cargoLockSha256: hash(readFileSync(join(here, 'Cargo.lock'))),
     toolingLockSha256: hash(readFileSync(join(here, 'package-lock.json'))),
-    runtime: { '@emnapi/core': '2.0.0-alpha.5', '@emnapi/runtime': '2.0.0-alpha.5', '@napi-rs/wasm-runtime': '1.2.5' },
+    patchSha256: hash(readFileSync(patch)),
+    runtime,
     artifacts,
   };
   if (process.argv[4] === '--write') {
+    rmSync(destination, { recursive: true, force: true });
     mkdirSync(destination, { recursive: true });
-    for (const name of names) copyFileSync(join(binding, name), join(destination, name));
+    for (const { name, path } of shipped) copyFileSync(path, join(destination, name));
     writeFileSync(join(destination, 'build.json'), JSON.stringify(manifest, null, 2) + '\n');
     copyFileSync(join(source, 'LICENSE'), join(destination, 'LICENSE'));
-    // Include the locked Rust dependencies' notices, including bundled C codecs.
-    const tree = execFileSync(
-      'cargo',
-      [
-        'tree',
-        '--locked',
-        '--target',
-        'wasm32-wasip1',
-        '--no-default-features',
-        '--features',
-        'binding',
-        '--edges',
-        'normal',
-        '--prefix',
-        'none',
-        '--format',
-        '{p}',
-      ],
-      { cwd: source, env, encoding: 'utf8' },
-    );
+    // Include the locked Rust dependencies' notices for both engines' targets and features.
+    const crates = new Set();
+    for (const { target, features } of engines) {
+      const tree = execFileSync(
+        'cargo',
+        [
+          'tree',
+          '--locked',
+          '--target',
+          target,
+          ...features,
+          '--edges',
+          'normal',
+          '--prefix',
+          'none',
+          '--format',
+          '{p}',
+        ],
+        { cwd: source, env, encoding: 'utf8' },
+      );
+      for (const [, name, version] of tree.matchAll(/^([\w-]+) v([\w.+-]+)/gm)) crates.add(`${name}-${version}`);
+    }
     const registry = join(cargoHome, 'registry/src');
     const roots = readdirSync(registry).map((name) => join(registry, name));
     const notices = new Map();
@@ -163,10 +301,7 @@ try {
       };
       walk(root);
     };
-    const crates = [
-      ...new Set([...tree.matchAll(/^([\w-]+) v([\w.+-]+)/gm)].map(([, name, version]) => `${name}-${version}`)),
-    ].sort();
-    for (const crate of crates) {
+    for (const crate of [...crates].toSorted()) {
       const root = roots.map((root) => join(root, crate)).find(existsSync);
       if (root) collect(root, crate);
     }
@@ -185,16 +320,24 @@ try {
     }
     writeFileSync(
       join(destination, 'THIRD-PARTY-NOTICES.txt'),
-      'Notices for the vendored image WASM and generated loader. Some dependencies include notices for code not linked into this build.\n\n' +
+      'Notices for the vendored image WASM engines and generated loaders. Some dependencies include notices for code not linked into this build.\n\n' +
         [...notices.values()]
           .map(({ labels, text }) => labels.join('\n') + '\n\n' + text)
           .join('\n\n----------------\n\n'),
     );
-    console.log('Wrote reviewed candidate', manifest);
+    console.log('Wrote reviewed engines', manifest);
   } else {
-    for (const name of names)
-      if (hash(readFileSync(join(destination, name))) !== artifacts[name]) throw new Error(`Rebuild differs: ${name}`);
-    console.log('Rebuild matches both committed artifacts', artifacts);
+    const committed = JSON.parse(readFileSync(join(destination, 'build.json')));
+    for (const { name } of shipped)
+      if (
+        committed.artifacts[name] !== artifacts[name] ||
+        hash(readFileSync(join(destination, name))) !== artifacts[name]
+      )
+        throw new Error(`Rebuild differs: ${name}`);
+    for (const key of Object.keys(manifest))
+      if (JSON.stringify(committed[key]) !== JSON.stringify(manifest[key]))
+        throw new Error(`Rebuild inputs differ from build.json: ${key}`);
+    console.log('Rebuild matches every committed artifact', artifacts);
   }
 } finally {
   rmSync(scratch, { recursive: true, force: true });
