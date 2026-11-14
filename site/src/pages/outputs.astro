@@ -34,7 +34,7 @@ const platforms = [
 const links = linkTags('/', true).trim();
 const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAULT_BG) }).trim();
 ---
-<Doc {title} {description} heading="Outputs" {lede}>
+<Doc {title} {description} heading="Outputs" {lede} crumbs={[['/guides', 'Guides']]}>
   <section>
     <h2 id="the-set">The set</h2>
     <div>
@@ -122,6 +122,8 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
         </tbody>
       </table>
     </div>
-    <p><a href="/how-it-works">How it works</a> explains the safe zone and how each file is encoded.</p>
+    <p>Make the set in your browser with the <a href="/">generator</a> or from the command line with
+      <a href="/docs/cli"><code>favseed</code></a>; <a href="/how-it-works">How it works</a> explains the safe zone
+      and how each file is encoded.</p>
   </section>
 </Doc>

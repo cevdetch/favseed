@@ -90,6 +90,7 @@ covers every file in detail.
 - [Astro integration](https://favseed.cevdet.ch/docs/astro): setup, options, caching and head tags.
 - [Node API](https://favseed.cevdet.ch/docs/node-api): `build()`, `buildFiles()` and the TypeScript types.
 - [Troubleshooting](https://favseed.cevdet.ch/docs/troubleshooting): common problems and safe upgrades.
+- [Guides](https://favseed.cevdet.ch/guides): the minimal favicon set, maskable icons and dark-mode favicons.
 - [How it works](https://favseed.cevdet.ch/how-it-works): the steps from one SVG to the finished set.
 - [Outputs](https://favseed.cevdet.ch/outputs): each file, the HTML it needs and who reads it.
 - [Benchmarks](https://favseed.cevdet.ch/benchmarks): the measurements behind the defaults.
