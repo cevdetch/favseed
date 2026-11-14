@@ -1,0 +1,828 @@
+diff -ruN a/Cargo.toml b/Cargo.toml
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -27,18 +27,7 @@
+ # Gates the `#[napi]` addon modules. On by default so the shipped addon is unchanged;
+ # the CodSpeed bench builds with `--no-default-features` to link only the pure
+ # quantizer core (no `napi_*` symbols, which Valgrind cannot resolve).
+-# `binding` also pulls the JPEG XL input path, which the bench never needs:
+-# - `jxl` (through `jxl_hdr`): pure-Rust libjxl/jxl-rs decoder (BSD-3-Clause). Decode only, jxl-rs
+-#   has no encoder. Default features keep runtime SIMD dispatch (`all-simd`); `brotli` stays off
+-#   (no EXIF read).
+-# - `moxcms`: converts non-sRGB JPEG XL output to sRGB (same 0.8.1 `image` already locks).
+-#   `extended_range` keeps float samples outside [0, 1] through the conversion.
+-# - `bytemuck`: views the aligned `Vec<u16>`/`Vec<f32>` decode buffer as bytes (already in the tree).
+-binding            = ["jxl_hdr", "dep:bytemuck", "dep:moxcms"]
+-# The PQ/HLG tone mapping of the JPEG XL path (`src/jxl_hdr.rs`) and its SIMD kernels, with `jxl`
+-# for the colour types. Part of `binding`; on its own (pure Rust, no napi) for the x86_64 and ASan
+-# CI jobs, which build with `--no-default-features` and run its kernel==scalar tests.
+-jxl_hdr            = ["dep:jxl"]
++binding            = []
+ logo               = []
+ oxipng_libdeflater = ["oxipng/zopfli", "oxipng/parallel"]
+ # Opt-in: lets `PngQuantOptions::use_zopfli` select oxipng's zopfli deflater for
+@@ -47,18 +36,13 @@
+ # marginal win. (`oxipng_libdeflater` also enables `oxipng/zopfli`, so the Rust
+ # cfg accepts either feature.)
+ png_quantize_zopfli = ["oxipng/zopfli"]
+-with_simd          = ["mozjpeg-sys/nasm_simd_parallel_build"]
+ 
+ [dependencies]
+-bytemuck          = { version = "1", optional = true }
+ fast_image_resize = { version = "6", features = ["image"] }
+ image             = { version = "0.25", default-features = false, features = ["jpeg", "ico", "png", "pnm", "tga", "tiff", "bmp", "webp", "hdr", "dds"] }
+ jpeg-decoder      = "0.3"
+-jxl               = { version = "0.8.0", optional = true }
+-libavif           = { version = "0.14", default-features = false, features = ["codec-aom"] }
+ libc              = "0.2"
+ lodepng           = "3"
+-moxcms            = { version = "0.9.0", optional = true, features = ["extended_range"] }
+ napi              = { version = "3.0.0", default-features = false, features = ["napi3"] }
+ napi-derive       = { version = "3.0.0", default-features = false, features = ["type-def"] }
+ num-complex       = "0.4"
+@@ -73,16 +57,6 @@
+   default-features = false
+   version          = "10"
+ 
+-  [dependencies.mozjpeg-sys]
+-  default-features = false
+-  version          = "2"
+-
+-[target.'cfg(not(all(target_os = "macos", target_arch = "x86_64")))'.dependencies]
+-libwebp-sys = { version = "0.14", default-features = false, features = ["std", "parallel", "avx2", "sse41", "neon"] }
+-
+-[target.'cfg(all(target_os = "macos", target_arch = "x86_64"))'.dependencies]
+-libwebp-sys = { version = "0.14", default-features = false, features = ["std", "parallel", "generate-bindings"] }
+-
+ # macOS-only HEIC decode via Apple's ImageIO/CoreGraphics. We ship no HEVC codec — Apple's OS holds
+ # the patent license — so all HEIC decoding goes through these OS API bindings. macOS-gated, so
+ # Linux/Windows/wasm builds never see objc2.
+diff -ruN a/src/avif.rs b/src/avif.rs
+--- a/src/avif.rs
++++ b/src/avif.rs
+@@ -1,5 +1,4 @@
+-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb, Rgba, buffer::ConvertBuffer};
+-use libavif::{AvifData, AvifImage, RgbPixels, YuvFormat};
++use image::DynamicImage;
+ use napi::bindgen_prelude::*;
+ use napi_derive::napi;
+ 
+@@ -53,221 +52,13 @@
+   Yuv400,
+ }
+ 
+-impl From<ChromaSubsampling> for YuvFormat {
+-  #[inline]
+-  fn from(value: ChromaSubsampling) -> YuvFormat {
+-    match value {
+-      ChromaSubsampling::Yuv444 => YuvFormat::Yuv444,
+-      ChromaSubsampling::Yuv422 => YuvFormat::Yuv422,
+-      ChromaSubsampling::Yuv420 => YuvFormat::Yuv420,
+-      ChromaSubsampling::Yuv400 => YuvFormat::Yuv400,
+-    }
+-  }
+-}
+-
+-struct Config {
+-  quality: u8,
+-  alpha_quality: u8,
+-  speed: u8,
+-  threads: usize,
+-  chroma_subsampling: ChromaSubsampling,
+-}
+-
+-impl From<AvifConfig> for Config {
+-  fn from(config: AvifConfig) -> Self {
+-    Config {
+-      // See also: https://github.com/kornelski/cavif-rs#usage
+-      quality: config.quality.unwrap_or(80) as u8,
+-      // Calculate alphaQuality, this is consistent with cavif.
+-      // https://github.com/kornelski/cavif-rs/blob/37847b95bb81d4cf90e36b7fab2c7fbbcf95abe2/src/main.rs#L97
+-      alpha_quality: config.alpha_quality.unwrap_or(90) as u8,
+-      // Encoding speed between 1 (best, but slowest) and 10 (fastest, but a blurry mess), the default value is 4.
+-      // Speeds 1 and 2 are unbelievably slow, but make files ~3-5% smaller.
+-      // Speeds 7 and above degrade compression significantly, and are not recommended.
+-      speed: config.speed.unwrap_or(5) as u8,
+-      threads: config
+-        .threads
+-        .map(|n| n as usize)
+-        .unwrap_or_else(num_cpus::get),
+-      chroma_subsampling: config
+-        .chroma_subsampling
+-        .unwrap_or(ChromaSubsampling::Yuv444),
+-    }
+-  }
+-}
+-
+ #[inline]
+ pub(crate) fn encode_avif_inner(
+-  config: Option<AvifConfig>,
+-  input_image: &DynamicImage,
+-) -> Result<AvifData<'static>> {
+-  let mut encoder = libavif::Encoder::new();
+-  let config: Config = config.unwrap_or_default().into();
+-  encoder.set_quality(config.quality);
+-  encoder.set_alpha_quality(config.alpha_quality);
+-  encoder.set_speed(config.speed);
+-  encoder.set_max_threads(config.threads);
+-  let (width, height) = input_image.dimensions();
+-  let image = match input_image {
+-    DynamicImage::ImageRgb8(img) => {
+-      let avif_image = img.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageRgba8(img) => {
+-      let image = img.as_flat_samples();
+-      encode_image(
+-        image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageLuma8(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageLumaA8(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageLuma16(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageLumaA16(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageRgb16(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageRgba16(img) => {
+-      // Keep the alpha channel (convert to RGBA8, not RGB8). The libavif RGB path is
+-      // 8-bit, so precision drops to 8-bit regardless, but dropping alpha here made
+-      // `.opacity().avif()` on a 16-bit source encode fully opaque (issue #42).
+-      let image: ImageBuffer<Rgba<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageRgb32F(img) => {
+-      let image: ImageBuffer<Rgb<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    DynamicImage::ImageRgba32F(img) => {
+-      // Keep the alpha channel (RGBA8, not RGB8) — same reasoning as `ImageRgba16`.
+-      let image: ImageBuffer<Rgba<u8>, _> = img.convert();
+-      let avif_image = image.as_flat_samples();
+-      encode_image(
+-        avif_image.as_slice(),
+-        width,
+-        height,
+-        config.chroma_subsampling.into(),
+-      )
+-    }
+-    _ => {
+-      return Err(Error::new(
+-        Status::InvalidArg,
+-        "Unsupported image type".to_owned(),
+-      ));
+-    }
+-  }?;
+-  encoder
+-    .encode(&image)
+-    .map_err(|err| Error::new(Status::InvalidArg, err.to_string()))
+-}
+-
+-fn encode_image(
+-  avif_image: &[u8],
+-  width: u32,
+-  height: u32,
+-  format: YuvFormat,
+-) -> Result<AvifImage> {
+-  let image = if (width * height) as usize == avif_image.len() {
+-    AvifImage::from_luma8(width, height, avif_image)
+-      .map_err(|err| Error::new(Status::InvalidArg, err.to_string()))?
+-  } else {
+-    let rgb = RgbPixels::new(width, height, avif_image)
+-      .map_err(|err| Error::new(Status::InvalidArg, err.to_string()))?;
+-    rgb.to_image(format)
+-  };
+-  Ok(image)
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-  use super::encode_avif_inner;
+-  use image::{DynamicImage, ImageBuffer};
+-
+-  /// A 16-bit RGBA source with half alpha must keep its transparency through AVIF
+-  /// (the libavif RGB path is 8-bit, so precision drops to 8-bit — but the alpha
+-  /// channel must NOT be dropped). Guards the Codex P2: `.opacity(0.5).avif()` on a
+-  /// 16-bit source was encoding fully opaque because the `ImageRgba16` branch
+-  /// converted to `Rgb<u8>`. See issue #42.
+-  #[test]
+-  fn avif_preserves_alpha_from_rgba16_source() {
+-    // 16x16, uniform: opaque-ish color, alpha 0x8000 (~50%). Uniform so the lossy
+-    // alpha plane round-trips cleanly.
+-    let buf: Vec<u16> = (0..16 * 16)
+-      .flat_map(|_| [40000u16, 20000, 10000, 0x8000])
+-      .collect();
+-    let img = DynamicImage::ImageRgba16(ImageBuffer::from_raw(16, 16, buf).unwrap());
+-
+-    let data = encode_avif_inner(None, &img).expect("encode avif");
+-    let decoded = libavif::decode_rgb(&data).expect("decode avif");
+-    let pixels = decoded.to_vec();
+-    let channels = pixels.len() / (decoded.width() * decoded.height()) as usize;
+-    assert_eq!(channels, 4, "alpha channel must survive AVIF encode");
+-    let alpha = pixels[3];
+-    assert!(
+-      alpha < 200,
+-      "alpha must stay ~128 (was halved), not snap back to opaque; got {alpha}"
+-    );
+-  }
++  _config: Option<AvifConfig>,
++  _input_image: &DynamicImage,
++) -> Result<Vec<u8>> {
++  Err(Error::new(
++    Status::GenericFailure,
++    "AVIF encoding is not built into this engine".to_owned(),
++  ))
+ }
+diff -ruN a/src/jpeg.rs b/src/jpeg.rs
+--- a/src/jpeg.rs
++++ b/src/jpeg.rs
+@@ -39,135 +39,26 @@
+     })?;
+     return BufferSlice::from_data(&env, dest.into_inner());
+   }
+-  let (buf, outsize, de_c_info, compress_c_info) = unsafe { moz_jpeg_compress(input, &options) }?;
+-  unsafe {
+-    BufferSlice::from_external(
+-      &env,
+-      buf,
+-      outsize,
+-      (de_c_info, compress_c_info, buf),
+-      |_, (mut input, mut output, buf)| {
+-        mozjpeg_sys::jpeg_destroy_decompress(&mut input);
+-        mozjpeg_sys::jpeg_destroy_compress(&mut output);
+-        libc::free(buf as *mut std::ffi::c_void);
+-      },
+-    )
+-  }
++  Err(lossless_not_built_in())
+ }
+ 
+-/// # Safety
+-///
+-/// The output buffer from `mozjpeg` is checked by V8 while converting it into Node.js Buffer.
+-unsafe fn moz_jpeg_compress(
+-  input: &[u8],
+-  opts: &JpegCompressOptions,
+-) -> Result<(
+-  *mut u8,
+-  usize,
+-  mozjpeg_sys::jpeg_decompress_struct,
+-  mozjpeg_sys::jpeg_compress_struct,
+-)> {
+-  unsafe {
+-    std::panic::catch_unwind(|| {
+-      let mut de_c_info: mozjpeg_sys::jpeg_decompress_struct = std::mem::zeroed();
+-      let mut err_handler = create_error_handler();
+-      de_c_info.common.err = &mut err_handler;
+-      mozjpeg_sys::jpeg_create_decompress(&mut de_c_info);
+-      let input_buf = input;
+-      #[cfg(any(target_os = "windows", target_arch = "arm", target_arch = "wasm32"))]
+-      mozjpeg_sys::jpeg_mem_src(&mut de_c_info, input_buf.as_ptr(), input_buf.len() as u32);
+-      #[cfg(not(any(target_os = "windows", target_arch = "arm", target_arch = "wasm32")))]
+-      mozjpeg_sys::jpeg_mem_src(&mut de_c_info, input_buf.as_ptr(), input_buf.len() as u64);
+-      let mut compress_c_info: mozjpeg_sys::jpeg_compress_struct = std::mem::zeroed();
+-      compress_c_info.optimize_coding = 1;
+-      compress_c_info.common.err = &mut err_handler;
+-      mozjpeg_sys::jpeg_create_compress(&mut compress_c_info);
+-      mozjpeg_sys::jpeg_read_header(&mut de_c_info, 1);
+-      let src_coef_arrays = mozjpeg_sys::jpeg_read_coefficients(&mut de_c_info);
+-      mozjpeg_sys::jpeg_copy_critical_parameters(&de_c_info, &mut compress_c_info);
+-      if opts.optimize_scans.unwrap_or(true) {
+-        mozjpeg_sys::jpeg_c_set_bool_param(
+-          &mut compress_c_info,
+-          mozjpeg_sys::J_BOOLEAN_PARAM::JBOOLEAN_OPTIMIZE_SCANS,
+-          1,
+-        );
+-      }
+-      mozjpeg_sys::jpeg_c_set_int_param(
+-        &mut compress_c_info,
+-        mozjpeg_sys::J_INT_PARAM::JINT_DC_SCAN_OPT_MODE,
+-        0,
+-      );
+-      let mut buf = std::ptr::null_mut();
+-      let mut outsize = 0;
+-      mozjpeg_sys::jpeg_mem_dest(&mut compress_c_info, &mut buf, &mut outsize);
+-      mozjpeg_sys::jpeg_write_coefficients(&mut compress_c_info, src_coef_arrays);
+-      mozjpeg_sys::jpeg_finish_compress(&mut compress_c_info);
+-      mozjpeg_sys::jpeg_finish_decompress(&mut de_c_info);
+-      (buf, outsize as usize, de_c_info, compress_c_info)
+-    })
+-    .map_err(|err| {
+-      Error::new(
+-        Status::GenericFailure,
+-        format!("Compress JPEG failed {err:?}"),
+-      )
+-    })
+-  }
+-}
+-
+-unsafe fn create_error_handler() -> mozjpeg_sys::jpeg_error_mgr {
+-  unsafe {
+-    let mut err: mozjpeg_sys::jpeg_error_mgr = std::mem::zeroed();
+-    mozjpeg_sys::jpeg_std_error(&mut err);
+-    err.error_exit = Some(unwind_error_exit);
+-    err.emit_message = Some(silence_message);
+-    err
+-  }
++// Lossless recompression needs mozjpeg, which this engine leaves out; the lossy path above
++// already encodes through the `image` crate.
++fn lossless_not_built_in() -> Error {
++  Error::new(
++    Status::GenericFailure,
++    "Lossless JPEG recompression is not built into this engine".to_owned(),
++  )
+ }
+ 
+-unsafe extern "C-unwind" fn unwind_error_exit(cinfo: &mut mozjpeg_sys::jpeg_common_struct) {
+-  let message = unsafe {
+-    let err = cinfo.err.as_ref().unwrap();
+-    match err.format_message {
+-      Some(fmt) => {
+-        let buffer = std::mem::zeroed();
+-        fmt(cinfo, &buffer);
+-        let len = buffer.iter().take_while(|&&c| c != 0).count();
+-        String::from_utf8_lossy(&buffer[..len]).into()
+-      }
+-      None => format!("libjpeg error: {}", err.msg_code),
+-    }
+-  };
+-  std::panic::resume_unwind(Box::new(message))
+-}
+-
+-unsafe extern "C-unwind" fn silence_message(
+-  _cinfo: &mut mozjpeg_sys::jpeg_common_struct,
+-  _level: std::os::raw::c_int,
+-) {
+-}
+-
+-pub struct ThreadsafeMozjpegCompressOutput {
+-  buf: *mut u8,
+-  len: usize,
+-  de_c_info: mozjpeg_sys::jpeg_decompress_struct,
+-  compress_c_info: mozjpeg_sys::jpeg_compress_struct,
+-}
+-
+-unsafe impl Send for ThreadsafeMozjpegCompressOutput {}
+-
+ pub struct CompressJpegTask {
+   options: JpegCompressOptions,
+   input: Uint8Array,
+ }
+ 
+-pub enum JpegOptimizeOutput {
+-  Lossless(Box<ThreadsafeMozjpegCompressOutput>),
+-  Lossy(Vec<u8>),
+-}
+-
+ #[napi]
+ impl Task for CompressJpegTask {
+-  type Output = JpegOptimizeOutput;
++  type Output = Vec<u8>;
+   type JsValue = Buffer;
+ 
+   fn compute(&mut self) -> Result<Self::Output> {
+@@ -189,46 +80,13 @@
+           format!("Encode image from input jpeg failed {err}"),
+         )
+       })?;
+-      return Ok(JpegOptimizeOutput::Lossy(dest.into_inner()));
++      return Ok(dest.into_inner());
+     }
+-    unsafe { moz_jpeg_compress(self.input.as_ref(), &self.options) }.map(
+-      |(buf, len, de_c_info, compress_c_info)| {
+-        JpegOptimizeOutput::Lossless(Box::new(ThreadsafeMozjpegCompressOutput {
+-          buf,
+-          len,
+-          de_c_info,
+-          compress_c_info,
+-        }))
+-      },
+-    )
++    Err(lossless_not_built_in())
+   }
+ 
+   fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
+-    match output {
+-      JpegOptimizeOutput::Lossless(moz_jpeg_output) => {
+-        let ThreadsafeMozjpegCompressOutput {
+-          buf,
+-          len,
+-          de_c_info,
+-          compress_c_info,
+-        } = *moz_jpeg_output;
+-        unsafe {
+-          BufferSlice::from_external(
+-            &env,
+-            buf,
+-            len,
+-            (de_c_info, compress_c_info, buf),
+-            |_, (mut input, mut output, buf)| {
+-              mozjpeg_sys::jpeg_destroy_decompress(&mut input);
+-              mozjpeg_sys::jpeg_destroy_compress(&mut output);
+-              libc::free(buf as *mut std::ffi::c_void);
+-            },
+-          )
+-        }
+-      }
+-      JpegOptimizeOutput::Lossy(buf) => BufferSlice::from_data(&env, buf),
+-    }
+-    .and_then(|slice| slice.into_buffer(&env))
++    BufferSlice::from_data(&env, output).and_then(|slice| slice.into_buffer(&env))
+   }
+ }
+ 
+diff -ruN a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -13,15 +13,6 @@
+ pub mod heic;
+ #[cfg(feature = "binding")]
+ pub mod jpeg;
+-// JPEG XL input (decode only) via the pure-Rust `jxl` crate; see `jxl.rs`.
+-#[cfg(feature = "binding")]
+-mod jxl;
+-// PQ/HLG to SDR sRGB for `jxl.rs`, with its SIMD kernels. Its own `jxl_hdr` feature (pure Rust,
+-// no napi) so the x86_64 and ASan `cargo test --no-default-features` jobs can run its
+-// kernel==scalar tests; without `binding` nothing outside the tests calls it.
+-#[cfg(feature = "jxl_hdr")]
+-#[cfg_attr(not(feature = "binding"), allow(dead_code))]
+-mod jxl_hdr;
+ // P3: deterministic fixed-point sRGB->Oklab + Euclidean Oklab distance, wired
+ // into the quantizer's perceptual color ASSIGNMENT metric (`pdist` in
+ // `quantize.rs`).
+diff -ruN a/src/transformer.rs b/src/transformer.rs
+--- a/src/transformer.rs
++++ b/src/transformer.rs
+@@ -7,7 +7,6 @@
+   ColorType, DynamicImage, ImageBuffer, ImageEncoder, ImageFormat, Pixel, Rgba, Rgba32FImage,
+   RgbaImage, imageops::FilterType,
+ };
+-use libavif::AvifData;
+ use napi::bindgen_prelude::*;
+ use napi_derive::napi;
+ use resvg::{
+@@ -341,14 +340,14 @@
+         {
+           let (img, orient) = crate::heic::decode_heic(input_buf)?;
+           (img, DetectedFormat::Heic, orient)
+-        } else if crate::jxl::is_jxl(input_buf) {
+-          // JPEG XL: `image` has no JXL decoder. The decoder bakes the header orientation into
+-          // the pixels, so no orientation is stored and `.rotate()` cannot rotate twice.
+-          (
+-            crate::jxl::decode_jxl(input_buf)?,
+-            DetectedFormat::Jxl,
+-            None,
+-          )
++        } else if input_buf.starts_with(&[0xff, 0x0a])
++          || input_buf.starts_with(b"\0\0\0\x0cJXL \r\n\x87\n")
++        {
++          // JPEG XL codestream or container signature: the decoder is not built in.
++          return Err(Error::new(
++            Status::InvalidArg,
++            "JPEG XL decoding is not built into this engine".to_owned(),
++          ));
+         } else {
+           let image_format = image::guess_format(input_buf).map_err(|err| {
+             Error::new(
+@@ -357,35 +356,10 @@
+             )
+           })?;
+           let img = if image_format == ImageFormat::Avif {
+-            let avif = libavif::decode_rgb(input_buf).map_err(|err| {
+-              Error::new(
+-                Status::InvalidArg,
+-                format!("Decode avif image failed {err}"),
+-              )
+-            })?;
+-            let decoded_rgb = avif.to_vec();
+-            let decoded_length = decoded_rgb.len();
+-            let width = avif.width();
+-            let height = avif.height();
+-            if (width * height * 3) as usize == decoded_length {
+-              ImageBuffer::from_raw(width, height, decoded_rgb)
+-                .map(DynamicImage::ImageRgb8)
+-                .ok_or_else(|| {
+-                  Error::new(Status::InvalidArg, "Decode avif image failed".to_owned())
+-                })?
+-            } else if (width * height * 4) as usize == decoded_length {
+-              ImageBuffer::from_raw(width, height, decoded_rgb)
+-                .map(DynamicImage::ImageRgba8)
+-                .ok_or_else(|| {
+-                  Error::new(Status::InvalidArg, "Decode avif image failed".to_owned())
+-                })?
+-            } else {
+-              ImageBuffer::from_raw(width, height, decoded_rgb)
+-                .map(DynamicImage::ImageLuma8)
+-                .ok_or_else(|| {
+-                  Error::new(Status::InvalidArg, "Decode avif image failed".to_owned())
+-                })?
+-            }
++            return Err(Error::new(
++              Status::InvalidArg,
++              "AVIF decoding is not built into this engine".to_owned(),
++            ));
+           } else {
+             image::load_from_memory_with_format(input_buf, image_format)
+               .map_err(|err| Error::new(Status::InvalidArg, format!("Decode image failed {err}")))?
+@@ -824,7 +798,7 @@
+ pub enum EncodeOutput {
+   Raw(*mut u8, usize),
+   Buffer(Vec<u8>),
+-  Avif(AvifData<'static>),
++  Avif(Vec<u8>),
+ }
+ 
+ impl EncodeOutput {
+@@ -836,15 +810,7 @@
+         })
+       },
+       EncodeOutput::Buffer(buf) => Ok(BufferSlice::from_data(env, buf)?),
+-      EncodeOutput::Avif(avif_data) => {
+-        let len = avif_data.len();
+-        let data_ptr = avif_data.as_slice().as_ptr();
+-        unsafe {
+-          BufferSlice::from_external(env, data_ptr.cast_mut(), len, avif_data, |_, data| {
+-            drop(data);
+-          })
+-        }
+-      }
++      EncodeOutput::Avif(buf) => Ok(BufferSlice::from_data(env, buf)?),
+     }
+   }
+ }
+diff -ruN a/src/webp.rs b/src/webp.rs
+--- a/src/webp.rs
++++ b/src/webp.rs
+@@ -1,192 +1,28 @@
+-use image::{DynamicImage, Rgb, Rgba, buffer::ConvertBuffer};
++use image::DynamicImage;
+ use napi::bindgen_prelude::*;
+ 
++fn not_built_in() -> Error {
++  Error::new(
++    Status::GenericFailure,
++    "WebP encoding is not built into this engine".to_owned(),
++  )
++}
++
+ #[inline]
+ pub(crate) unsafe fn lossless_encode_webp_inner(
+-  input: &DynamicImage,
+-  width: u32,
+-  height: u32,
++  _input: &DynamicImage,
++  _width: u32,
++  _height: u32,
+ ) -> Result<(*mut u8, usize)> {
+-  unsafe {
+-    let mut out_buf = std::ptr::null_mut();
+-    let len = match input {
+-      DynamicImage::ImageRgb8(input) => {
+-        let stride = width as i32 * 3;
+-        libwebp_sys::WebPEncodeLosslessRGB(
+-          input.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          &mut out_buf,
+-        )
+-      }
+-      DynamicImage::ImageRgba8(input) => {
+-        let stride = width as i32 * 4;
+-        libwebp_sys::WebPEncodeLosslessRGBA(
+-          input.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          &mut out_buf,
+-        )
+-      }
+-      // WebP is 8-bit; normalize any other color type (16-bit Rgb16/Rgba16 from HEIC,
+-      // 16-bit PNG/TIFF, etc.) down to RGBA8.
+-      other => {
+-        let converted = other.to_rgba8();
+-        let stride = width as i32 * 4;
+-        libwebp_sys::WebPEncodeLosslessRGBA(
+-          converted.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          &mut out_buf,
+-        )
+-      }
+-    };
+-    Ok((out_buf, len))
+-  }
++  Err(not_built_in())
+ }
+ 
+ #[inline]
+ pub(crate) unsafe fn encode_webp_inner(
+-  input: &DynamicImage,
+-  quality_factor: u32,
+-  width: u32,
+-  height: u32,
++  _input: &DynamicImage,
++  _quality_factor: u32,
++  _width: u32,
++  _height: u32,
+ ) -> Result<(*mut u8, usize)> {
+-  unsafe {
+-    let mut out_buf = std::ptr::null_mut();
+-    let len = match input {
+-      DynamicImage::ImageRgb8(input) => {
+-        let stride = width as i32 * 3;
+-        libwebp_sys::WebPEncodeRGB(
+-          input.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          quality_factor as f32,
+-          &mut out_buf,
+-        )
+-      }
+-      DynamicImage::ImageRgba8(input) => {
+-        let stride = width as i32 * 4;
+-        libwebp_sys::WebPEncodeRGBA(
+-          input.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          quality_factor as f32,
+-          &mut out_buf,
+-        )
+-      }
+-      DynamicImage::ImageLuma8(input) => {
+-        let stride = width as i32 * 3;
+-        let converted: image::ImageBuffer<Rgb<u8>, _> = input.convert();
+-        libwebp_sys::WebPEncodeRGB(
+-          converted.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          quality_factor as f32,
+-          &mut out_buf,
+-        )
+-      }
+-      DynamicImage::ImageLumaA8(input) => {
+-        let stride = width as i32 * 4;
+-        let converted: image::ImageBuffer<Rgba<u8>, _> = input.convert();
+-        libwebp_sys::WebPEncodeRGBA(
+-          converted.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          quality_factor as f32,
+-          &mut out_buf,
+-        )
+-      }
+-      // WebP is 8-bit; normalize any other color type (16-bit Rgb16/Rgba16 from HEIC,
+-      // 16-bit PNG/TIFF, etc.) down to RGBA8.
+-      _ => {
+-        let converted = input.to_rgba8();
+-        let stride = width as i32 * 4;
+-        libwebp_sys::WebPEncodeRGBA(
+-          converted.as_ptr(),
+-          width as i32,
+-          height as i32,
+-          stride,
+-          quality_factor as f32,
+-          &mut out_buf,
+-        )
+-      }
+-    };
+-    Ok((out_buf, len))
+-  }
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-  use super::*;
+-  use image::{DynamicImage, ImageBuffer, Rgb, Rgba};
+-
+-  /// A solid 4x4 16-bit RGBA image. WebP is 8-bit, so the encoder must normalize this down to
+-  /// RGBA8 instead of rejecting it (the pre-existing bug this task fixes).
+-  fn rgba16_4x4() -> DynamicImage {
+-    let buf = ImageBuffer::<Rgba<u16>, _>::from_raw(4, 4, vec![32768u16; 4 * 4 * 4])
+-      .expect("rgba16 buffer");
+-    DynamicImage::ImageRgba16(buf)
+-  }
+-
+-  /// A solid 4x4 16-bit RGB image for the lossless path.
+-  fn rgb16_4x4() -> DynamicImage {
+-    let buf =
+-      ImageBuffer::<Rgb<u16>, _>::from_raw(4, 4, vec![32768u16; 4 * 4 * 3]).expect("rgb16 buffer");
+-    DynamicImage::ImageRgb16(buf)
+-  }
+-
+-  /// A solid 4x4 8-bit RGBA image (existing fast-path regression guard).
+-  fn rgba8_4x4() -> DynamicImage {
+-    let buf =
+-      ImageBuffer::<Rgba<u8>, _>::from_raw(4, 4, vec![128u8; 4 * 4 * 4]).expect("rgba8 buffer");
+-    DynamicImage::ImageRgba8(buf)
+-  }
+-
+-  #[test]
+-  fn encode_webp_inner_normalizes_rgba16() {
+-    let image = rgba16_4x4();
+-    let (ptr, len) =
+-      unsafe { encode_webp_inner(&image, 75, image.width(), image.height()) }.expect("encode ok");
+-    assert!(!ptr.is_null(), "output buffer must not be null");
+-    assert!(len > 0, "output length must be > 0");
+-    unsafe { libwebp_sys::WebPFree(ptr as *mut _) };
+-  }
+-
+-  #[test]
+-  fn lossless_encode_webp_inner_normalizes_rgb16() {
+-    let image = rgb16_4x4();
+-    let (ptr, len) = unsafe { lossless_encode_webp_inner(&image, image.width(), image.height()) }
+-      .expect("encode ok");
+-    assert!(!ptr.is_null(), "output buffer must not be null");
+-    assert!(len > 0, "output length must be > 0");
+-    unsafe { libwebp_sys::WebPFree(ptr as *mut _) };
+-  }
+-
+-  #[test]
+-  fn encode_webp_inner_rgba8_fast_path_unaffected() {
+-    let image = rgba8_4x4();
+-    let (ptr, len) =
+-      unsafe { encode_webp_inner(&image, 75, image.width(), image.height()) }.expect("encode ok");
+-    assert!(!ptr.is_null(), "output buffer must not be null");
+-    assert!(len > 0, "output length must be > 0");
+-    unsafe { libwebp_sys::WebPFree(ptr as *mut _) };
+-  }
+-
+-  #[test]
+-  fn lossless_encode_webp_inner_rgba8_fast_path_unaffected() {
+-    let image = rgba8_4x4();
+-    let (ptr, len) = unsafe { lossless_encode_webp_inner(&image, image.width(), image.height()) }
+-      .expect("encode ok");
+-    assert!(!ptr.is_null(), "output buffer must not be null");
+-    assert!(len > 0, "output length must be > 0");
+-    unsafe { libwebp_sys::WebPFree(ptr as *mut _) };
+-  }
++  Err(not_built_in())
+ }

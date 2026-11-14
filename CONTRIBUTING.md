@@ -93,7 +93,7 @@ asserting favseed's 22-byte ICO writer is byte-identical to `icotool -c -r`. `be
 nothing beyond `pnpm install` to run its ordinary sweeps, but the precision, framing, ico-size
 and placement sweeps read pinned commits with `git show` and need a checkout with full history,
 and rebuilding `lib/zopfli.wasm` or the browser-compatibility WASM needs clang and rustc
-respectively (see `bench/zopfli/README.md` and `bench/browser-compat/build.mjs`).
+respectively (see `bench/zopfli/README.md` and `bench/wasm-engine/build.mjs`).
 
 ## Definition of done
 

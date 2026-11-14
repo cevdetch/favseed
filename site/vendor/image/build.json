@@ -1,0 +1,23 @@
+{
+  "sourceDateEpoch": 0,
+  "imageVersion": "1.16.0",
+  "revision": "a57319b7506405d991696459830f1a0e60cc88bf",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "sourceArchiveSha256": "40489c6d73249797aa8efb0ff029b94c8ec269b33c8f72ff759714f611e608e1",
+  "sdkArchiveSha256": "0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce",
+  "cargoLockSha256": "0a45a6cc26e64166c54e3428d984ba096ba97fbe9db212984279547fe85b82fe",
+  "toolingLockSha256": "9e6c02408014c3bd05fe7d127876fbd1b06618a13996be99496203b3588a6586",
+  "patchSha256": "a0eb552c39afda22135367eaa0048ce7dd2cec714eb43096c6134ea27f90dc77",
+  "runtime": {
+    "@emnapi/core": "2.0.0-beta.2",
+    "@emnapi/runtime": "2.0.0-beta.2",
+    "@napi-rs/wasm-runtime": "1.2.6"
+  },
+  "artifacts": {
+    "image.wasi-browser.js": "c0ad4c3ef22d9bfa35dbfdc6812ba12e46ecb850162988eda8fc91ebc256c651",
+    "wasi-worker-browser.mjs": "6d20ca2151ada4710de485c1ab8120b2402542160a08167a55861a147727f3b0",
+    "image.wasm32-wasi.wasm": "860d061058a90c15e94afe65d7dda911aa82b7a1c3ead8086613229a12924189",
+    "image.wasip1-browser.js": "53e6b8041fe0871050ff2591ae347e917077470c1d36611f226c8922c340c715",
+    "image.wasm32-wasip1.wasm": "e62b0ed8e7ae1c524b0edea8a75ceb86055d5e072d246916d8506b9b7f70f2cc"
+  }
+}

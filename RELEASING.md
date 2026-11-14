@@ -129,7 +129,7 @@ On an up-to-date `main` with a clean working tree and CI green:
    ```
 
 3. The Release workflow checks the tag against `package.json`, runs the test suite as CI does
-   (the engine from the lockfile, resvg 0.48.1 as the render test's reference), packs, stages
+   (the engine from the lockfile, resvg 0.49.0 as the render test's reference), packs, stages
    that exact tarball, and creates the GitHub Release from the changelog section.
 4. Approve with 2FA:
 

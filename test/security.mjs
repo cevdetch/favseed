@@ -27,7 +27,7 @@ describe('benchmark path boundaries', () => {
     ['vite-pwa-encode.mjs', false],
     ['vite-pwa-pipeline.mjs', false],
     ['zopfli/build.mjs', false],
-    ['browser-compat/build.mjs', false],
+    ['wasm-engine/build.mjs', false],
   ]) {
     it(`${script} rejects paths outside the checkout and temporary directory before doing I/O`, async () => {
       const scratch = mkdtempSync(join(tmpdir(), 'favseed-bench-path-test.'));
@@ -90,7 +90,7 @@ describe('benchmark path boundaries', () => {
       symlinkSync(outside, escape, 'junction');
       for (const cargoHome of [outside, escape]) {
         await assert.rejects(
-          execFileAsync(process.execPath, [join(ROOT, 'bench/browser-compat/build.mjs'), archive, archive], {
+          execFileAsync(process.execPath, [join(ROOT, 'bench/wasm-engine/build.mjs'), archive, archive], {
             cwd: ROOT,
             env: { ...process.env, CARGO_HOME: cargoHome },
             timeout: 10000,

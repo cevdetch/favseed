@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL -o /tmp/resvg.tar.gz \
-            "https://github.com/linebender/resvg/releases/download/v0.48.1/resvg-linux-x86_64.tar.gz"
+            "https://github.com/linebender/resvg/releases/download/v0.49.0/resvg-linux-x86_64.tar.gz"
           sudo tar -xzf /tmp/resvg.tar.gz -C /usr/local/bin resvg
           sudo chmod +x /usr/local/bin/resvg
 
