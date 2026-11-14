@@ -4,9 +4,11 @@ import { createBuildCache, buildKey } from '../src/lib/build-cache.mjs';
 import { createWorkerClient } from '../src/lib/worker-client.mjs';
 import { normaliseOptions } from '../../lib/config.mjs';
 import { zip } from '../src/lib/zip.mjs';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { wasiRuntime } from '../build/wasi-runtime.mjs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { verifyEngines, wasiRuntime } from '../build/wasi-runtime.mjs';
 import { checkCapabilities } from '../src/lib/capabilities.mjs';
 
 const browserCapabilities = () => ({
@@ -106,6 +108,24 @@ test('WASI tuning accepts only the pinned loader and refuses unexpected defaults
   );
   assert.throws(() => plugin.transform(source.replace('const __asyncWorkPoolSize = 4\n', ''), id), /WASI loader/);
   assert.deepEqual(plugin.transform(source, id.replaceAll('/', '\\')), result);
+});
+
+test('engine verification fails the named check when a recipe input drifts from build.json', () => {
+  // Copy the real vendor directory so the version, runtime and artifact checks all pass as
+  // usual, then tamper with the manifest's own pinned recipe-input hash, leaving the real
+  // bench/wasm-engine/ files (the recipe parameter below) untouched. This is what a patch or
+  // lock edited without a rebuild looks like to the guard.
+  const vendor = mkdtempSync(join(tmpdir(), 'favseed-vendor-'));
+  try {
+    cpSync(fileURLToPath(new URL('../vendor/image/', import.meta.url)), vendor, { recursive: true });
+    const manifestPath = join(vendor, 'build.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    manifest.patchSha256 = '0'.repeat(64);
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    assert.throws(() => verifyEngines({ vendor: pathToFileURL(vendor + '/') }), /patchSha256/);
+  } finally {
+    rmSync(vendor, { recursive: true, force: true });
+  }
 });
 
 test('ZIP entries use a valid fixed DOS epoch date', () => {

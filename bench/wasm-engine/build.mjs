@@ -133,6 +133,12 @@ try {
     binding = join(source, 'packages/binding');
   const sdk = join(scratch, 'wasi-sdk-33.0-x86_64-linux'),
     tooling = join(scratch, 'tooling');
+  // The threaded target links against the threads sysroot specifically, not the plain one the
+  // compatibility target uses; an SDK archive built without wasm32-wasip1-threads support fails
+  // deep inside the link step with an unrelated-looking error, so check for it up front instead.
+  const threadsSysroot = join(sdk, 'share/wasi-sysroot/lib/wasm32-wasip1-threads');
+  if (!existsSync(threadsSysroot))
+    throw new Error(`WASI SDK archive has no threads sysroot at ${threadsSysroot}; need wasi-sdk 33 or later`);
   // Leave out the codecs favseed never calls (AVIF, WebP encoding, lossless JPEG, JPEG XL); every
   // export stays and rejects. No fuzz, so an upstream change under a hunk stops the build.
   const patch = join(here, 'slim.patch');
@@ -222,9 +228,13 @@ try {
       native,
       loadImage(join(engine.dir, engine.loader)),
     );
+    // total === 0 would mean every fixture was skipped or host-dependent, so the gate compared
+    // nothing and could not have caught a real divergence; skipped > 0 means native itself
+    // rejected a fixture parity expected it to render, which is a broken comparison, not a pass.
+    if (total === 0) throw new Error(`${engine.name}: parity compared nothing; every fixture was skipped`);
+    if (skipped) throw new Error(`${engine.name}: native rejected ${skipped} non-host-dependent fixture(s)`);
     console.log(
       `${engine.name}: ${total - mismatches.length} of ${total} identical` +
-        (skipped ? `; ${skipped} fixture(s) skipped` : '') +
         (hostDependent ? `; host-dependent, skipped: ${hostDependent}` : ''),
     );
     if (mismatches.length)
