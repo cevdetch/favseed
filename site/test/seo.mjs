@@ -185,6 +185,23 @@ test('every guide links the generator and a docs page', () => {
   }
 });
 
+test('an inline tag does not run into the word before or after it', () => {
+  // Astro's compiler can drop a source line break that sits directly before an opening inline
+  // tag or directly after a closing one, gluing two words together with no space (e.g.
+  // "with<a href=...>" renders as "withfavseed"). Checked inside <main>, where every page's
+  // prose lives. No legitimate case needs the allow-list below today.
+  const allow = [];
+  const glued = (html, re) => [...html.matchAll(re)].map((match) => match[0]).filter((text) => !allow.includes(text));
+  const beforeOpen = /[A-Za-z0-9](?=<a[ >]|<code>|<strong>|<em>)/g;
+  const afterClose = /(?:<\/a>|<\/code>|<\/strong>|<\/em>)(?=[A-Za-z])/g;
+  for (const path of indexable) {
+    const main = /<main>([\s\S]*)<\/main>/.exec(pages.get(path))?.[1];
+    if (!main) continue;
+    assert.deepEqual(glued(main, beforeOpen), [], `${path}: a word runs into an opening tag`);
+    assert.deepEqual(glued(main, afterClose), [], `${path}: a closing tag runs into a word`);
+  }
+});
+
 test('pages other than the homepage ship no JavaScript', () => {
   for (const path of articles) {
     const html = pages.get(path);

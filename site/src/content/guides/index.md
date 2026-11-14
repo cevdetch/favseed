@@ -1,5 +1,5 @@
 ---
-title: "Favicon guides: the minimal set, maskable icons, dark mode - favseed"
+title: "Favicon guides: minimal set, maskable icons, dark mode - favseed"
 description: Three practical guides to the favicon files a site needs in 2026, covering the minimal set, maskable icons for Android and desktop, and the dark-mode favicon.
 heading: Guides
 label: Guides
