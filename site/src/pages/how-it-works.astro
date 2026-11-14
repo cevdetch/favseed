@@ -106,4 +106,36 @@ const efforts = [
       and <a href="https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md">the decisions</a> record why each
       step is the way it is.</p>
   </section>
+
+  <section>
+    <h2 id="why-each-step-is-this-way">Why each step is this way</h2>
+    <p>Each step was chosen by measurement. <a href="https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md">docs/DECISIONS.md</a>
+      records the decisions in force and the ones they replaced,
+      and <a href="https://github.com/cevdetch/favseed/blob/main/docs/BENCHMARKS.md">docs/BENCHMARKS.md</a> holds the
+      reproducible sweeps.</p>
+    <p>One engine, nothing to install. <code>@napi-rs/image</code> bundles the resvg and oxipng versions favseed was
+      measured with, and its renders match the resvg CLI pixel for pixel. Against the native pipeline of resvg,
+      pngquant and oxipng it replaced, it came out 9% smaller on a gradient and 0.46% larger across nine flat marks
+      (decision 26). Writing the ICO header in favseed removed the only dependency with no npm package and no
+      Windows build.</p>
+    <p>The search pays for itself. At the default effort, over 568 rasters, the smallest passing candidate came to
+      20.4% fewer bytes than quality 80, within 0.2% of trying all 26 (decision 29).</p>
+    <p>Concurrency is bounded. Raster jobs and complete alignment searches overlap, but a shared scheduler limits
+      the canvas work in flight, keeps large custom sizes serial, and drains active work after a failure before
+      returning. Candidate selection and output order stay deterministic.</p>
+    <p>Placement probes are bounded too. A small mark still enlarges into its safe zone, but searches over large
+      transparent margins render on canvases of the target size, and other probes stay within twice the target size,
+      so ordinary renders can still be reused. The full candidate walk remains: this bounds each probe, not the
+      number of probes or the memory the process uses.
+      The <a href="https://github.com/cevdetch/favseed/blob/main/bench/placement/README.md">placement report</a> has
+      the measurements.</p>
+    <p>On a square raster canvas, transparent exports of a wide or tall mark keep transparent bands, and opaque PNGs
+      use your ground and the safe-zone fit.
+      The <a href="https://github.com/cevdetch/favseed/blob/main/bench/framing/README.md">framing report</a> records
+      the raster proportions, bytes and timings.
+      The <a href="https://github.com/cevdetch/favseed/blob/main/bench/precision/README.md">precision report</a>
+      records the SVG rounding policy and the matched Vite PWA comparison. The rounding check covers the static base
+      appearance before PNG quantisation; it is not a guarantee for every display size, animation frame or media
+      state.</p>
+  </section>
 </Doc>

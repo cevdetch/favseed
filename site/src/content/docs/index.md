@@ -35,6 +35,8 @@ This writes five files to `public/` and prints their sizes. Add `--html` and it 
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 ```
 
+[Command line](/docs/cli) lists every flag, and [SVG input](/docs/svg-input) what your source needs.
+
 ### Vite
 
 ```js
@@ -47,7 +49,7 @@ export default defineConfig({
 })
 ```
 
-`vite dev` builds the icons the first time a page asks for one and serves them from memory. `vite build` writes the release icons next to `index.html`. favseed adds its `<link>` tags to `index.html` unless the page already has a `<link rel="icon">`.
+`vite dev` builds the icons the first time a page asks for one and serves them from memory. `vite build` writes the release icons next to `index.html`. favseed adds its `<link>` tags to `index.html` unless the page already has a `<link rel="icon">`. [Vite plugin](/docs/vite) covers the options and vite-plugin-pwa.
 
 ### Astro
 
@@ -57,11 +59,11 @@ Put your SVG at `src/logo.svg`, then run this from your Astro project:
 npx astro add favseed
 ```
 
-Astro installs the package and adds the integration to `astro.config.mjs`. The `<link>` tags go into every page that does not already have a `<link rel="icon">`.
+Astro installs the package and adds the integration to `astro.config.mjs`. The `<link>` tags go into every page that does not already have a `<link rel="icon">`. [Astro integration](/docs/astro) covers the options, caching and head tags.
 
 ### Website
 
-Open [the generator](/), choose an SVG and download the set as a zip. The build runs in your browser tab, so nothing is uploaded.
+Open [the generator](/), choose an SVG and download the set as a zip. The build runs in your browser tab, so nothing is uploaded. If it will not start, [Troubleshooting](/docs/troubleshooting#common-problems) lists what the browser needs.
 
 ## What you get
 
@@ -77,6 +79,12 @@ Use the same `/icon.svg` URL in `<link rel="icon">` and `<img>`, so the browser 
 
 ## The pages
 
+- [Command line](/docs/cli): every flag and its default, the config file, `--var`, `--bg`, `--padding`, the effort levels and how files are written.
+- [SVG input](/docs/svg-input): the viewBox your source needs, text and images, dark mode and animation.
+- [Vite plugin](/docs/vite): icons from memory in dev, emitted in the build, with vite-plugin-pwa.
+- [Astro integration](/docs/astro): setup, options, caching and head injection.
+- [Node API](/docs/node-api): `build()`, `buildFiles()`, the TypeScript types and the portable core.
+- [Troubleshooting](/docs/troubleshooting): common problems and how to upgrade safely.
 - [How it works](/how-it-works): the steps from one SVG to the finished set, from SVG optimisation and safe-zone placement to the accuracy bar and Zopfli.
 - [Outputs](/outputs): each file favseed writes, the HTML it needs, and which browser or platform reads it.
 - [Benchmarks](/benchmarks): measured bytes, accuracy and build time behind favseed's defaults.
