@@ -825,12 +825,12 @@ replaces and 42 % smaller over Brotli, −1.03 MB. Both loaders embed `initial: 
 MiB); the slim modules import a minimum of 993 (threaded) and 992 (compatibility) pages, so
 both run on the unmodified loader, as the published modules did at 1012 and 1010.
 
-**Parity.** `bench/wasm-engine/parity.mjs` runs favseed's own `lib/engine.mjs` calls — render,
-decode, `losslessCompressPng` and `encode`/`pngQuantize` at several quality and colour settings
-— over every fixture in `test/fixtures/` at six sizes, with and without a background, and
+**Parity.** `bench/wasm-engine/parity.mjs` runs favseed's own `lib/engine.mjs` calls (render,
+decode, `losslessCompressPng` and `encode`/`pngQuantize` at several quality and colour settings)
+over every fixture in `test/fixtures/` at six sizes, with and without a background, and
 hashes every output: 5,760 cases per engine. Confirmed on two independent clean builds: threaded
 5,760 of 5,760 identical to native 1.16.0, compatibility 5,760 of 5,760 identical, with one
-fixture (`dependent.svg`) skipped on both sides as host-dependent — it draws text, which native
+fixture (`dependent.svg`) skipped on both sides as host-dependent: it draws text, which native
 resvg renders with system fonts the WASI sandbox does not have.
 
 **Browser timing**, choose→ready, choose→first set and choose→final set medians at default
@@ -867,7 +867,7 @@ on a Ryzen 7 7840U.
 **Cost.** `slim.patch` is reapplied, by hand, at every `@napi-rs/image` upgrade; a hunk that no
 longer matches the upstream source stops the build rather than silently dropping out. The
 threaded engine is now a second vendored artifact, built here rather than downloaded, so it
-carries the same hash-and-version guard the compatibility engine already had — and, patch or
+carries the same hash-and-version guard the compatibility engine already had; and, patch or
 no patch, it is no longer byte-identical to anything upstream publishes: a local build's Rust
 toolchain and locked dependency resolution differ from napi's own CI, down to how many
 allocator and runtime-hook exports the napi macro generates. The four removed codecs are
@@ -882,8 +882,8 @@ or a CI runner without a Rust toolchain can still build and ship the site, and a
 rebuild cannot block a deploy that changes nothing about the engine. The cost is git history: a
 vendored `.wasm` pair is committed at every image upgrade that changes bytes, and git keeps the
 superseded blobs alongside the new ones rather than diffing them, so each such upgrade adds
-roughly 2 × the pair's raw size to the repository's history — about 22.8 MB for this upgrade's
-pair (5,722,390 + 5,653,958 B) — rather than reproducing the engines from source on every
+roughly 2 × the pair's raw size to the repository's history: about 22.8 MB for this upgrade's
+pair (5,722,390 + 5,653,958 B), rather than reproducing the engines from source on every
 deploy.
 
 This supersedes the "measured, not shipped" status of the slim-engine findings decision 30

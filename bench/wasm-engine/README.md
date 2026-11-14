@@ -84,8 +84,8 @@ inside the source tree immediately after its build, because the napi CLI deletes
 flavour's output as stale.
 
 **The parity gate.** Before anything is written, `compareEngines()` (`bench/wasm-engine/
-parity.mjs`) runs favseed's own `lib/engine.mjs` calls — `render`, `renderRgba`, `decode`,
-`losslessCompressPng`, `encode` and `pngQuantize` — over every fixture in `test/fixtures/` at six
+parity.mjs`) runs favseed's own `lib/engine.mjs` calls (`render`, `renderRgba`, `decode`,
+`losslessCompressPng`, `encode` and `pngQuantize`) over every fixture in `test/fixtures/` at six
 sizes, with and without a background, and hashes every output. Nothing is accepted unless both
 engines match the native `@napi-rs/image` module byte for byte; one fixture that draws text is
 skipped on both sides as host-dependent, since native resvg renders it with system fonts and the
