@@ -73,10 +73,10 @@ describe('lazy build dependencies', () => {
     const imageVersion = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).dependencies[
       '@napi-rs/image'
     ];
-    assert.match(
-      stdout,
-      new RegExp(`favseed \\d+\\.\\d+\\.\\d+ \\(@napi-rs/image ${imageVersion.replaceAll('.', '\\.')}`),
-    );
+    // A substring check rather than a RegExp built from package.json, which code scanning
+    // reports as regular-expression injection.
+    assert.match(stdout, /favseed \d+\.\d+\.\d+ \(@napi-rs\/image /);
+    assert.ok(stdout.includes(`(@napi-rs/image ${imageVersion}`), stdout);
   });
 
   it('rejects invalid build options and non-SVG input without loading build engines', async () => {
