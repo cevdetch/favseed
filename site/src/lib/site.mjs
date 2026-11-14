@@ -21,9 +21,14 @@ export const person = {
 // graph at a time and do not follow an @id to another page.
 export const website = { '@type': 'WebSite', '@id': ids.website, name: 'favseed', url: `${SITE}/`, inLanguage: 'en' };
 
+// A page's slash-free path from the URL Astro renders it at: /docs.html and /docs/index.html
+// are /docs, the homepage is /. Canonical URLs, breadcrumbs and JSON-LD all start from it.
+export const pathOfUrl = (pathname) => pathname.replace(/(?:index)?\.html$/, '').replace(/(.)\/$/, '$1') || '/';
+
 // The header bar. A section joins it when its first page exists.
 export const nav = [
   ['/', 'Generator'],
+  ['/docs', 'Docs'],
   ['/benchmarks', 'Benchmarks'],
   ['https://github.com/cevdetch/favseed', 'GitHub'],
 ];

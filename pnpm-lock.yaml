@@ -143,6 +143,9 @@ importers:
 
   site:
     dependencies:
+      '@astrojs/markdown-satteri':
+        specifier: ^0.4.7
+        version: 0.4.7
       '@astrojs/sitemap':
         specifier: ^3.7.4
         version: 3.7.4

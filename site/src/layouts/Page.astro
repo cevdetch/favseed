@@ -1,9 +1,10 @@
 ---
-// The document the indexable pages share: the head, the site's own icon set, the share tags
-// and the footer. A page passes its title and description; the canonical URL is the page's own
-// slash-free path, the form Cloudflare Pages serves with 'never' and the file format.
+// The document the indexable pages share: the head, the site's own icon set, the share tags,
+// the header bar and the footer. A page passes its title and description; the canonical URL is
+// the page's own slash-free path, the form Cloudflare Pages serves with 'never' and the file
+// format.
 import '../styles/app.css';
-import { nav } from '../lib/site.mjs';
+import { nav, pathOfUrl, SITE } from '../lib/site.mjs';
 
 interface Props {
   title: string;
@@ -11,8 +12,8 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const path = Astro.url.pathname.replace(/(?:index)?\.html$/, '') || '/';
-const url = new URL(path, Astro.site).href;
+const path = pathOfUrl(Astro.url.pathname);
+const url = new URL(path, SITE).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -33,7 +34,7 @@ const url = new URL(path, Astro.site).href;
 <meta property="og:url" content={url} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-<meta property="og:image" content={new URL('/og.png', Astro.site).href} />
+<meta property="og:image" content={new URL('/og.png', SITE).href} />
 <meta name="twitter:card" content="summary_large_image" />
 <slot name="head" />
 </head>
@@ -44,7 +45,7 @@ const url = new URL(path, Astro.site).href;
 <slot />
 
 <footer>
-  <nav><a href="/how-it-works">How it works</a> · <a href="/outputs">Outputs</a> · <a href="/benchmarks">Benchmarks</a></nav>
+  <nav><a href="/docs">Docs</a> · <a href="/how-it-works">How it works</a> · <a href="/outputs">Outputs</a> · <a href="/benchmarks">Benchmarks</a></nav>
   By <a href="https://cevdet.ch/">Cevdet</a> · MIT · <a href="https://github.com/cevdetch/favseed">Source</a> ·
   favseed also ships a CLI and an Astro integration. Its sibling, <a href="https://deadhead.cevdet.ch/">deadhead</a>,
   checks the rest of your <code>&lt;head&gt;</code>.

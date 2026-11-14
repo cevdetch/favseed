@@ -1,8 +1,10 @@
 // Checks on the built site (run `pnpm --filter favseed-site build` first): every indexable page
 // has its own title, description and canonical URL, one H1, a JSON-LD graph whose @id links
-// resolve, the header bar, and links that land on a built page and an existing anchor.
+// resolve, the header bar, and links that land on a built page and an existing anchor. Markdown
+// pages also have their .md alternate and are drawn as cards, and the sitemap dates every page.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
@@ -145,7 +147,9 @@ test('every page but the homepage is an article with a breadcrumb trail matching
 test('every indexable page has the same header bar, and it links only indexable pages', () => {
   const bars = indexable.map((path) => navOf(pages.get(path)).replace(/ aria-current="page"/g, ''));
   assert.equal(new Set(bars).size, 1, 'the header bar differs between pages');
-  for (const href of hrefs(bars[0]).filter((link) => link.startsWith('/'))) {
+  const local = hrefs(bars[0]).filter((link) => link.startsWith('/'));
+  assert.ok(local.length > 0, 'the header bar links no page of the site');
+  for (const href of local) {
     assert.ok(indexable.includes(href), `header bar links ${href}, which is not an indexable page`);
   }
 });
@@ -164,6 +168,7 @@ test('pages other than the homepage ship no JavaScript', () => {
 test('every section heading on an article page has a unique id', () => {
   for (const path of articles) {
     const headings = all(pages.get(path), /<h2([^>]*)>/g);
+    assert.ok(headings.length > 0, `${path}: no h2`);
     const headingIds = headings.map((attributes) => /\sid="([^"]+)"/.exec(attributes)?.[1]);
     assert.ok(headingIds.every(Boolean), `${path}: an h2 without an id`);
     assert.equal(new Set(headingIds).size, headingIds.length, `${path}: duplicate h2 id`);
@@ -207,3 +212,57 @@ test('robots.txt allows every crawler and names the sitemap', () => {
   assert.doesNotMatch(robots, /Disallow/);
   assert.match(robots, new RegExp(`^Sitemap: ${SITE}/sitemap-index\\.xml$`, 'm'));
 });
+
+const markdownPages = indexable.filter((path) => /<link rel="alternate" type="text\/markdown"/.test(pages.get(path)));
+
+test('every Markdown page links its .md alternate, which exists and starts with the page heading', () => {
+  assert.ok(markdownPages.includes('/docs'), 'the docs hub is a Markdown page');
+  for (const path of markdownPages) {
+    const html = pages.get(path);
+    const href = /<link rel="alternate" type="text\/markdown" href="([^"]+)"/.exec(html)[1];
+    assert.equal(href, `${urlOf(path)}.md`, path);
+    const markdown = readFileSync(join(dist, `${path}.md`), 'utf8');
+    const heading = /<h1>([^<]*)<\/h1>/.exec(html)[1];
+    assert.ok(markdown.startsWith(`# ${decode(heading)}\n`), `${path}.md starts with its heading`);
+    assert.doesNotMatch(markdown, /^---$/m, `${path}.md carries no frontmatter`);
+  }
+});
+
+test('Markdown pages are drawn as cards: <main> holds only <section> elements', () => {
+  for (const path of markdownPages) {
+    const main = /<main>([\s\S]*)<\/main>/.exec(pages.get(path))[1].trim();
+    // Removing every <section>…</section> (they do not nest) must leave nothing behind.
+    assert.match(main, /^<section>/, path);
+    assert.equal(main.replace(/<section>[\s\S]*?<\/section>/g, '').trim(), '', `${path}: content outside a card`);
+  }
+});
+
+const shallow = execFileSync('git', ['rev-parse', '--is-shallow-repository'], { encoding: 'utf8' }).trim() === 'true';
+
+test('the sitemap dates every page from git, unless the clone is shallow', { skip: shallow && 'shallow clone' }, () => {
+  const xml = readFileSync(join(dist, 'sitemap-0.xml'), 'utf8');
+  const entries = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((match) => match[1]);
+  assert.equal(entries.length, indexable.length);
+  for (const entry of entries) {
+    const lastmod = /<lastmod>([^<]+)<\/lastmod>/.exec(entry)?.[1];
+    assert.ok(lastmod, `no lastmod in ${entry}`);
+    assert.ok(Date.parse(lastmod) <= Date.now(), `${lastmod} is in the future`);
+  }
+});
+
+test(
+  'every article is dated from git, matching its sitemap lastmod, unless the clone is shallow',
+  { skip: shallow && 'shallow clone' },
+  () => {
+    const xml = readFileSync(join(dist, 'sitemap-0.xml'), 'utf8');
+    const lastmods = new Map(
+      [...xml.matchAll(/<loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod>/g)].map((match) => [match[1], match[2]]),
+    );
+    for (const path of articles) {
+      const article = graphOf(pages.get(path))['@graph'].find((node) => node['@type'] === 'TechArticle');
+      assert.ok(article.datePublished && article.dateModified, `${path}: article dates`);
+      assert.ok(article.datePublished <= article.dateModified, `${path}: published after modified`);
+      assert.equal(article.dateModified, lastmods.get(urlOf(path)), `${path}: dateModified and lastmod differ`);
+    }
+  },
+);

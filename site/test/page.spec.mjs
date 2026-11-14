@@ -55,7 +55,7 @@ test('homepage metadata agrees with the canonical URL and served share image', a
   expect(header(await response.body())).toMatchObject({ width: 1200, height: 630 });
 });
 
-const docs = ['/how-it-works', '/outputs', '/benchmarks'];
+const docs = ['/docs', '/how-it-works', '/outputs', '/benchmarks'];
 
 for (const path of docs) {
   test(`${path} has its own title, description and slash-free canonical URL`, async ({ page }) => {

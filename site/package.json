@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "astro dev",
     "icons": "node ../bin/favseed.mjs",
-    "test": "node --test test/worker.mjs",
+    "test": "node --test test/worker.mjs test/sections.mjs",
     "test:browser": "playwright test",
     "test:dist": "node --test test/seo.mjs",
     "build": "astro build && deadhead dist --fail-on=harmful",
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "^0.4.7",
     "@astrojs/sitemap": "^3.7.4",
     "@emnapi/core": "2.0.0-beta.2",
     "@emnapi/runtime": "2.0.0-beta.2",
