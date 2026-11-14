@@ -1,9 +1,9 @@
 ---
 title: 'Maskable icons: the safe zone and the any maskable trade-off - favseed'
-description: 'How maskable PWA icons work: the W3C safe zone, which platforms apply a mask, what Chrome needs to install an app, and how much padding a mark needs.'
+description: 'How maskable PWA icons work: the W3C safe zone, which platforms apply a mask, what Chrome needs to offer an install, and how much padding a mark needs.'
 heading: Maskable icons
 label: Maskable icons
-lede: An installed web app's icon is often cut to a circle, a squircle or a rounded square. This guide covers the safe zone that survives every mask, which platforms apply one, what Chrome needs before it will install an app, and how much padding a mark needs.
+lede: An installed web app's icon is often cut to a circle, a squircle or a rounded square. This guide covers the safe zone that survives every mask, which platforms apply one, what Chrome needs before it offers to install an app, and how much padding a mark needs.
 order: 1
 ---
 
@@ -30,9 +30,11 @@ Chrome reads `purpose` when it installs an app, and what happens next depends on
 
 [Outputs](/outputs#who-reads-what) has the full table, with the file favseed writes for each platform.
 
-## What Chrome needs to install
+## What Chrome needs to offer an install
 
 [web.dev's install criteria](https://web.dev/articles/install-criteria) say the manifest's `icons` "must include a 192px and a 512px icon", and [MDN](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable#required_manifest_members) asks the same of Chromium-based browsers. Chromium's own check is looser on size and strict on purpose: it looks for a square icon of at least 144 px whose `purpose` includes `any` ([installable_evaluator.cc](https://chromium.googlesource.com/chromium/src/+/97164d4ad8debc5ab6ae0e585426e734481f70ad/components/webapps/browser/installable/installable_evaluator.cc#117)). An icon declared `maskable` alone does not count, so a manifest whose icons are all `maskable` fails that check.
+
+These criteria decide when Chrome offers the install, not whether it can happen. In Chrome, web.dev says, an app must meet them "before it will fire the beforeinstallprompt event and show the in-browser install promotion", and it adds: "Users can install your web app even if it doesn't meet the PWA installability criteria" ([install criteria](https://web.dev/articles/install-criteria#criteria)).
 
 So ship a 192 and a 512 px icon, and declare at least one of them `any`.
 

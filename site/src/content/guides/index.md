@@ -10,7 +10,7 @@ order: 0
 ## The guides
 
 - [The minimal favicon set](/outputs): which five files a site needs in 2026, and the HTML that links them.
-- [Maskable icons](/guides/maskable-icons): the safe zone, which platforms apply a mask, what Chrome needs to install an app, and what one `any maskable` icon costs.
+- [Maskable icons](/guides/maskable-icons): the safe zone, which platforms apply a mask, what Chrome needs to offer an install, and what one `any maskable` icon costs.
 
 ## Make the set
 

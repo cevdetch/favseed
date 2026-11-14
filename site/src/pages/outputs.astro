@@ -28,7 +28,8 @@ const platforms = [
   ['Browser tabs', '<link rel="icon">', 'none', 'icon.svg, favicon.ico'],
   ['iOS, iPadOS, Safari Add to Dock', 'apple-touch-icon', 'rounded square, corners about 22%', 'apple-touch-icon.png'],
   ['Android (Chrome, WebAPK)', 'manifest, any maskable', 'circle, squircle, rounded square', 'icon-192.png, icon-512.png'],
-  ['ChromeOS, macOS (Chrome installs)', 'manifest, any maskable', 'the system’s rounded shape', 'icon-192.png, icon-512.png'],
+  ['ChromeOS (Chrome installs)', 'manifest, any maskable', 'Chrome’s own mask', 'icon-192.png, icon-512.png'],
+  ['macOS (Chrome installs)', 'manifest, any maskable', 'Apple’s rounded shape', 'icon-192.png, icon-512.png'],
   ['Windows, Linux desktops', 'manifest, any maskable', 'none: drawn as is, on light and dark', 'icon-192.png, icon-512.png'],
 ];
 const links = linkTags('/', true).trim();
@@ -93,10 +94,10 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
   <section>
     <h2 id="icon-192png-and-icon-512png"><code>icon-192.png</code> and <code>icon-512.png</code></h2>
     <p>The manifest’s icons, declared <code>any maskable</code>. Android masks them to a circle, squircle or rounded
-      square, ChromeOS and Chrome installs on macOS apply the system’s rounded shape, and Windows and Linux desktops
+      square, ChromeOS applies its own mask, Chrome installs on macOS take Apple’s rounded shape, and Windows and Linux desktops
       draw them as they are. web.dev’s install criteria, Chrome’s documentation and MDN all ask for a 192 and a
       512 px icon, so those are the default sizes; <code>--sizes</code> takes other even sizes.</p>
-    <p>One file carries both purposes. Chrome will not install an app whose icons are all <code>maskable</code>,
+    <p>One file carries both purposes. Chrome does not offer to install an app whose icons are all <code>maskable</code>,
       and the mark is padded into the safe zone, so <code>any</code> is true as well. The cost is on desktops that
       do not mask: there the icon shows a smaller mark on its ground, not edge to edge. <code>--bg none</code> opts
       out of all of it, with a transparent, unpadded set declared <code>any</code> only.</p>
