@@ -42,7 +42,8 @@ const current = (href: string) => (href === path ? 'page' : path.startsWith(`${h
 </head>
 <body>
 <nav aria-label="Site" class="site">
-  {nav.map(([href, label]) => <a href={href} aria-current={current(href)}>{label}</a>)}
+  {/* A space between the links: the flex layout ignores it, a text-only reader does not. */}
+  {nav.map(([href, label], i) => [i ? ' ' : '', <a href={href} aria-current={current(href)}>{label}</a>])}
 </nav>
 <slot />
 
