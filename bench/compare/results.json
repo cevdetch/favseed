@@ -45,7 +45,14 @@
       ],
       "commit": "527c13b",
       "dirty": false,
-      "sharpReference": "sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2)"
+      "sharpReference": "sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2)",
+      "buildCommit": "0089ea0",
+      "trees": {
+        "bin": "0eecf7ffb68421647de3f8780598a2b1b3af31f7",
+        "lib": "15a87a1455373806867c5ca6c8cd3cb1bf8b4103"
+      },
+      "lockfile": "7f62e0af7651747b06ddfe8640b4661dc7b8fa44",
+      "buildDirty": false
     },
     {
       "id": "favicons",
@@ -172,7 +179,8 @@
         "pwa-64x64.png"
       ],
       "preset": "minimal-2023",
-      "sharpReference": "sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2)"
+      "sharpReference": "sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2)",
+      "pngQuality": 60
     },
     {
       "id": "realfavicon",
@@ -197,13 +205,50 @@
     "resvg": "@napi-rs/image 1.16.0",
     "sharp": "per tool: tools[].sharpReference"
   },
+  "varCheck": {
+    "colour": "#0e7c68",
+    "copies": [
+      {
+        "sharp": "0.35.5",
+        "librsvg": "2.63.2",
+        "drawn": {
+          "definition": "#000000",
+          "fallback": "#0e7c68",
+          "both": "#0e7c68"
+        }
+      },
+      {
+        "sharp": "0.33.5",
+        "librsvg": "2.58.93",
+        "drawn": {
+          "definition": "#000000",
+          "fallback": "#0e7c68",
+          "both": "#0e7c68"
+        }
+      },
+      {
+        "sharp": "0.34.5",
+        "librsvg": "2.61.2",
+        "drawn": {
+          "definition": "#000000",
+          "fallback": "#0e7c68",
+          "both": "#0e7c68"
+        }
+      }
+    ]
+  },
   "summary": {
     "fixtures": {
       "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp references themselves agree within the bar.",
       "inputs": 23,
       "renderers": {
         "scored": 21,
-        "agree": 19
+        "agree": 19,
+        "passedBoth": {
+          "inputs": 2,
+          "pairs": 10,
+          "passed": []
+        }
       },
       "common": {
         "inputs": 21,
@@ -541,7 +586,12 @@
       "inputs": 80,
       "renderers": {
         "scored": 80,
-        "agree": 15
+        "agree": 15,
+        "passedBoth": {
+          "inputs": 65,
+          "pairs": 325,
+          "passed": []
+        }
       },
       "common": {
         "inputs": 80,
@@ -849,7 +899,12 @@
       "inputs": 103,
       "renderers": {
         "scored": 101,
-        "agree": 34
+        "agree": 34,
+        "passedBoth": {
+          "inputs": 67,
+          "pairs": 335,
+          "passed": []
+        }
       },
       "common": {
         "inputs": 101,

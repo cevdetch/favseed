@@ -11,13 +11,13 @@ Each of the four takes one source image in Node and writes a favicon set. `favic
 
 | Tool | Versions | Renderer | Whole set: defaults as run |
 |---|---|---|---|
-| favseed | commit `527c13b` (unreleased): @napi-rs/image 1.16.0, svgo 4.1.0, zopfli 1.0.15 | resvg (@napi-rs/image) | `buildFiles({ input })`: default effort, `#000000` ground, no manifest |
+| favseed | unreleased; `bin/` and `lib/` as of `0089ea0`: @napi-rs/image 1.16.0, svgo 4.1.0, zopfli 1.0.15 | resvg (@napi-rs/image) | `buildFiles({ input })`: default effort, `#000000` ground, no manifest |
 | favicons | favicons 7.3.1 | sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2) | `favicons(svg)` with no options: every platform on |
 | astro-favicons | astro-favicons 3.1.8, favilib 1.0.5 | sharp 0.33.5 (libvips 8.15.3, librsvg 2.58.93) | favilib with astro-favicons' own `defaults` object |
 | Vite PWA assets generator | @vite-pwa/assets-generator 2.0.0 | sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2) | `minimal-2023` preset, nothing else set |
 | RealFaviconGenerator | @realfavicongenerator/generate-favicon 0.9.0, @realfavicongenerator/image-adapter-node 0.9.0 | sharp 0.34.5 (libvips 8.17.3, librsvg 2.61.2) | `generateFaviconFiles` with `initFaviconIconSettings()` and `path: '/'` |
 
-The four competitors are pinned to exact versions in `package.json` and `package-lock.json` here. `node bench/compare/run.mjs --install` installs them with `npm ci --ignore-scripts` into `bench/out/compare/deps/`, which git ignores. They are not dependencies of favseed or of the website, and nothing favseed ships imports them. Every adapter in `tools/` checks the installed version against its pin before it runs. Each package resolves its own sharp, so three copies are installed: sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2), sharp 0.33.5 (libvips 8.15.3, librsvg 2.58.93) and sharp 0.34.5 (libvips 8.17.3, librsvg 2.61.2).
+The four competitors are pinned to exact versions in `package.json` and `package-lock.json` here. `node bench/compare/run.mjs --install` installs them with `npm ci --ignore-scripts` into `bench/out/compare/deps/`, which git ignores. They are not dependencies of favseed or of the website, and nothing favseed ships imports them. Every competitor adapter in `tools/` checks the installed version against its pin before it runs. Each package resolves its own sharp, so three copies are installed: sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2), sharp 0.33.5 (libvips 8.15.3, librsvg 2.58.93) and sharp 0.34.5 (libvips 8.17.3, librsvg 2.61.2).
 
 ### Defaults, exactly as run
 
@@ -55,7 +55,7 @@ The run checks that every PNG of a pair is exactly 192 or 512 px square and reco
 
 ### Timing
 
-Each tool runs in its own fresh Node process for each of 3 repetitions, so engine start-up shows in the cold time instead of being amortised across runs. The process first builds a warm-up mark that is not one of the inputs (a filled circle), then every input in order, then the first input again to check it writes the same bytes twice. Each input is timed from the call to the returned files, in memory, with no files written. The warm-up is excluded from the totals; cold time is the time from starting the process to the end of the warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, never concurrently, in an order rotated each repetition. A time is the median of the repetitions. The run took 36 minutes, with nothing else heavy running. The 1, 5 and 15 minute load averages were 0.48, 1.66, 2.61 as it started and 1.76, 3.06, 4.03 as it ended, the second including the run's own load.
+Each tool runs in its own fresh Node process for each of 3 repetitions, so engine start-up shows in the cold time instead of being amortised across runs. The process first builds a warm-up mark that is not one of the inputs (a filled circle), then every input in order, then the first input again to check it writes the same bytes twice. Each input is timed from the call to the returned files, in memory, with no files written. The warm-up is excluded from the totals; cold time is the time from starting the process to the end of the warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, never concurrently, in an order rotated each repetition. A time is the median of the repetitions. The run took 36 minutes. The 1, 5 and 15 minute load averages were 0.48, 1.66, 2.61 as it started and 1.76, 3.06, 4.03 as it ended, the second including the run's own load.
 
 Machine: AMD Ryzen 7 7840U with Radeon 780M Graphics, 16 threads, 13.3 GiB RAM, CachyOS (Linux 7.3.4-1-cachyos), Node v26.13.1, platform profile `low-power`, CPU governor `powersave` and energy preference `power`. These timings hold for this machine only.
 
@@ -68,11 +68,11 @@ Each like-for-like PNG is scored with favseed's own accuracy bar (`passesBar` in
 
 Reporting both separates encoding loss from renderer differences. A tool that passes against its own renderer and fails against the other loses little in encoding and draws the mark differently.
 
-The two renderers often disagree with each other. Scored the same way, sharp 0.35.5's lossless render passes against resvg's on 34 of the 101 inputs both can render (19 of 21 fixtures, 15 of 80 open icons). On the other 67, no PNG can pass against both references however it is encoded, so neither pass count alone measures encoding loss.
+The two renderers often disagree with each other. Scored the same way, the lossless render of sharp 0.35.5, favseed's sharp reference, passes against resvg's on 34 of the 101 inputs both can render (19 of 21 fixtures, 15 of 80 open icons). On the other 67, a PNG could in principle sit within the bar of both, but none of the 335 pairs the five tools wrote passes against both, so neither pass count alone measures encoding loss. The agreement count uses the sharp 0.35.5 render; the other tools' own references come from their own librsvg builds.
 
 ### var()
 
-librsvg ignores custom property definitions and draws a `var()` with its fallback, or black when it has none; this was checked separately with sharp 0.33.5, 0.34.5 and 0.35.5. 4 inputs use `var()` (`animated`, `general`, `heavy` and `tiles`, all of them fixtures), and every `var()` in them carries a fallback with no definition, so no tool renders a mark black here. The pass counts are also given without those inputs, so a corpus that does show the effect shows it there. favseed resolves `var()` before it renders, including a value given with `--var`.
+With every sharp copy installed, sharp 0.35.5 (librsvg 2.63.2), sharp 0.33.5 (librsvg 2.58.93) and sharp 0.34.5 (librsvg 2.61.2), librsvg draws a fill given only by a custom property definition black, draws `var(--c, colour)` in its fallback colour, and with both a definition and a fallback still draws the fallback: it ignores definitions. `bench/compare/var-check.mjs` repeats this check, and `results.json` records it as `varCheck`. 4 inputs use `var()` (`animated`, `general`, `heavy` and `tiles`, all of them fixtures), and every `var()` in them carries a fallback with no definition, so librsvg draws them in the colours resvg uses and no tool renders a mark black here. The pass counts are also given without those inputs, so a corpus that does show the effect shows it there. favseed resolves `var()` before it renders, including a value given with `--var`.
 
 ## Results
 
@@ -100,7 +100,14 @@ By corpus, over the inputs every tool built in each:
 
 (21 fixtures and 80 open icons.)
 
-favseed takes 2,362 ms per input at its default effort, slower than astro-favicons (58 ms), Vite PWA assets generator (204 ms) and RealFaviconGenerator (99 ms) and faster than favicons (2,793 ms). It searches for the smallest encode that passes its accuracy bar and finishes every PNG with Zopfli; the sharp tools encode each file once. astro-favicons builds a set 41 times as fast as favseed. favseed's cold time, 3,036 ms, is Node start-up plus a full default-effort build of the warm-up circle, the longest of the five.
+At its default effort favseed searches for the smallest encode that passes its accuracy bar and finishes every PNG with Zopfli; the sharp tools encode each file once. favseed against each tool, over the 101 inputs every tool built: the mean time per input (the table above), the median input's time, and how many inputs each builds faster, with any corpus where the mean goes the other way:
+
+- **favicons**: favseed is faster on the mean (2,362 against 2,793 ms) but slower on the median input (1,739 against 1,194 ms); it is faster on 54 of the 101 inputs and slower on 47; on the fixtures favseed is slower (1,922 against 1,173 ms).
+- **astro-favicons**: favseed is slower on the mean (2,362 against 58 ms) and slower on the median input (1,739 against 45 ms); it is slower on every one of the 101 inputs.
+- **Vite PWA assets generator**: favseed is slower on the mean (2,362 against 204 ms) and slower on the median input (1,739 against 152 ms); it is slower on every one of the 101 inputs.
+- **RealFaviconGenerator**: favseed is slower on the mean (2,362 against 99 ms) and slower on the median input (1,739 against 29 ms); it is slower on every one of the 101 inputs.
+
+astro-favicons builds a set 41 times as fast as favseed on the mean. favseed's cold time, 3,036 ms, is Node start-up plus a full default-effort build of the warm-up circle, the longest of the five.
 
 favicons covers the most platforms, with 69 files per set against favseed's 5, among them 34 Apple startup (splash screen) images; favseed, astro-favicons and RealFaviconGenerator write an SVG favicon. Bytes per set do not compare encoders on their own, because the sets hold different files at different sizes: the like-for-like pair below does.
 
@@ -132,9 +139,9 @@ favicons passes against its own renderer on every input it built (101/101), with
 
 astro-favicons passes against its own renderer on every input it built (101/101), with a pair 5.0 times the size of favseed's.
 
-The Vite PWA assets generator writes the competitors' smallest pair, 1,041,903 bytes, with the preset's lossy quality-60 PNG encode; it passes against its own renderer on 22 of 101 inputs.
+Vite PWA assets generator writes the smallest pair of the other four, 1,041,903 bytes, encoding every PNG at sharp quality 60 (a lossy palette encode), the package default `defaultPngCompressionOptions` that minimal-2023 leaves unchanged; it passes against its own renderer on 22 of 101 inputs.
 
-favseed misses against resvg on 52 of its 206 PNGs (0 on fixtures, 52 on open icons; 19 of them on the edge clause alone). On every one of them, no setting on its search lists passed, and favseed kept its quality-80 encode without a warning, as decision 29 in `docs/DECISIONS.md` specifies. Its own build reports the same verdict as this benchmark on 206 of the 206 PNGs.
+favseed misses against resvg on 52 of its 206 PNGs (0 on fixtures, 52 on open icons; 19 of them on the edge clause alone). On every one of them, its own build found no setting on its search lists that passed and kept its quality-80 encode without a warning, as decision 29 in `docs/DECISIONS.md` specifies. Separately, favseed's own verdict, against its own reference, matches this benchmark's resvg verdict on 206 of the 206 PNGs.
 
 ### Failures
 
@@ -156,11 +163,11 @@ A failed build counts as the same outcome whatever its message says, because lib
 
 ## Results depend on the input
 
-Per input, the median build time of each tool, from the fastest input to the slowest:
+Per input, over the 101 inputs every tool built, each tool's build time (the median of the repetitions), from the fastest input to the slowest:
 
 | Tool | Fastest, ms | Median, ms | Slowest, ms |
 |---|---:|---:|---:|
-| favseed | 309 | 1,767 | 7,301 |
+| favseed | 309 | 1,739 | 7,301 |
 | favicons | 1,077 | 1,194 | 15,773 |
 | astro-favicons | 31 | 45 | 169 |
 | Vite PWA assets generator | 86 | 152 | 821 |
@@ -170,9 +177,14 @@ Byte totals move with the corpus too. The fixtures are test marks drawn to exerc
 
 ## Reproduce
 
+favseed's code is named by content, since a branch commit does not survive a squash merge: the run used `bin/` tree `0eecf7ffb68421647de3f8780598a2b1b3af31f7` and `lib/` tree `15a87a1455373806867c5ca6c8cd3cb1bf8b4103`, last changed in `0089ea0`, with `pnpm-lock.yaml` blob `7f62e0af7651747b06ddfe8640b4661dc7b8fa44`. Any checkout where `git rev-parse HEAD:bin`, `HEAD:lib` and `HEAD:pnpm-lock.yaml` print these runs the same favseed code with the same engine pins; `pnpm install` installs them.
+
+The competitors' `package-lock.json` pins every package, including sharp's platform-specific libvips binaries (`@img/sharp-*`) for each platform; npm installs the one for the machine, so another platform runs a different binary of the same version. The open icons are pinned by `bench/corpus/manifest.json`: the icon sets, their versions, the icon names and a hash of each file.
+
 From the repository root, with Node 24 or later:
 
 ```sh
+pnpm install                                                # favseed and its pinned engines
 node bench/corpus/fetch.mjs                                 # the open icons, once
 node bench/compare/run.mjs --install --reps 3 --write   # install the pins, run, write results.json and this file
 node bench/compare/run.mjs --readme                         # rewrite this file from results.json

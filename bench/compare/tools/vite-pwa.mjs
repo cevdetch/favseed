@@ -15,10 +15,14 @@ import { importDep, pinned } from '../deps.mjs';
 const pkg = pinned('@vite-pwa/assets-generator', '2.0.0');
 const { instructions } = await importDep('@vite-pwa/assets-generator/api/instructions');
 const { minimal2023Preset } = await importDep('@vite-pwa/assets-generator/presets/minimal-2023');
+const { defaultPngCompressionOptions } = await importDep('@vite-pwa/assets-generator/api');
 
 export const id = 'vite-pwa';
 export const label = `@vite-pwa/assets-generator ${pkg.version}`;
 export const preset = 'minimal-2023';
+// minimal-2023 sets no png options, so every PNG is encoded at the package default
+// (defaultPngCompressionOptions in src/api/defaults.ts): a lossy palette encode at this quality.
+export const pngQuality = minimal2023Preset.png?.quality ?? defaultPngCompressionOptions.quality;
 export const versions = { '@vite-pwa/assets-generator': pkg.version };
 // The sharp copy the package resolves (sharp-ico nests an older one, used only to write the ICO).
 export const sharpFrom = pkg.path;

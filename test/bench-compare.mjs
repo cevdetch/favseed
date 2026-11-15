@@ -4,10 +4,14 @@ import { describe, it } from 'node:test';
 import {
   builtByAll,
   classify,
+  determinismOf,
+  formatResults,
   groupSummary,
+  headToHead,
   median,
   outcomeKey,
   passCounts,
+  passedBoth,
   rendererAgreement,
   scoreSize,
   setDigest,
@@ -247,5 +251,51 @@ describe('bench compare README', () => {
     const results = JSON.parse(readFileSync(new URL('../bench/compare/results.json', import.meta.url), 'utf8'));
     const readme = readFileSync(new URL('../bench/compare/README.md', import.meta.url), 'utf8');
     assert.equal(renderReadme(results), readme, 'run node bench/compare/run.mjs --readme');
+  });
+});
+
+const rep = (inputs, repeatsMatch = true) => ({ repeatsMatch, inputs });
+const timed = (x, y) => ({ tools: { x: { ms: x }, y: { ms: y } } });
+const pair = (resvg, sharp) => ({ like: { 192: { resvg, sharp }, 512: { resvg, sharp } } });
+
+describe('bench compare determinism, speed and both references', () => {
+  it('flags a success that turns into a failure and two different digests, never a reworded failure', () => {
+    const reps = {
+      flip: [rep([{ name: 'a', digest: 'x' }]), rep([{ name: 'a', error: 'bad dimensions' }])],
+      bytes: [rep([{ name: 'a', digest: 'x' }]), rep([{ name: 'a', digest: 'y' }])],
+      reworded: [rep([{ name: 'a', error: 'bad dimensions' }]), rep([{ name: 'a', error: 'corrupt header:' }])],
+      repeat: [rep([{ name: 'a', digest: 'x' }], false)],
+    };
+    const d = determinismOf(reps, Object.keys(reps), ['a']);
+    assert.deepEqual(d.flip, { deterministic: false, differing: ['a'], repeatsMatch: true });
+    assert.deepEqual(d.bytes, { deterministic: false, differing: ['a'], repeatsMatch: true });
+    assert.deepEqual(d.reworded, { deterministic: true, differing: [], repeatsMatch: true });
+    assert.deepEqual(d.repeat, { deterministic: false, differing: [], repeatsMatch: false });
+  });
+  it('compares two tools input by input, counting wins and the median input', () => {
+    const h = headToHead(
+      [timed(1, 5), timed(2, 5), timed(30, 5), timed(4, 4), { tools: { x: { ms: 1 }, y: { error: 'no' } } }],
+      'x',
+      'y',
+    );
+    assert.deepEqual(h, { inputs: 4, aFaster: 2, bFaster: 1, aMedian: 3, bMedian: 5 });
+  });
+  it('counts the pairs that pass against both references where the references disagree', () => {
+    const disagreeing = [
+      { name: 'a', renderers: { 192: ok, 512: bad }, tools: { x: pair(ok, ok), y: pair(ok, bad) } },
+      { name: 'b', renderers: { 192: ok, 512: ok }, tools: { x: pair(ok, ok), y: pair(ok, ok) } },
+      {
+        name: 'c',
+        renderers: { 192: bad, 512: bad },
+        tools: { x: pair(bad, ok), y: { error: 'no', like: { error: 'no' } } },
+      },
+    ];
+    assert.deepEqual(passedBoth(disagreeing, ['x', 'y'], [192, 512]), { inputs: 2, pairs: 3, passed: ['a:x'] });
+  });
+  it('writes results.json with one compact line per input and survives a round trip', () => {
+    const results = { generated: 'now', summary: { all: { inputs: 2 } }, inputs: [{ name: 'a' }, { name: 'b' }] };
+    const text = formatResults(results);
+    assert.deepEqual(JSON.parse(text), results);
+    assert.match(text, /\n {4}\{"name":"a"\},\n {4}\{"name":"b"\}\n {2}\]\n\}\n$/);
   });
 });

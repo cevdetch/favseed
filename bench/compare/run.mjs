@@ -51,7 +51,17 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { corpusFiles } from '../corpus/files.mjs';
-import { classify, groupSummary, median, outcomeKey, scoreSize, setDigest } from './lib.mjs';
+import {
+  classify,
+  determinismOf,
+  formatResults,
+  groupSummary,
+  median,
+  outcomeKey,
+  scoreSize,
+  setDigest,
+} from './lib.mjs';
+import { varCheck } from './var-check.mjs';
 import { writeReadme } from './readme.mjs';
 import { depsDir, requireDep } from './deps.mjs';
 
@@ -178,6 +188,7 @@ if (args.child) {
         versions: tool.versions,
         engine: tool.engine,
         preset: tool.preset,
+        pngQuality: tool.pngQuality,
         firstSet,
         warmError: warm.error,
         repeatsMatch: outcome(again) === outcome(first),
@@ -241,8 +252,21 @@ function install() {
 // favseed's version is 0.0.0 until its first release, so the commit names the build measured,
 // and `dirty` says whether the working tree had uncommitted changes on top of it. Taken here in
 // the parent, so no timed process spends its start-up spawning git.
+//
+// A branch commit does not survive a squash merge, so the build is also named by what does: the
+// last commit that touched bin/ or lib/, the git tree hashes of bin/ and lib/ (equal trees are
+// equal code, whichever commit holds them), and pnpm-lock.yaml's blob hash, which pins the
+// engines. `buildDirty` says whether bin/, lib/ or the lockfile had uncommitted changes, in which
+// case the hashes name the committed code, not the code that ran.
 function checkout() {
-  return { commit: git('rev-parse', '--short', 'HEAD'), dirty: git('status', '--porcelain').length > 0 };
+  return {
+    commit: git('rev-parse', '--short', 'HEAD'),
+    dirty: git('status', '--porcelain').length > 0,
+    buildCommit: git('log', '-1', '--format=%h', '--', ':/bin', ':/lib'),
+    trees: { bin: git('rev-parse', 'HEAD:bin'), lib: git('rev-parse', 'HEAD:lib') },
+    lockfile: git('rev-parse', 'HEAD:pnpm-lock.yaml'),
+    buildDirty: git('status', '--porcelain', '--', ':/bin', ':/lib', ':/pnpm-lock.yaml').length > 0,
+  };
 }
 
 async function main() {
@@ -332,8 +356,8 @@ async function main() {
       }
     }
     // The two renderers against each other: the root sharp copy's render (favseed's sharp
-    // reference) scored against resvg's, losslessly on both sides. Where these disagree, no PNG
-    // can pass against both references.
+    // reference) scored against resvg's, losslessly on both sides. Where these disagree, a PNG
+    // passes against both only if it sits between them; summary renderers.passedBoth counts those.
     for (const px of SIZES) {
       if (!resvg[px] || liked.favseed.referenceErrors[input.name]?.[px]) continue;
       const rgba = new Uint8Array(readFileSync(join(input.likeDir, `favseed-${px}.sharp.rgba`)));
@@ -398,7 +422,7 @@ async function main() {
     rows.push(row);
   }
 
-  const { commit, dirty } = checkout();
+  const revision = checkout();
   const tools = TOOLS.map((id) => {
     const run = timed[id][0];
     // The names one set holds, from the first input the tool built: every tool here writes the
@@ -409,25 +433,17 @@ async function main() {
       label: run.label,
       versions: run.versions,
       fileNames: built ? built.files.map((f) => f.name).toSorted() : [],
-      ...(id === 'favseed' && { commit, dirty }),
+      ...(id === 'favseed' && revision),
+      ...(run.pngQuality && { pngQuality: run.pngQuality }),
       ...(run.engine && { engine: run.engine }),
       ...(run.preset && { preset: run.preset }),
       sharpReference: liked[id].sharp,
     };
   });
-  const determinism = Object.fromEntries(
-    TOOLS.map((id) => {
-      const differing = inputs
-        .filter((input) => {
-          const outcomes = timed[id].map((run) => {
-            return outcomeKey(run.inputs.find((item) => item.name === input.name));
-          });
-          return new Set(outcomes).size > 1;
-        })
-        .map((input) => input.name);
-      const repeats = timed[id].every((run) => run.repeatsMatch);
-      return [id, { deterministic: !differing.length && repeats, differing, repeatsMatch: repeats }];
-    }),
+  const determinism = determinismOf(
+    timed,
+    TOOLS,
+    inputs.map((input) => input.name),
   );
 
   const groups = {
@@ -458,18 +474,13 @@ async function main() {
       resvg: `@napi-rs/image ${engineVersions()['@napi-rs/image']}`,
       sharp: 'per tool: tools[].sharpReference',
     },
+    // How librsvg draws var() in each sharp copy (var-check.mjs), next to the results it explains.
+    varCheck: varCheck(),
     summary,
     determinism,
     inputs: rows,
   };
-  // One line per input: the file is committed, and indenting 103 rows five tools deep would
-  // triple its size and every diff of it.
-  const { inputs: inputRows, ...head } = results;
-  const text = JSON.stringify({ ...head, inputs: [] }, null, 2).replace(
-    '"inputs": []',
-    `"inputs": [\n${inputRows.map((row) => `    ${JSON.stringify(row)}`).join(',\n')}\n  ]`,
-  );
-  writeFileSync(join(outDir, 'results.json'), text + '\n');
+  writeFileSync(join(outDir, 'results.json'), formatResults(results));
   writeFileSync(join(outDir, 'hashes.json'), JSON.stringify(hashes, null, 2) + '\n');
   if (args.write) {
     copyFileSync(join(outDir, 'results.json'), new URL('results.json', HERE));

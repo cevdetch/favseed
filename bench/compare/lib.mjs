@@ -130,12 +130,80 @@ export const scoreSize = ({ candidate, references, score }) => {
 
 /**
  * How often the two references themselves agree: the inputs where the sharp render (`row.renderers`,
- * the root copy's) passes the bar against the resvg render at every size. Where they do not, no
- * PNG can pass against both.
+ * the root copy's, sharp 0.35.5 in the committed run) passes the bar against the resvg render at
+ * every size. Where they do not, a PNG between the two could still pass against both, so
+ * `passedBoth` counts how many tools' pairs actually did.
  */
 export const rendererAgreement = (rows, sizes) => {
   const scored = rows.filter((row) => sizes.every((px) => row.renderers?.[px]));
   return { scored: scored.length, agree: scored.filter((row) => sizes.every((px) => row.renderers[px].pass)).length };
+};
+
+/**
+ * On the inputs where the two references disagree (`row.renderers` fails at some size), the
+ * pairs, one per tool in `ids`, that still pass against both references at every size.
+ */
+export const passedBoth = (rows, ids, sizes) => {
+  const disagree = rows.filter(
+    (row) => sizes.every((px) => row.renderers?.[px]) && !sizes.every((px) => row.renderers[px].pass),
+  );
+  const pairs = disagree.flatMap((row) =>
+    ids.filter((id) => likeBuilt(row.tools[id], sizes)).map((id) => ({ name: row.name, id, like: row.tools[id].like })),
+  );
+  return {
+    inputs: disagree.length,
+    pairs: pairs.length,
+    passed: pairs
+      .filter(({ like }) => sizes.every((px) => like[px].resvg?.pass && like[px].sharp?.pass))
+      .map(({ name, id }) => `${name}:${id}`),
+  };
+};
+
+/**
+ * Tool `a` against tool `b`, input by input, over the rows both built: how many inputs each
+ * builds faster (a tie goes to neither) and the median input's time, from each input's median
+ * over the repetitions. A mean hides that one tool can win most inputs and lose on total time.
+ */
+export const headToHead = (rows, a, b) => {
+  const both = rows.filter((row) => !row.tools[a].error && !row.tools[b].error);
+  const ms = (id) => both.map((row) => row.tools[id].ms);
+  return {
+    inputs: both.length,
+    aFaster: both.filter((row) => row.tools[a].ms < row.tools[b].ms).length,
+    bFaster: both.filter((row) => row.tools[b].ms < row.tools[a].ms).length,
+    aMedian: both.length ? median(ms(a)) : null,
+    bMedian: both.length ? median(ms(b)) : null,
+  };
+};
+
+/**
+ * Whether each tool wrote the same bytes every time: `runs[id]` is that tool's repetitions, each
+ * `{ repeatsMatch, inputs: [{ name, digest } | { name, error }] }`. An input is listed when its
+ * outcome (outcomeKey) differs between repetitions, a success against a failure included.
+ */
+export const determinismOf = (runs, ids, names) =>
+  Object.fromEntries(
+    ids.map((id) => {
+      const differing = names.filter(
+        (name) => new Set(runs[id].map((run) => outcomeKey(run.inputs.find((item) => item.name === name)))).size > 1,
+      );
+      const repeatsMatch = runs[id].every((run) => run.repeatsMatch);
+      return [id, { deterministic: !differing.length && repeatsMatch, differing, repeatsMatch }];
+    }),
+  );
+
+/**
+ * results.json as text: indented, except one compact line per input, because the file is
+ * committed and indenting 103 rows five tools deep would triple its size and every diff of it.
+ */
+export const formatResults = (results) => {
+  const { inputs, ...head } = results;
+  return (
+    JSON.stringify({ ...head, inputs: [] }, null, 2).replace(
+      '"inputs": []',
+      `"inputs": [\n${inputs.map((row) => `    ${JSON.stringify(row)}`).join(',\n')}\n  ]`,
+    ) + '\n'
+  );
 };
 
 const sumOf = (rows, id, key) => rows.reduce((total, row) => total + row.tools[id][key], 0);
@@ -155,7 +223,8 @@ const SCOPE =
   'like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. ' +
   "Pass counts use each reference's own `scored` set: the inputs where that reference exists and " +
   'the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the ' +
-  'resvg and sharp references themselves agree within the bar.';
+  'resvg and sharp 0.35.5 references themselves agree within the bar, and passedBoth the pairs that pass ' +
+  'against both references on the inputs where they do not.';
 
 /**
  * One corpus group, summarised for every tool. The headline totals (bytes, time, like-for-like
@@ -207,7 +276,7 @@ export const groupSummary = (rows, runs, ids, sizes) => {
   return {
     scope: SCOPE,
     inputs: rows.length,
-    renderers: rendererAgreement(rows, sizes),
+    renderers: { ...rendererAgreement(rows, sizes), passedBoth: passedBoth(rows, ids, sizes) },
     common: { inputs: common.length, excluded: excluded(commonNames) },
     likeCommon: { inputs: likeCommon.length, excluded: excluded(likeNames) },
     tools,
