@@ -130,7 +130,7 @@ export const scoreSize = ({ candidate, references, score }) => {
 
 /**
  * How often the two references themselves agree: the inputs where the sharp render (`row.renderers`,
- * the root copy's, sharp 0.35.5 in the committed run) passes the bar against the resvg render at
+ * the root copy's, favseed's `sharpReference`) passes the bar against the resvg render at
  * every size. Where they do not, a PNG between the two could still pass against both, so
  * `passedBoth` counts how many tools' pairs actually did.
  */
@@ -198,6 +198,34 @@ export const speedAgainst = (results, a, b) => {
 };
 
 /**
+ * One tool's passes against `ref` over the inputs every tool built a like-for-like pair for
+ * (`likeCommon`), so a count of a tool that built more inputs can sit next to the others' on the
+ * same inputs.
+ */
+export const likePassesOnCommon = (results, id, ref, sizes = [192, 512]) => {
+  const excluded = results.summary.all.likeCommon.excluded;
+  return passCounts(
+    results.inputs.filter((row) => !excluded.includes(row.name)),
+    id,
+    sizes,
+    ref,
+  );
+};
+
+/**
+ * The Apple startup (splash screen) images among a set's file names, and the longest side among
+ * them in pixels, read from the `WIDTHxHEIGHT` in each name.
+ */
+export const startupImages = (fileNames) => {
+  const sides = fileNames
+    .filter((name) => name.startsWith('apple-touch-startup-image'))
+    .map((name) => /(\d+)x(\d+)/.exec(name))
+    .filter(Boolean)
+    .map(([, w, h]) => Math.max(Number(w), Number(h)));
+  return { count: sides.length, longest: sides.length ? Math.max(...sides) : 0 };
+};
+
+/**
  * favseed's like-for-like PNGs scored against the resvg reference, and the ones that miss the
  * bar: by corpus, those that miss on the edge clause alone (pixel share within `accuracyPct`),
  * and those its own build kept at quality 80 because no candidate passed (decision 29). `agree`
@@ -259,15 +287,18 @@ const fileRange = (rows, id) => {
   return counts.length ? { min: Math.min(...counts), max: Math.max(...counts) } : null;
 };
 
-/** What each part of a group summary covers, stated in results.json next to the numbers. */
-const SCOPE =
+/**
+ * What each part of a group summary covers, stated in results.json next to the numbers. `sharp`
+ * names the render the renderer agreement uses: favseed's sharp reference (`tools[].sharpReference`).
+ */
+export const scopeOf = (sharp) =>
   'Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover ' +
   '`common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and ' +
   'is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. ' +
   'like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. ' +
   "Pass counts use each reference's own `scored` set: the inputs where that reference exists and " +
   'the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the ' +
-  'resvg and sharp 0.35.5 references themselves agree within the bar, and passedBoth the pairs that pass ' +
+  `resvg and ${sharp} references themselves agree within the bar, and passedBoth the pairs that pass ` +
   'against both references on the inputs where they do not.';
 
 /**
@@ -277,7 +308,7 @@ const SCOPE =
  * and each tool's failures named. `own` keeps each tool's totals over everything it built, for
  * reference only: those totals compare different sets of inputs.
  */
-export const groupSummary = (rows, runs, ids, sizes) => {
+export const groupSummary = (rows, runs, ids, sizes, sharp = "favseed's sharp") => {
   const common = builtByAll(rows, ids),
     likeCommon = likeByAll(rows, ids, sizes);
   const commonNames = new Set(common.map((row) => row.name));
@@ -318,7 +349,7 @@ export const groupSummary = (rows, runs, ids, sizes) => {
     };
   }
   return {
-    scope: SCOPE,
+    scope: scopeOf(sharp),
     inputs: rows.length,
     renderers: { ...rendererAgreement(rows, sizes), passedBoth: passedBoth(rows, ids, sizes) },
     common: { inputs: common.length, excluded: excluded(commonNames) },

@@ -3,7 +3,7 @@
 
 # favseed next to four other favicon generators
 
-Measured on 15 November 2026. This benchmark builds the same 103 SVG files with favseed and four other favicon generators, each with its own defaults, and records how many files each one writes, how many bytes they take, how long a build takes, and how closely a transparent 192 and 512 px PNG from each tool matches the source. Every number below comes from `results.json` in this directory, from one run on one machine. Results depend on the input: the last section shows how far they move from one mark to the next.
+Measured on 15 November 2026. This benchmark builds the same 103 SVG files with favseed and four other favicon generators, each with its own defaults, and records how many files each one writes, how many bytes they take, how long a build takes, and how closely a transparent 192 and 512 px PNG from each tool matches the source. Every measured number below comes from `results.json` in this directory, from one run on one machine; a few fields were added to that file after the run without changing any measurement, and its `note` lists them. Results depend on the input: the last section shows how far they move from one mark to the next.
 
 ## The tools
 
@@ -55,7 +55,7 @@ The run checks that every PNG of a pair is exactly 192 or 512 px square and reco
 
 ### Timing
 
-Each tool runs in its own fresh Node process for each of 3 repetitions, so engine start-up shows in the cold time instead of being amortised across runs. The process first builds a warm-up mark that is not one of the inputs (a filled circle), then every input in order, then the first input again to check it writes the same bytes twice. Each input is timed from the call to the returned files, in memory, with no files written. The warm-up is excluded from the totals; cold time is the time from starting the process to the end of the warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, never concurrently, in an order rotated each repetition. A time is the median of the repetitions. The run took 36 minutes. The 1, 5 and 15 minute load averages were 0.48, 1.66, 2.61 as it started and 1.76, 3.06, 4.03 as it ended, the second including the run's own load.
+Each tool runs in its own fresh Node process for each of 3 repetitions, so engine start-up shows in the cold time instead of being amortised across runs. The process first builds a warm-up mark that is not one of the inputs (a filled circle), then every input in order, then the first input again to check it writes the same bytes twice. Each input is timed from the call to the returned files, in memory, with no files written. The warm-up is excluded from the totals; cold time is the time from starting the process to the end of the warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, never concurrently, in an order rotated each repetition. An input's time is its median over the repetitions, and a total is the median of the repetitions' totals. The run took 36 minutes. The 1, 5 and 15 minute load averages were 0.48, 1.66, 2.61 as it started and 1.76, 3.06, 4.03 as it ended, the second including the run's own load.
 
 Machine: AMD Ryzen 7 7840U with Radeon 780M Graphics, 16 threads, 13.3 GiB RAM, CachyOS (Linux 7.3.4-1-cachyos), Node v26.13.1, platform profile `low-power`, CPU governor `powersave` and energy preference `power`. These timings hold for this machine only.
 
@@ -73,6 +73,15 @@ The two renderers often disagree with each other. Scored the same way, the lossl
 ### var()
 
 With every sharp copy installed, sharp 0.35.5 (librsvg 2.63.2), sharp 0.33.5 (librsvg 2.58.93) and sharp 0.34.5 (librsvg 2.61.2), librsvg draws a fill given only by a custom property definition black, draws `var(--c, colour)` in its fallback colour, and with both a definition and a fallback still draws the fallback: it ignores definitions. `bench/compare/var-check.mjs` repeats this check, and `results.json` records it as `varCheck`. 4 inputs use `var()` (`animated`, `general`, `heavy` and `tiles`, all of them fixtures), and every `var()` in them carries a fallback with no definition, so librsvg draws them in the colours resvg uses and no tool renders a mark black here. The pass counts are also given without those inputs, so a corpus that does show the effect shows it there. favseed resolves `var()` before it renders, including a value given with `--var`.
+
+### Animated SVG
+
+favseed keeps CSS and SMIL animation in `icon.svg`; its PNG and ICO files are still images ([SVG input](https://favseed.cevdet.ch/docs/svg-input#animation)). For the other four, `bench/compare/animation-check.mjs` builds each default set from `test/fixtures/animated.svg` (CSS `@keyframes` inside a reduced-motion query) and `test/fixtures/smil.svg` (an `<animate>` element and an inline `animation`) and reports which SVG files keep the animation:
+
+- **favicons** writes no SVG by default. Asked for `favicon.svg`, it returns the source file unchanged ([`src/helpers.ts`](https://github.com/itgalaxy/favicons/blob/v7.3.1/src/helpers.ts#L248-L249) at v7.3.1), animation included.
+- **astro-favicons** writes `favicon.svg` and `safari-pinned-tab.svg` as the source file unchanged, through favilib's same code ([`src/helpers.ts`](https://github.com/withpwa/favilib/blob/v1.0.5/src/helpers.ts#L244-L245) at v1.0.5), animation included.
+- **Vite PWA assets generator** writes no SVG. For an SVG source, its favicon link points at the source file itself ([`src/api/instructions-resolver.ts`](https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/instructions-resolver.ts#L62-L84) at v2.0.0), which `generateAssets` skips ([`src/api/generate-assets.ts`](https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/generate-assets.ts#L19)), so the animation is whatever that file holds.
+- **RealFaviconGenerator** writes `favicon.svg` as the source with no transformation ([`src/svg/desktop.ts`](https://github.com/RealFaviconGenerator/core/blob/v0.9.0/packages/generate-favicon/src/svg/desktop.ts#L19-L22) at v0.9.0), re-serialised with its attribution metadata and a width and height added; the CSS and SMIL animation stay.
 
 ## Results
 
@@ -102,14 +111,14 @@ By corpus, over the inputs every tool built in each:
 
 At its default effort favseed searches for the smallest encode that passes its accuracy bar and finishes every PNG with Zopfli; the sharp tools encode each file once. favseed against each tool, over the 101 inputs every tool built: the mean time per input (the table above), the median input's time, and how many inputs each builds faster, with any corpus where the mean goes the other way:
 
-- **favicons**: favseed is faster on the mean (2,362 against 2,793 ms) but slower on the median input (1,739 against 1,194 ms); it is faster on 54 of the 101 inputs and slower on 47; on the fixtures favseed is slower (1,922 against 1,173 ms).
+- **favicons**: favseed is faster on the mean (2,362 against 2,793 ms) but slower on the median input (1,739 against 1,194 ms); it is faster on 54 of the 101 inputs and slower on 47; on the fixtures favseed is slower (1,922 against 1,173 ms). These times are for different sets: favicons builds 69 files per input, 34 of them Apple startup images up to 2,796 px, and favseed builds 5.
 - **astro-favicons**: favseed is slower on the mean (2,362 against 58 ms) and slower on the median input (1,739 against 45 ms); it is slower on every one of the 101 inputs.
 - **Vite PWA assets generator**: favseed is slower on the mean (2,362 against 204 ms) and slower on the median input (1,739 against 152 ms); it is slower on every one of the 101 inputs.
 - **RealFaviconGenerator**: favseed is slower on the mean (2,362 against 99 ms) and slower on the median input (1,739 against 29 ms); it is slower on every one of the 101 inputs.
 
 astro-favicons builds a set 41 times as fast as favseed on the mean. favseed's cold time, 3,036 ms, is Node start-up plus a full default-effort build of the warm-up circle, the longest of the five.
 
-favicons covers the most platforms, with 69 files per set against favseed's 5, among them 34 Apple startup (splash screen) images; favseed, astro-favicons and RealFaviconGenerator write an SVG favicon. Bytes per set do not compare encoders on their own, because the sets hold different files at different sizes: the like-for-like pair below does.
+favicons covers the most platforms, and favseed, astro-favicons and RealFaviconGenerator write an SVG favicon. The sets differ, so neither their bytes nor their build times compare like for like: favicons builds 69 files per input, 34 of them Apple startup images up to 2,796 px, and favseed builds 5. The like-for-like pair below holds the same two PNGs, framed the same way, from every tool.
 
 The spread across repetitions, as each repetition's total over the common inputs and its cold time:
 
@@ -134,6 +143,10 @@ Bytes over the 101 inputs every tool built a pair for. Passes are out of the inp
 | RealFaviconGenerator | 980,580 | 4,076,073 | 5,056,653 | 18.3 | 39/101 | 76/101 | 36/97 | 72/97 |
 
 "favseed as %" is the size of favseed's pair as a percentage of that tool's.
+
+favseed's resvg count covers 103 inputs because only favseed built `grid-fallback` and `grid-tiny`; over the 101 inputs every tool built a pair for, it passes on 68/101.
+
+favicons, astro-favicons and RealFaviconGenerator write lossless truecolour PNGs: each encodes with a bare sharp `.png()` ([favicons `src/helpers.ts`](https://github.com/itgalaxy/favicons/blob/v7.3.1/src/helpers.ts#L238-L240) at v7.3.1, [favilib `src/helpers.ts`](https://github.com/withpwa/favilib/blob/v1.0.5/src/helpers.ts#L234-L236) at v1.0.5 and [image-adapter-node `src/adapter.ts`](https://github.com/RealFaviconGenerator/core/blob/v0.9.0/packages/image-adapter-node/src/adapter.ts#L23-L34) at v0.9.0), which keeps sharp's defaults, no palette and zlib compression level 6 ([sharp 0.35.5](https://github.com/lovell/sharp/blob/v0.35.5/lib/constructor.mjs#L346-L348), [sharp 0.33.5](https://github.com/lovell/sharp/blob/v0.33.5/lib/constructor.js#L285-L287) and [sharp 0.34.5](https://github.com/lovell/sharp/blob/v0.34.5/lib/constructor.js#L329-L331)). The Vite PWA assets generator quantises at quality 60 ([`src/api/defaults.ts`](https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/defaults.ts#L14-L17) at v2.0.0), and favseed searches quantised and lossless encodes for the smallest that passes its bar (decision 29 in `docs/DECISIONS.md`). So the byte gap is not a gap at equal fidelity: a lossless PNG adds no loss to its own render, which is why favicons and astro-favicons pass against their own renderer on every input.
 
 favicons passes against its own renderer on every input it built (101/101), with a pair 5.1 times the size of favseed's.
 

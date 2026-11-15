@@ -9,6 +9,7 @@ import {
   formatResults,
   groupSummary,
   headToHead,
+  likePassesOnCommon,
   median,
   outcomeKey,
   passCounts,
@@ -17,11 +18,14 @@ import {
   scoreSize,
   setDigest,
   speedAgainst,
+  startupImages,
   summarise,
 } from '../bench/compare/lib.mjs';
 import { renderReadme } from '../bench/compare/readme.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
+// A committed text file with LF line endings, which a Windows checkout with autocrlf turns into CRLF.
+const committed = (path) => readFileSync(new URL(path, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 
 describe('bench compare helpers', () => {
   it('digests a set independently of file order', () => {
@@ -250,9 +254,12 @@ describe('bench compare determinism and renderers', () => {
 
 describe('bench compare README', () => {
   it('is the committed results rendered by readme.mjs, so neither drifts from the other', () => {
-    const results = JSON.parse(readFileSync(new URL('../bench/compare/results.json', import.meta.url), 'utf8'));
-    const readme = readFileSync(new URL('../bench/compare/README.md', import.meta.url), 'utf8');
-    assert.equal(renderReadme(results), readme, 'run node bench/compare/run.mjs --readme');
+    const results = JSON.parse(committed('../bench/compare/results.json'));
+    assert.equal(
+      renderReadme(results),
+      committed('../bench/compare/README.md'),
+      'run node bench/compare/run.mjs --readme',
+    );
   });
 });
 
@@ -333,6 +340,27 @@ describe('bench compare determinism, speed and both references', () => {
       },
     ];
     assert.deepEqual(passedBoth(disagreeing, ['x', 'y'], [192, 512]), { inputs: 2, pairs: 3, passed: ['a:x'] });
+  });
+  it('counts passes over the inputs every tool built a pair for, leaving out the ones only some built', () => {
+    const results = {
+      summary: { all: { likeCommon: { excluded: ['c'] } } },
+      inputs: [
+        { name: 'a', tools: { x: pair(ok, bad) } },
+        { name: 'b', tools: { x: pair(bad, ok) } },
+        { name: 'c', tools: { x: pair(ok, ok) } },
+      ],
+    };
+    assert.deepEqual(likePassesOnCommon(results, 'x', 'resvg'), { scored: 2, pass: 1 });
+    assert.deepEqual(likePassesOnCommon(results, 'x', 'sharp'), { scored: 2, pass: 1 });
+  });
+  it('counts Apple startup images and their longest side from the file names', () => {
+    const names = [
+      'apple-touch-icon.png',
+      'apple-touch-startup-image-640x1136.png',
+      'apple-touch-startup-image-2796x1290.png',
+    ];
+    assert.deepEqual(startupImages(names), { count: 2, longest: 2796 });
+    assert.deepEqual(startupImages(['icon.svg']), { count: 0, longest: 0 });
   });
   it('writes results.json with one compact line per input and survives a round trip', () => {
     const results = { generated: 'now', summary: { all: { inputs: 2 } }, inputs: [{ name: 'a' }, { name: 'b' }] };

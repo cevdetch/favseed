@@ -3,7 +3,14 @@
 // here with the tables, so every number in the README comes from the results it sits next to.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { ACCURACY_PCT, EDGE_GATE } from '../../lib/core.mjs';
-import { favseedMisses, median, perInput as groupPerInput, speedAgainst } from './lib.mjs';
+import {
+  favseedMisses,
+  likePassesOnCommon,
+  median,
+  perInput as groupPerInput,
+  speedAgainst,
+  startupImages,
+} from './lib.mjs';
 
 const README = new URL('README.md', import.meta.url);
 
@@ -43,6 +50,73 @@ const LIKE = {
   'vite-pwa': '`minimal-2023` with `transparent: { sizes: [192, 512], padding: 0 }`',
   realfavicon: 'the default `web-app-manifest-192x192.png` and `web-app-manifest-512x512.png`',
 };
+
+// How each tool encodes its PNGs, from its source at the version run. The sentence is only as
+// true as these links: check them again when a pin moves.
+const LOSSLESS = {
+  favicons:
+    '[favicons `src/helpers.ts`](https://github.com/itgalaxy/favicons/blob/v7.3.1/src/helpers.ts#L238-L240) at v7.3.1',
+  'astro-favicons':
+    '[favilib `src/helpers.ts`](https://github.com/withpwa/favilib/blob/v1.0.5/src/helpers.ts#L234-L236) at v1.0.5',
+  realfavicon:
+    '[image-adapter-node `src/adapter.ts`](https://github.com/RealFaviconGenerator/core/blob/v0.9.0/packages/image-adapter-node/src/adapter.ts#L23-L34) at v0.9.0',
+};
+// sharp's PNG defaults, palette off and zlib level 6, in each copy the tools resolve.
+const SHARP_PNG = {
+  '0.35.5': 'https://github.com/lovell/sharp/blob/v0.35.5/lib/constructor.mjs#L346-L348',
+  '0.33.5': 'https://github.com/lovell/sharp/blob/v0.33.5/lib/constructor.js#L285-L287',
+  '0.34.5': 'https://github.com/lovell/sharp/blob/v0.34.5/lib/constructor.js#L329-L331',
+};
+const VITE_PWA_PNG = 'https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/defaults.ts#L14-L17';
+
+function encoderLines(others, S) {
+  const lossless = others.filter((tool) => LOSSLESS[tool.id]);
+  const versions = [...new Set(lossless.map((tool) => /^sharp (\S+)/.exec(tool.sharpReference)[1]))];
+  const vite = others.find((tool) => tool.id === 'vite-pwa');
+  const exact = lossless.filter((tool) => S(tool.id).like.sharp.pass === S(tool.id).like.sharp.scored);
+  return [
+    `${list(lossless.map((tool) => SHORT[tool.id]))} write lossless truecolour PNGs: each encodes with a bare ` +
+      `sharp \`.png()\` (${list(lossless.map((tool) => LOSSLESS[tool.id]))}), which keeps sharp's defaults, no ` +
+      `palette and zlib compression level 6 (${list(versions.map((v) => (SHARP_PNG[v] ? `[sharp ${v}](${SHARP_PNG[v]})` : `sharp ${v}`)))}). ` +
+      (vite?.pngQuality
+        ? `The ${SHORT[vite.id]} quantises at quality ${vite.pngQuality} ([\`src/api/defaults.ts\`](${VITE_PWA_PNG}) at v2.0.0), and `
+        : '') +
+      'favseed searches quantised and lossless encodes for the smallest that passes its bar (decision 29 in ' +
+      '`docs/DECISIONS.md`). So the byte gap is not a gap at equal fidelity: a lossless PNG adds no loss to its ' +
+      'own render' +
+      (exact.length
+        ? `, which is why ${list(exact.map((tool) => SHORT[tool.id]))} pass against their own renderer on every input`
+        : '') +
+      '.',
+    '',
+  ];
+}
+
+// What each tool does with an animated source SVG, from its source at the version run, checked by
+// running each adapter on test/fixtures/animated.svg and smil.svg (animation-check.mjs).
+const ANIMATION = [
+  'favseed keeps CSS and SMIL animation in `icon.svg`; its PNG and ICO files are still images ' +
+    '([SVG input](https://favseed.cevdet.ch/docs/svg-input#animation)). For the other ' +
+    'four, `bench/compare/animation-check.mjs` builds each default set from `test/fixtures/animated.svg` (CSS ' +
+    '`@keyframes` inside a reduced-motion query) and `test/fixtures/smil.svg` (an `<animate>` element and an inline ' +
+    '`animation`) and reports which SVG files keep the animation:',
+  '',
+  '- **favicons** writes no SVG by default. Asked for `favicon.svg`, it returns the source file unchanged ' +
+    '([`src/helpers.ts`](https://github.com/itgalaxy/favicons/blob/v7.3.1/src/helpers.ts#L248-L249) at v7.3.1), ' +
+    'animation included.',
+  '- **astro-favicons** writes `favicon.svg` and `safari-pinned-tab.svg` as the source file unchanged, through ' +
+    "favilib's same code ([`src/helpers.ts`](https://github.com/withpwa/favilib/blob/v1.0.5/src/helpers.ts#L244-L245) " +
+    'at v1.0.5), animation included.',
+  '- **Vite PWA assets generator** writes no SVG. For an SVG source, its favicon link points at the source file ' +
+    'itself ([`src/api/instructions-resolver.ts`](https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/instructions-resolver.ts#L62-L84) ' +
+    'at v2.0.0), which `generateAssets` skips ' +
+    '([`src/api/generate-assets.ts`](https://github.com/vite-pwa/assets-generator/blob/v2.0.0/src/api/generate-assets.ts#L19)), ' +
+    'so the animation is whatever that file holds.',
+  '- **RealFaviconGenerator** writes `favicon.svg` as the source with no transformation ' +
+    '([`src/svg/desktop.ts`](https://github.com/RealFaviconGenerator/core/blob/v0.9.0/packages/generate-favicon/src/svg/desktop.ts#L19-L22) ' +
+    'at v0.9.0), re-serialised with its attribution metadata and a width and height added; the CSS and SMIL ' +
+    'animation stay.',
+];
 
 function versionCell(tool) {
   const v = tool.versions ?? {};
@@ -161,6 +235,12 @@ export function renderReadme(results) {
       )}`
     : '';
   const sharpCopies = [...new Set(others.map((tool) => tool.sharpReference))];
+  const sharpOfFavseed = favseedTool.sharpReference.split(' (')[0];
+  const startup = startupImages(mostFiles.fileNames);
+  // The sets differ in what they hold, so neither their bytes nor their times compare like for like.
+  const unlike =
+    `${SHORT[mostFiles.id]} builds ${S(mostFiles.id).files.max} files per input, ${startup.count} of them Apple ` +
+    `startup images up to ${n(startup.longest)} px, and favseed builds ${S('favseed').files.max}`;
 
   const lines = [
     '<!-- Generated by `node bench/compare/run.mjs --write` from results.json; `--readme` rewrites it',
@@ -171,8 +251,13 @@ export function renderReadme(results) {
     `Measured on ${dateOf(results.generated)}. This benchmark builds the same ${rows.length} SVG files with favseed ` +
       'and four other favicon generators, each with its own defaults, and records how many files each one writes, ' +
       'how many bytes they take, how long a build takes, and how closely a transparent 192 and 512 px PNG from each ' +
-      'tool matches the source. Every number below comes from `results.json` in this directory, from one run on one ' +
-      'machine. Results depend on the input: the last section shows how far they move from one mark to the next.',
+      'tool matches the source. Every measured number below comes from `results.json` in this directory, from one ' +
+      'run on one machine' +
+      (results.note
+        ? '; a few fields were added to that file after the run without changing any measurement, and its `note` ' +
+          'lists them'
+        : '') +
+      '. Results depend on the input: the last section shows how far they move from one mark to the next.',
     '',
     '## The tools',
     '',
@@ -258,8 +343,8 @@ export function renderReadme(results) {
       'twice. Each input is timed from the call to the returned files, in memory, with no files written. The ' +
       'warm-up is excluded from the totals; cold time is the time from starting the process to the end of the ' +
       'warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, ' +
-      'never concurrently, in an order rotated each repetition. A time is the median of the repetitions. The run ' +
-      'took ' +
+      "never concurrently, in an order rotated each repetition. An input's time is its median over the " +
+      "repetitions, and a total is the median of the repetitions' totals. The run took " +
       `${plural(Math.round(results.durationS / 60), 'minute')}. The 1, 5 and ` +
       `15 minute load averages were ${machine.load.before.join(', ')} as it started and ` +
       `${machine.load.after.join(', ')} as it ended, the second including the run's own load.`,
@@ -287,7 +372,7 @@ export function renderReadme(results) {
       'renderer and fails against the other loses little in encoding and draws the mark differently.',
     '',
     `The two renderers often disagree with each other. Scored the same way, the lossless render of ` +
-      `${favseedTool.sharpReference.split(' (')[0]}, favseed's sharp reference, ` +
+      `${sharpOfFavseed}, favseed's sharp reference, ` +
       `passes against resvg's on ${all.renderers.agree} of the ${all.renderers.scored} inputs ` +
       `both can render (${summary.fixtures.renderers.agree} of ${summary.fixtures.renderers.scored} fixtures, ` +
       `${summary.open.renderers.agree} of ${summary.open.renderers.scored} open icons). On the other ` +
@@ -295,7 +380,7 @@ export function renderReadme(results) {
       (all.renderers.passedBoth.passed.length
         ? `only ${all.renderers.passedBoth.passed.length} of the ${all.renderers.passedBoth.pairs} pairs the five tools wrote do`
         : `none of the ${all.renderers.passedBoth.pairs} pairs the five tools wrote passes against both`) +
-      ', so neither pass count alone measures encoding loss. The agreement count uses the sharp 0.35.5 render; ' +
+      `, so neither pass count alone measures encoding loss. The agreement count uses the ${sharpOfFavseed} render; ` +
       "the other tools' own references come from their own librsvg builds.",
     '',
     '### var()',
@@ -309,6 +394,10 @@ export function renderReadme(results) {
         : '.') +
       ' The pass counts are also given without those inputs, so a corpus that does show the effect shows it ' +
       'there. favseed resolves `var()` before it renders, including a value given with `--var`.',
+    '',
+    '### Animated SVG',
+    '',
+    ...ANIMATION,
     '',
     '## Results',
     '',
@@ -369,7 +458,8 @@ export function renderReadme(results) {
           : h.bFaster === h.inputs
             ? `it is slower on every one of the ${h.inputs} inputs`
             : `it is faster on ${h.aFaster} of the ${h.inputs} inputs and slower on ${h.bFaster}`) +
-        `${ties ? ` (${ties} tied)` : ''}${flips.length ? `; ${flips.join('; ')}` : ''}.`
+        `${ties ? ` (${ties} tied)` : ''}${flips.length ? `; ${flips.join('; ')}` : ''}.` +
+        (tool.id === mostFiles.id ? ` These times are for different sets: ${unlike}.` : '')
       );
     }),
     '',
@@ -378,12 +468,9 @@ export function renderReadme(results) {
       `${n(S('favseed').coldMs)} ms, is Node start-up plus a full default-effort build of the warm-up circle` +
       (others.every((tool) => S(tool.id).coldMs < S('favseed').coldMs) ? ', the longest of the five.' : '.'),
     '',
-    `${SHORT[mostFiles.id]} covers the most platforms, with ${S(mostFiles.id).files.max} files per set against ` +
-      `favseed's ${S('favseed').files.max}, among them ` +
-      `${mostFiles.fileNames.filter((name) => name.startsWith('apple-touch-startup-image')).length} Apple startup ` +
-      `(splash screen) images; ${list(svgTools.map((tool) => SHORT[tool.id]))} write an SVG favicon. ` +
-      'Bytes per set do not compare encoders on their own, because the sets hold different files at different ' +
-      'sizes: the like-for-like pair below does.',
+    `${SHORT[mostFiles.id]} covers the most platforms, and ${list(svgTools.map((tool) => SHORT[tool.id]))} write ` +
+      'an SVG favicon. The sets differ, so neither their bytes nor their build times compare like for like: ' +
+      `${unlike}. The like-for-like pair below holds the same two PNGs, framed the same way, from every tool.`,
     '',
     "The spread across repetitions, as each repetition's total over the common inputs and its cold time:",
     '',
@@ -415,6 +502,19 @@ export function renderReadme(results) {
     '',
     '"favseed as %" is the size of favseed\'s pair as a percentage of that tool\'s.',
     '',
+    ...(() => {
+      // favseed's resvg count covers inputs the others could not build; the same count over theirs.
+      const common = likePassesOnCommon(results, 'favseed', 'resvg');
+      return favseedLike.resvg.scored === common.scored
+        ? []
+        : [
+            `favseed's resvg count covers ${favseedLike.resvg.scored} inputs because only favseed built ` +
+              `${list(code(all.likeCommon.excluded))}; over the ${all.likeCommon.inputs} inputs every tool built a ` +
+              `pair for, it passes on ${ratio(common)}.`,
+            '',
+          ];
+    })(),
+    ...encoderLines(others, S),
     ...others
       .filter((tool) => S(tool.id).like.sharp.pass === S(tool.id).like.sharp.scored)
       .flatMap((tool) => {

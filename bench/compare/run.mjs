@@ -453,7 +453,7 @@ async function main() {
   };
   const summary = {};
   for (const [group, selected] of Object.entries(groups))
-    if (selected.length) summary[group] = groupSummary(selected, timed, TOOLS, SIZES);
+    if (selected.length) summary[group] = groupSummary(selected, timed, TOOLS, SIZES, liked.favseed.sharp);
 
   const results = {
     generated: started.toISOString(),

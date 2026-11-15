@@ -1,4 +1,5 @@
 {
+  "note": "Every measured number in this file comes from one timed run, started at `generated`. Added after that run, without changing any measurement: varCheck (the output of var-check.mjs, run against the same installed sharp copies), tools[].pngQuality (the package default the Vite PWA adapter reads), summary.*.renderers.passedBoth (computed from the committed rows), and buildCommit, trees, lockfile and buildDirty on favseed's entry (read from git; the run's own commit is `commit`). summary.*.scope was later reworded to match lib.mjs.",
   "generated": "2026-11-15T01:16:36.318Z",
   "durationS": 2139,
   "machine": {
@@ -239,7 +240,7 @@
   },
   "summary": {
     "fixtures": {
-      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp references themselves agree within the bar.",
+      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2) references themselves agree within the bar, and passedBoth the pairs that pass against both references on the inputs where they do not.",
       "inputs": 23,
       "renderers": {
         "scored": 21,
@@ -582,7 +583,7 @@
       }
     },
     "open": {
-      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp references themselves agree within the bar.",
+      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2) references themselves agree within the bar, and passedBoth the pairs that pass against both references on the inputs where they do not.",
       "inputs": 80,
       "renderers": {
         "scored": 80,
@@ -895,7 +896,7 @@
       }
     },
     "all": {
-      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp references themselves agree within the bar.",
+      "scope": "Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover `common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. Pass counts use each reference's own `scored` set: the inputs where that reference exists and the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the resvg and sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2) references themselves agree within the bar, and passedBoth the pairs that pass against both references on the inputs where they do not.",
       "inputs": 103,
       "renderers": {
         "scored": 101,
