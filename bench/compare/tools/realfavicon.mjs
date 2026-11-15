@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { importDep, pinned } from '../deps.mjs';
 
 const pkg = pinned('@realfavicongenerator/generate-favicon', '0.9.0');
-pinned('@realfavicongenerator/image-adapter-node', '0.9.0');
+const adapterPkg = pinned('@realfavicongenerator/image-adapter-node', '0.9.0');
 const { generateFaviconFiles, initFaviconIconSettings, stringToSvg } = await importDep(
   '@realfavicongenerator/generate-favicon',
 );
@@ -17,6 +17,8 @@ const adapter = await getNodeImageAdapter();
 
 export const id = 'realfavicon';
 export const label = `RealFaviconGenerator (generate-favicon ${pkg.version})`;
+// The node adapter renders, with its own sharp copy (0.34.5): the reference uses the same one.
+export const sharpFrom = adapterPkg.path;
 
 const generate = async (svgPath) => {
   const masterIcon = { icon: stringToSvg(await readFile(svgPath, 'utf8'), adapter) };

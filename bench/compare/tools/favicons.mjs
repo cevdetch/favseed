@@ -10,6 +10,8 @@ const { default: favicons } = await importDep('favicons');
 
 export const id = 'favicons';
 export const label = `favicons ${pkg.version}`;
+// The sharp copy favicons resolves: its reference is rendered by the same librsvg build.
+export const sharpFrom = pkg.path;
 
 const bytes = (contents) => new Uint8Array(typeof contents === 'string' ? Buffer.from(contents) : contents);
 

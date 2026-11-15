@@ -1,11 +1,13 @@
 // favseed next to four other favicon generators, each run with its documented defaults over the
 // buildable test fixtures and the open corpus.
 //
-//   node bench/compare/run.mjs [--install] [--inputs N] [--reps 3] [--write]
+//   node bench/compare/run.mjs [--install] [--only a,b] [--inputs N] [--reps 3] [--write]
 //
 // --install  copies package.json and package-lock.json from this directory into
 //            bench/out/compare/deps/ and runs `npm ci --ignore-scripts` there. The competitors
 //            are never favseed dependencies; see deps.mjs.
+// --only     the named inputs only (comma-separated corpus names, e.g. grid-tiny,logos/vite),
+//            for a smoke run that has to include a particular input.
 // --inputs N the first N inputs only (fixtures sort first), for a smoke run.
 // --reps N   timed repetitions per tool (default 3).
 // --write    also copies results.json to bench/compare/results.json, the committed copy.
@@ -13,18 +15,25 @@
 // Two measurements:
 //
 // Whole set: every file each tool writes by default, timed. Each tool runs in its own fresh Node
-// process per repetition, so engine start-up is counted rather than amortised away: the process
-// builds one warm-up input (the first), then every input in order, then the first input again to
-// check it writes the same bytes twice. Tools run one at a time, never concurrently, in an order
-// rotated each repetition, so no tool always runs first on a cold disk cache or last on a hot
-// machine. Cold time is fork to the first finished set.
+// process per repetition, so engine start-up is counted rather than amortised away. The process
+// first builds a warm-up mark that is not one of the inputs (WARMUP below, written next to the
+// results), so no timed input runs on the back of an identical earlier build; then every input
+// in order; then the first input again, to check it writes the same bytes twice. Tools run one
+// at a time, never concurrently, in an order rotated each repetition, so no tool always runs
+// first on a cold disk cache or last on a hot machine. Cold time is fork to the end of the
+// warm-up set.
 //
 // Like for like: a transparent, unpadded 192 and 512 px PNG from each tool, scored with favseed's
 // bar (lib/quality.mjs passesBar) against two references. resvg's render of the var()-resolved
 // source (test/lib/accuracy.mjs reference) is the source as favseed's renderer draws it; sharp's
-// lossless render of the raw SVG is the source as the other four tools' renderer, librsvg, draws
-// it. Against the second, a difference between the two renderers is not counted as another
-// tool's encoding error; against the first, it is.
+// lossless render of the raw SVG is the source as librsvg, the other four tools' renderer, draws
+// it, each tool's reference rendered by the sharp copy that tool itself resolves (three releases
+// are installed, with three librsvg builds), and favseed's by the root copy. Against the second,
+// a difference between the renderers is not counted as another tool's encoding error; against
+// the first, it is.
+//
+// Totals compare like with like: bytes and time are summed over the inputs every tool built, and
+// the inputs left out are listed (lib.mjs groupSummary).
 //
 // var(): librsvg ignores custom property definitions and draws a var() with its fallback, or
 // black without one (sharp 0.33.5, 0.34.5 and 0.35.5 alike, the three copies installed here).
@@ -35,37 +44,66 @@ import { execFileSync, fork } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { corpusFiles } from '../corpus/files.mjs';
-import { classify, median, setDigest, summarise } from './lib.mjs';
-import { depsDir } from './deps.mjs';
+import { classify, groupSummary, median, setDigest } from './lib.mjs';
+import { depsDir, requireDep } from './deps.mjs';
 
 const HERE = new URL('./', import.meta.url);
 const OUT = new URL('../out/compare/', import.meta.url);
 const TOOLS = ['favseed', 'favicons', 'astro-favicons', 'vite-pwa', 'realfavicon'];
 const SIZES = [192, 512];
+// A plain filled circle: every tool builds it, and it shares nothing with any input.
+const WARMUP =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1F3A5F"/></svg>\n';
 
 const { values: args } = parseArgs({
   options: {
     install: { type: 'boolean' },
+    only: { type: 'string' },
     inputs: { type: 'string' },
     reps: { type: 'string', default: '3' },
     write: { type: 'boolean' },
     child: { type: 'string' },
     like: { type: 'boolean' },
     'inputs-file': { type: 'string' },
+    warmup: { type: 'string' },
   },
 });
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 const now = () => performance.timeOrigin + performance.now();
-const digest = (set) => (set.files ? setDigest(set.files) : null);
 const loadTool = (id) => {
   if (!TOOLS.includes(id)) throw new Error(`unknown tool ${id}`);
   return import(new URL(`tools/${id}.mjs`, HERE).href);
 };
+// What a build produced, comparable whether it succeeded or failed.
+const outcome = (set) => (set.error ? `error: ${set.error}` : setDigest(set.files));
+const ratio = ({ pass, scored }) => `${pass}/${scored}`;
+const git = (...argv) => execFileSync('git', argv, { cwd: fileURLToPath(HERE), encoding: 'utf8' }).trim();
+const sharpLabel = (sharp) => `sharp ${sharp.versions.sharp} (librsvg ${sharp.versions.rsvg})`;
+
+// The same density favicons gives sharp (src/svgtool.ts at v7.3.1,
+// https://github.com/itgalaxy/favicons/blob/v7.3.1/src/svgtool.ts#L17-L35): librsvg draws an SVG
+// at its own size at 72 dpi, so rendering at the target size means raising the density, or the
+// reference would be an upscaled small render.
+async function sharpReference(sharp, svg, px) {
+  const meta = await sharp(svg).metadata();
+  const base = meta.density ?? 72;
+  const density =
+    meta.width && meta.height
+      ? Math.min(Math.max(1, base, (base * px) / meta.width, (base * px) / meta.height), 100000)
+      : undefined;
+  const { data, info } = await sharp(svg, { density })
+    .resize({ width: px, height: px, fit: 'contain', background: '#00000000' })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  if (info.width !== px || info.height !== px || info.channels !== 4) throw new Error('unexpected reference shape');
+  return data;
+}
 
 // ------------------------------------------------------------------------------- child --
 
@@ -73,48 +111,57 @@ if (args.child) {
   const inputs = JSON.parse(readFileSync(args['inputs-file'], 'utf8'));
   const tool = await loadTool(args.child);
   if (args.like) {
-    // Untimed: write each like-for-like pair where the parent scores it.
-    const errors = {};
+    // Untimed: write each like-for-like pair, and the sharp reference rendered by this tool's
+    // own sharp copy as raw RGBA, where the parent scores them.
+    const sharp = requireDep('sharp', tool.sharpFrom);
+    const errors = {},
+      referenceErrors = {};
     for (const input of inputs) {
+      mkdirSync(input.likeDir, { recursive: true });
       try {
         const pair = await tool.likeForLike(input.path);
-        for (const px of SIZES) {
-          const file = join(input.likeDir, `${tool.id}-${px}.png`);
-          mkdirSync(dirname(file), { recursive: true });
-          writeFileSync(file, pair[px]);
-        }
+        for (const px of SIZES) writeFileSync(join(input.likeDir, `${tool.id}-${px}.png`), pair[px]);
       } catch (error) {
         errors[input.name] = error.message;
       }
+      try {
+        const svg = readFileSync(input.path);
+        for (const px of SIZES)
+          writeFileSync(join(input.likeDir, `${tool.id}-${px}.sharp.rgba`), await sharpReference(sharp, svg, px));
+      } catch (error) {
+        referenceErrors[input.name] = error.message;
+      }
     }
-    process.send({ type: 'like', errors }, () => process.exit(0));
+    process.send({ type: 'like', errors, referenceErrors, sharp: sharpLabel(sharp) }, () => process.exit(0));
   } else {
-    const build = async (input) => {
+    const build = async (path) => {
       const start = performance.now();
       try {
-        const { files } = await tool.wholeSet(input.path);
+        const { files } = await tool.wholeSet(path);
         return { ms: performance.now() - start, files };
       } catch (error) {
         return { ms: performance.now() - start, error: error.message };
       }
     };
-    const warm = await build(inputs[0]);
+    const warm = await build(args.warmup);
     const firstSet = now();
     const results = [];
+    let first;
     for (const input of inputs) {
-      const { ms, files, error } = await build(input);
+      const set = await build(input.path);
+      first ??= set;
       results.push(
-        error
-          ? { name: input.name, ms, error }
+        set.error
+          ? { name: input.name, ms: set.ms, error: set.error }
           : {
               name: input.name,
-              ms,
-              digest: setDigest(files),
-              files: files.map(({ name, bytes }) => ({ name, size: bytes.length, sha256: sha256(bytes) })),
+              ms: set.ms,
+              digest: setDigest(set.files),
+              files: set.files.map(({ name, bytes }) => ({ name, size: bytes.length, sha256: sha256(bytes) })),
             },
       );
     }
-    const again = await build(inputs[0]);
+    const again = await build(inputs[0].path);
     process.send(
       {
         type: 'timed',
@@ -122,8 +169,8 @@ if (args.child) {
         engine: tool.engine,
         preset: tool.preset,
         firstSet,
-        warmDigest: digest(warm),
-        repeatDigest: digest(again),
+        warmError: warm.error,
+        repeatsMatch: outcome(again) === outcome(first),
         inputs: results,
       },
       () => process.exit(0),
@@ -135,14 +182,12 @@ if (args.child) {
 
 // ------------------------------------------------------------------------------ parent --
 
-function runChild(tool, inputsFile, like) {
+function runChild(tool, inputsFile, extra) {
   return new Promise((resolve, reject) => {
     const started = now();
-    const child = fork(
-      import.meta.filename,
-      ['--child', tool, '--inputs-file', inputsFile, ...(like ? ['--like'] : [])],
-      { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] },
-    );
+    const child = fork(import.meta.filename, ['--child', tool, '--inputs-file', inputsFile, ...extra], {
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    });
     let message;
     child.on('message', (m) => (message = m));
     child.on('error', reject);
@@ -161,7 +206,7 @@ function install() {
   execFileSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefix', depsDir], {
     stdio: 'inherit',
   });
-  // One copy per resolution, since three are installed: the reference's, favilib's, the adapter's.
+  // One copy per resolution, since three are installed: the root's, favilib's, the adapter's.
   const anchors = [
     'package.json',
     'node_modules/favilib/package.json',
@@ -183,23 +228,11 @@ function install() {
   }
 }
 
-// The same density favicons gives sharp (src/svgtool.ts at v7.3.1,
-// https://github.com/itgalaxy/favicons/blob/v7.3.1/src/svgtool.ts#L17-L35): librsvg draws an SVG
-// at its own size at 72 dpi, so rendering at the target size means raising the density, or the
-// reference would be an upscaled small render.
-async function sharpReference(sharp, svg, px) {
-  const meta = await sharp(svg).metadata();
-  const base = meta.density ?? 72;
-  const density =
-    meta.width && meta.height
-      ? Math.min(Math.max(1, base, (base * px) / meta.width, (base * px) / meta.height), 100000)
-      : undefined;
-  const { data, info } = await sharp(svg, { density })
-    .resize({ width: px, height: px, fit: 'contain', background: '#00000000' })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  return { width: info.width, height: info.height, rgba: new Uint8Array(data) };
+// favseed's version is 0.0.0 until its first release, so the commit names the build measured,
+// and `dirty` says whether the working tree had uncommitted changes on top of it. Taken here in
+// the parent, so no timed process spends its start-up spawning git.
+function checkout() {
+  return { commit: git('rev-parse', '--short', 'HEAD'), dirty: git('status', '--porcelain').length > 0 };
 }
 
 async function main() {
@@ -207,6 +240,12 @@ async function main() {
   const reps = Number(args.reps);
   if (!Number.isInteger(reps) || reps < 1) throw new Error('--reps takes a positive integer');
   let inputs = await corpusFiles({ fixtures: true, open: true });
+  if (args.only) {
+    const names = args.only.split(',');
+    const unknown = names.filter((name) => !inputs.some((input) => input.name === name));
+    if (unknown.length) throw new Error(`--only: no input named ${unknown.join(', ')}`);
+    inputs = inputs.filter((input) => names.includes(input.name));
+  }
   if (args.inputs) {
     const n = Number(args.inputs);
     if (!Number.isInteger(n) || n < 1) throw new Error('--inputs takes a positive integer');
@@ -219,13 +258,16 @@ async function main() {
   inputs = inputs.map((input) => ({ ...input, likeDir: join(likeRoot, input.corpus, input.name) }));
   const inputsFile = join(outDir, 'inputs.json');
   writeFileSync(inputsFile, JSON.stringify(inputs, null, 2) + '\n');
+  const warmupFile = join(outDir, 'warmup.svg');
+  writeFileSync(warmupFile, WARMUP);
 
   // Whole sets, timed.
   const timed = Object.fromEntries(TOOLS.map((id) => [id, []]));
   for (let rep = 0; rep < reps; rep++) {
     const order = [...TOOLS.slice(rep % TOOLS.length), ...TOOLS.slice(0, rep % TOOLS.length)];
     for (const id of order) {
-      const run = await runChild(id, inputsFile, false);
+      const run = await runChild(id, inputsFile, ['--warmup', warmupFile]);
+      if (run.warmError) throw new Error(`${id} cannot build the warm-up mark: ${run.warmError}`);
       timed[id].push({ ...run, cold: run.firstSet - run.started });
       const failed = run.inputs.filter((input) => input.error).length;
       console.error(
@@ -235,17 +277,16 @@ async function main() {
     }
   }
 
-  // Like-for-like pairs, untimed, one process per tool as above: the five tools between them load
-  // three sharp releases, and two libvips builds should not share one process.
-  const likeErrors = {};
-  for (const id of TOOLS) likeErrors[id] = (await runChild(id, inputsFile, true)).errors;
+  // Like-for-like pairs and sharp references, untimed, one process per tool as above: the five
+  // tools between them load three sharp releases, and two libvips builds should not share one
+  // process.
+  const liked = {};
+  for (const id of TOOLS) liked[id] = await runChild(id, inputsFile, ['--like']);
 
   const { reference } = await import('../../test/lib/accuracy.mjs');
   const { decode } = await import('../../test/lib/png.mjs');
   const { passesBar, prepareReference } = await import('../../lib/quality.mjs');
   const { engineVersions } = await import('../../bin/favseed.mjs');
-  const { requireDep } = await import('./deps.mjs');
-  const sharp = requireDep('sharp');
   const score = (candidate, ref) => {
     if (!ref) return null;
     const { pass, pct, edge } = passesBar(candidate, ref);
@@ -264,18 +305,13 @@ async function main() {
       usesVar: source.toString('utf8').includes('var('),
       tools: {},
     };
-    const refs = {};
+    const resvg = {};
     for (const px of SIZES) {
-      refs[px] = { resvg: null, sharp: null };
       try {
-        refs[px].resvg = prepareReference(await reference({ source: input.path, px }).then(toRgba));
+        resvg[px] = prepareReference(await reference({ source: input.path, px }).then(toRgba));
       } catch (error) {
-        row.referenceError = { ...row.referenceError, resvg: error.message };
-      }
-      try {
-        refs[px].sharp = prepareReference(await sharpReference(sharp, source, px));
-      } catch (error) {
-        row.referenceError = { ...row.referenceError, sharp: error.message };
+        resvg[px] = null;
+        row.referenceError = error.message;
       }
     }
     hashes[`${input.corpus}/${input.name}`] = {};
@@ -298,14 +334,29 @@ async function main() {
       }
       entry.ms = Number(median(runs.map((r) => r.ms)).toFixed(1));
       entry.like = {};
-      if (likeErrors[id][input.name]) entry.like.error = likeErrors[id][input.name];
+      const referenceError = liked[id].referenceErrors[input.name];
+      if (referenceError) entry.like.referenceError = referenceError;
+      if (liked[id].errors[input.name]) entry.like.error = liked[id].errors[input.name];
       else
         for (const px of SIZES) {
-          const bytes = readFileSync(join(input.likeDir, `${id}-${px}.png`));
-          const img = toRgba(decode(bytes));
-          const like = { bytes: bytes.length, sha256: sha256(bytes), transparent: hasTransparency(img) };
-          if (img.width !== px || img.height !== px) like.error = `${img.width}x${img.height}, not ${px}x${px}`;
-          else Object.assign(like, { resvg: score(img, refs[px].resvg), sharp: score(img, refs[px].sharp) });
+          let like;
+          try {
+            const bytes = readFileSync(join(input.likeDir, `${id}-${px}.png`));
+            like = { bytes: bytes.length, sha256: sha256(bytes) };
+            const img = toRgba(decode(bytes));
+            like.transparent = hasTransparency(img);
+            if (img.width !== px || img.height !== px) throw new Error(`${img.width}x${img.height}, not ${px}x${px}`);
+            const sharpRef = referenceError
+              ? null
+              : prepareReference({
+                  width: px,
+                  height: px,
+                  rgba: new Uint8Array(readFileSync(join(input.likeDir, `${id}-${px}.sharp.rgba`))),
+                });
+            Object.assign(like, { resvg: score(img, resvg[px]), sharp: score(img, sharpRef) });
+          } catch (error) {
+            like = { ...like, error: error.message };
+          }
           entry.like[px] = like;
         }
       row.tools[id] = entry;
@@ -313,29 +364,42 @@ async function main() {
     rows.push(row);
   }
 
+  const { commit, dirty } = checkout();
   const tools = TOOLS.map((id) => {
     const run = timed[id][0];
     return {
       id,
       label: run.label,
+      ...(id === 'favseed' && { commit, dirty }),
       ...(run.engine && { engine: run.engine }),
       ...(run.preset && { preset: run.preset }),
+      sharpReference: liked[id].sharp,
     };
   });
   const determinism = Object.fromEntries(
     TOOLS.map((id) => {
       const differing = inputs
         .filter((input) => {
-          const digests = timed[id].map((run) => run.inputs.find((r) => r.name === input.name).digest);
-          return new Set(digests).size > 1;
+          const outcomes = timed[id].map((run) => {
+            const r = run.inputs.find((item) => item.name === input.name);
+            return r.error ? outcome(r) : r.digest;
+          });
+          return new Set(outcomes).size > 1;
         })
         .map((input) => input.name);
-      const repeats = timed[id].every(
-        (run) => run.repeatDigest === run.inputs[0].digest && run.warmDigest === run.inputs[0].digest,
-      );
+      const repeats = timed[id].every((run) => run.repeatsMatch);
       return [id, { deterministic: !differing.length && repeats, differing, repeatsMatch: repeats }];
     }),
   );
+
+  const groups = {
+    fixtures: rows.filter((r) => r.corpus === 'fixtures'),
+    open: rows.filter((r) => r.corpus === 'open'),
+    all: rows,
+  };
+  const summary = {};
+  for (const [group, selected] of Object.entries(groups))
+    if (selected.length) summary[group] = groupSummary(selected, timed, TOOLS, SIZES);
 
   const results = {
     generated: new Date().toISOString(),
@@ -349,9 +413,9 @@ async function main() {
     tools,
     references: {
       resvg: `@napi-rs/image ${engineVersions()['@napi-rs/image']}`,
-      sharp: `sharp ${sharp.versions.sharp} (libvips ${sharp.versions.vips}, librsvg ${sharp.versions.rsvg})`,
+      sharp: 'per tool: tools[].sharpReference',
     },
-    summary: Object.fromEntries(TOOLS.map((id) => [id, summaryFor(id, rows, timed[id])])),
+    summary,
     determinism,
     inputs: rows,
   };
@@ -377,71 +441,33 @@ function hasTransparency({ rgba }) {
   return false;
 }
 
-// Per corpus and overall: sums of bytes, the file-count range, medians of time, pass counts with
-// and without the var() inputs.
-function summaryFor(id, rows, runs) {
-  const groups = {
-    fixtures: rows.filter((r) => r.corpus === 'fixtures'),
-    open: rows.filter((r) => r.corpus === 'open'),
-    all: rows,
-  };
-  const out = {};
-  for (const [group, selected] of Object.entries(groups)) {
-    if (!selected.length) continue;
-    const names = new Set(selected.map((r) => r.name));
-    const built = selected.filter((r) => !r.tools[id].error);
-    const counts = built.map((r) => r.tools[id].files);
-    const sum = (key) => built.reduce((total, r) => total + r.tools[id][key], 0);
-    const timing = summarise(
-      runs.map((run) => ({ cold: run.cold, inputs: run.inputs.filter((input) => names.has(input.name)) })),
-    );
-    const like = (subset) => {
-      const scored = subset.filter((r) => !r.tools[id].like.error);
-      const passes = (ref) => scored.filter((r) => SIZES.every((px) => r.tools[id].like[px][ref]?.pass)).length;
-      return { inputs: subset.length, scored: scored.length, passResvg: passes('resvg'), passSharp: passes('sharp') };
-    };
-    out[group] = {
-      inputs: selected.length,
-      failed: selected.length - built.length,
-      files: counts.length ? { min: Math.min(...counts), max: Math.max(...counts) } : null,
-      rasterBytes: sum('rasterBytes'),
-      svgBytes: sum('svgBytes'),
-      otherBytes: sum('otherBytes'),
-      totalMs: Number(timing.totalMs.toFixed(1)),
-      coldMs: Number(timing.coldMs.toFixed(1)),
-      like: {
-        bytes: Object.fromEntries(
-          SIZES.map((px) => [px, selected.reduce((total, r) => total + (r.tools[id].like[px]?.bytes ?? 0), 0)]),
-        ),
-        all: like(selected),
-        withoutVar: like(selected.filter((r) => !r.usesVar)),
-      },
-    };
-  }
-  return out;
-}
-
-function print({ tools, summary, determinism, references }) {
-  console.log(`references: ${references.resvg}; ${references.sharp}`);
+function print({ tools, summary, determinism }) {
+  const all = summary.all;
   console.log(
-    'tool | files | raster B | svg B | other B | total s | cold s | like B (192+512) | pass resvg | pass sharp | pass resvg, no var() | deterministic',
+    `totals over the ${all.common.inputs} of ${all.inputs} inputs every tool built` +
+      (all.common.excluded.length ? ` (left out: ${all.common.excluded.join(', ')})` : ''),
   );
-  for (const { id, label } of tools) {
-    const s = summary[id].all;
+  console.log(
+    'tool | sharp reference | files | failed | raster B | svg B | other B | total s | cold s | like B (192+512) | pass resvg | pass sharp | pass resvg, no var() | deterministic',
+  );
+  for (const { id, label, sharpReference: sharpRef } of tools) {
+    const s = all.tools[id];
     const files = s.files ? (s.files.min === s.files.max ? `${s.files.min}` : `${s.files.min}-${s.files.max}`) : '-';
     console.log(
       [
         label,
+        sharpRef,
         files,
+        s.failed.length,
         s.rasterBytes,
         s.svgBytes,
         s.otherBytes,
         (s.totalMs / 1000).toFixed(2),
         (s.coldMs / 1000).toFixed(2),
         s.like.bytes[192] + s.like.bytes[512],
-        `${s.like.all.passResvg}/${s.like.all.inputs}`,
-        `${s.like.all.passSharp}/${s.like.all.inputs}`,
-        `${s.like.withoutVar.passResvg}/${s.like.withoutVar.inputs}`,
+        ratio(s.like.resvg),
+        ratio(s.like.sharp),
+        ratio(s.like.withoutVar.resvg),
         determinism[id].deterministic ? 'yes' : `no (${determinism[id].differing.join(', ') || 'repeat'})`,
       ].join(' | '),
     );

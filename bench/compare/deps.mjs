@@ -10,6 +10,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const depsDir = fileURLToPath(new URL('../out/compare/deps/', import.meta.url));
 const root = join(depsDir, 'package.json');
+/** The deps root's package.json: what resolves the hoisted copies, sharp 0.35.5 among them. */
+export const depsManifest = root;
 
 const installed = () => {
   if (!existsSync(join(depsDir, 'node_modules')))

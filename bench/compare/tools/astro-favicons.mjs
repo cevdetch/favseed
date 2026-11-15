@@ -14,7 +14,10 @@ const { default: favilib } = await importDep('favilib', pkg.path);
 
 export const id = 'astro-favicons';
 export const label = `astro-favicons ${pkg.version}`;
-export const engine = `favilib ${packageJson('favilib', pkg.path).version}`;
+const favilibPkg = packageJson('favilib', pkg.path);
+export const engine = `favilib ${favilibPkg.version}`;
+// favilib's own sharp copy (0.33.5, nested under it): its reference uses the same librsvg build.
+export const sharpFrom = favilibPkg.path;
 
 // Copied verbatim from src/config/defaults.ts lines 4-29 at v3.1.8,
 // https://github.com/ACP-CODE/astro-favicons/blob/v3.1.8/src/config/defaults.ts#L4-L29

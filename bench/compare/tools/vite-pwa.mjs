@@ -19,6 +19,8 @@ const { minimal2023Preset } = await importDep('@vite-pwa/assets-generator/preset
 export const id = 'vite-pwa';
 export const label = `@vite-pwa/assets-generator ${pkg.version}`;
 export const preset = 'minimal-2023';
+// The sharp copy the package resolves (sharp-ico nests an older one, used only to write the ICO).
+export const sharpFrom = pkg.path;
 
 const resolve = (svgPath, chosen) =>
   instructions({

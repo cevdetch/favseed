@@ -1,15 +1,17 @@
 // favseed itself, from this checkout: buildFiles() with no options is the CLI's default set
 // (default effort, #000000 ground, no manifest), the bytes `favseed logo.svg` writes.
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { buildFiles } from '../../../bin/favseed.mjs';
+import { depsManifest } from '../deps.mjs';
 
 const { version } = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
-// Until the first release package.json says 0.0.0, which names no build; the commit does.
-const commit = () => execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
 
 export const id = 'favseed';
-export const label = version === '0.0.0' ? `favseed (commit ${commit()})` : `favseed ${version}`;
+// Until the first release package.json says 0.0.0, which names no build; run.mjs records the
+// commit next to this label instead.
+export const label = version === '0.0.0' ? 'favseed (unreleased)' : `favseed ${version}`;
+// favseed renders with resvg, not sharp; its librsvg reference comes from the root sharp copy.
+export const sharpFrom = depsManifest;
 
 // Warnings (a non-square viewBox, for one) go nowhere: the CLI prints them, the set is the same.
 const quiet = () => {};
