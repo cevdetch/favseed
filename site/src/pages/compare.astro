@@ -11,7 +11,7 @@ import { favseedMisses, perInput, speedAgainst } from '../../../bench/compare/li
 
 const title = 'favseed vs favicons, Vite PWA and RealFaviconGenerator - favseed';
 const description =
-  'favseed next to favicons, astro-favicons, Vite PWA and RealFaviconGenerator on 103 SVGs: features, files, bytes, build time and accuracy, with every source.';
+  `favseed next to favicons, astro-favicons, Vite PWA and RealFaviconGenerator on ${results.inputs.length} SVGs: features, files, bytes, build time and accuracy, with every source.`;
 
 // The versions whose source files the feature table links; a run of any other version fails the build.
 const checked = {
@@ -28,12 +28,16 @@ for (const [id, versions] of Object.entries(checked)) {
 
 const { summary, tools, inputs: rows, machine } = results;
 const all = summary.all;
+const excluded = all.common.excluded.length;
 const S = (id: string) => all.tools[id];
 const n = (value: number) => Math.round(value).toLocaleString('en-GB');
 const ratio = ({ pass, scored }: { pass: number; scored: number }) => `${pass}/${scored}`;
 const list = (items: string[]) =>
   items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 const pace = (ours: number, theirs: number) => (ours < theirs ? 'faster' : ours > theirs ? 'slower' : 'as fast');
+// A small count in words, as running prose writes it; larger ones as numerals.
+const words = (count: number) =>
+  ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][count] ?? n(count);
 const date = new Date(results.generated).toLocaleDateString('en-GB', {
   day: 'numeric',
   month: 'long',
@@ -135,7 +139,7 @@ const features: [string, string[]][] = [
   [
     'Margin of the maskable and Apple icons',
     byTool({
-      favseed: `Measured per mark and snapped to whole pixels (${a('/docs/cli#--padding', code('--padding auto'))})`,
+      favseed: `Measured per mark (${a('/docs/cli#--padding', code('--padding auto'))}); a mark drawn on a grid is snapped to whole pixels`,
       favicons: `None: every icon has ${a(`${favicons}src/config/icons.ts#L3-L31`, 'offset 0')}, and ${a(`${favicons}src/config/defaults.ts#L103`, 'no maskable icon')} by default`,
       'astro-favicons': `${a(`${astro}src/config/defaults.ts#L10-L17`, 'Offset 13')}, ${a(`${favilib}src/helpers.ts#L203-L208`, '13% per side')}, on the maskable 512 px icon; ${a(`${favilib}src/platforms/appleIcon.ts#L19`, 'none')} on the Apple icon`,
       'vite-pwa': `${a(`${vite}src/api/defaults.ts#L19-L23`, 'Fixed')}: the mark ${a(`${vite}src/api/utils.ts#L16-L17`, 'fills 70%')} of the icon, 15% per side`,
@@ -219,7 +223,7 @@ const features: [string, string[]][] = [
       favicons: a(`${favicons}package.json#L52-L54`, '20.0.0 or newer'),
       'astro-favicons': `None stated in its ${a(`${astro}package.json`, 'package.json')}`,
       'vite-pwa': a(`${vite}package.json#L76-L78`, '20.19.0 or newer'),
-      realfavicon: 'Not checked',
+      realfavicon: `None stated in the ${a(`${rfg}packages/generate-favicon/package.json`, 'generate-favicon')} or ${a(`${rfg}packages/image-adapter-node/package.json`, 'image-adapter-node')} package.json`,
     }),
   ],
   [
@@ -269,8 +273,8 @@ const speed = others.map((tool) => {
 // that sits next to an {expression} in the markup, which would glue a number to the next word.
 const wholeIntro =
   `Every file each tool writes by default, over the ${all.common.inputs} of ${all.inputs} inputs every tool built. ` +
-  `None of the other four built ${all.common.excluded.map((name) => code(`${name}.svg`)).join(' or ')}, two fixtures ` +
-  'whose root element has only a viewBox far smaller than one unit, which libvips rejects; favseed built both. ' +
+  `None of the other four built ${all.common.excluded.map((name) => code(`${name}.svg`)).join(' or ')}, ${words(excluded)} fixtures ` +
+  `whose root element has only a viewBox far smaller than one unit, which libvips rejects; favseed built ${excluded === 2 ? 'both' : 'them'}. ` +
   'PNG and ICO bytes are the raster total, and SVG files and the rest (manifests and ' +
   `${code('browserconfig.xml')}) are counted apart. A time per input is the median of ${results.reps} runs, each ` +
   'tool in a fresh Node process. Cold time runs from starting that process to the end of its first build, of a ' +
@@ -294,9 +298,12 @@ const agreement =
   'The two renderers often disagree, so read a pass count as closeness to one renderer, not as encoding quality ' +
   `alone. Scored the same way, the lossless render of ${sharpName(favseed)} passes against resvg’s on ` +
   `${all.renderers.agree} of the ${all.renderers.scored} inputs both can render. On the other ` +
-  `${all.renderers.passedBoth.inputs}, none of the ${n(all.renderers.passedBoth.pairs)} pairs the five tools ` +
-  `wrote passes against both references. favseed’s resvg count is out of ${S('favseed').like.resvg.scored} ` +
-  'because only favseed built the two tiny-viewBox fixtures. The ' +
+  `${all.renderers.passedBoth.inputs}, ` +
+  (all.renderers.passedBoth.passed.length
+    ? `only ${all.renderers.passedBoth.passed.length} of the ${n(all.renderers.passedBoth.pairs)} pairs the five tools wrote pass `
+    : `none of the ${n(all.renderers.passedBoth.pairs)} pairs the five tools wrote passes `) +
+  `against both references. favseed’s resvg count is out of ${S('favseed').like.resvg.scored} ` +
+  `because only favseed built the ${words(excluded)} tiny-viewBox fixtures. The ` +
   `${varRows.length} inputs that use ${code('var()')} all give a fallback and define no custom property, so librsvg ` +
   'draws them in the colours resvg uses and no tool drew a mark black here; the ' +
   `${measured('report', 'like-for-like-transparent-192-and-512-px')} also gives every count without them.`;
@@ -338,7 +345,7 @@ const strengths = [
     others
       .filter((tool) => S(tool.id).like.sharp.pass === S(tool.id).like.sharp.scored)
       .map((tool) => `${the(tool.id)} (${ratio(S(tool.id).like.sharp)})`),
-  ) + ' match their own renderer on every input they built.',
+  ) + ' pass against their own renderer on every input they built.',
   'RealFaviconGenerator writes an SVG favicon by default, and the project ships a favicon checker, ' +
     `${a('https://www.npmjs.com/package/@realfavicongenerator/check-favicon', code('@realfavicongenerator/check-favicon'))}, ` +
     `which its ${a(`${rfg}packages/cli/src/index.ts#L15-L30`, code('realfavicon check'))} command runs against a URL or a local port.`,
@@ -349,14 +356,15 @@ const reproduce =
   'versions into a directory git ignores; none of them is a dependency of favseed or of this site. The full run ' +
   `took ${Math.round(results.durationS / 60)} minutes on the laptop above.`;
 const lede =
-  'favseed next to four other favicon generators: what each one does, from its own source files, and what each one wrote for the same 103 SVG files in one benchmark run. Results depend on the input.';
+  'favseed next to four other favicon generators: what each one does, from its own source files, and what each one ' +
+  `wrote for the same ${rows.length} SVG files in one benchmark run. Results depend on the input.`;
 ---
 <Doc {title} {description} heading="Compare" label="Compare" {lede} articleType="Article">
   <section>
     <h2 id="what-this-compares">What this compares</h2>
     <p>On {date}, favseed’s comparison benchmark built the same {rows.length} SVG files with favseed and four other
       favicon generators, each with its own defaults: {fixtures} of favseed’s test fixtures and {open} openly licensed
-      icons from four icon sets. It counted the files each tool writes and their bytes, timed each build, and scored
+      icons from published icon sets. It counted the files each tool writes and their bytes, timed each build, and scored
       a transparent 192 and 512 px PNG from each tool against the source.</p>
     <div>
       <table>

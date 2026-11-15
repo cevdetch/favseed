@@ -182,7 +182,7 @@ export const perInput = (group, id) => group.tools[id].totalMs / group.common.in
 /**
  * Tool `a` against tool `b` on time, as the README and the website both state it: the mean per
  * input over the inputs every tool built, headToHead over the same inputs, and each corpus group
- * (`fixtures`, `open`) where the mean goes the other way. `sign` is -1 where `a` is faster.
+ * (`fixtures`, `open`) where the mean goes the other way, with both tools' means there.
  */
 export const speedAgainst = (results, a, b) => {
   const { summary, inputs: rows } = results;
