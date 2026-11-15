@@ -176,6 +176,50 @@ export const headToHead = (rows, a, b) => {
   };
 };
 
+/** A group's mean time per input: its median total over the inputs every tool built, divided by their number. */
+export const perInput = (group, id) => group.tools[id].totalMs / group.common.inputs;
+
+/**
+ * Tool `a` against tool `b` on time, as the README and the website both state it: the mean per
+ * input over the inputs every tool built, headToHead over the same inputs, and each corpus group
+ * (`fixtures`, `open`) where the mean goes the other way. `sign` is -1 where `a` is faster.
+ */
+export const speedAgainst = (results, a, b) => {
+  const { summary, inputs: rows } = results;
+  const common = rows.filter((row) => !summary.all.common.excluded.includes(row.name));
+  const mean = [perInput(summary.all, a), perInput(summary.all, b)];
+  return {
+    mean,
+    ...headToHead(common, a, b),
+    flips: ['fixtures', 'open']
+      .map((group) => ({ group, a: perInput(summary[group], a), b: perInput(summary[group], b) }))
+      .filter((flip) => Math.sign(flip.a - flip.b) !== Math.sign(mean[0] - mean[1])),
+  };
+};
+
+/**
+ * favseed's like-for-like PNGs scored against the resvg reference, and the ones that miss the
+ * bar: by corpus, those that miss on the edge clause alone (pixel share within `accuracyPct`),
+ * and those its own build kept at quality 80 because no candidate passed (decision 29). `agree`
+ * counts the PNGs where favseed's own verdict matches this benchmark's.
+ */
+export const favseedMisses = (rows, accuracyPct) => {
+  const pngs = rows.flatMap((row) =>
+    [192, 512].map((px) => ({ corpus: row.corpus, ...row.tools.favseed.like[px] })).filter((like) => like.self),
+  );
+  const scored = pngs.filter((like) => like.resvg);
+  const missed = scored.filter((like) => !like.resvg.pass);
+  return {
+    scored: scored.length,
+    missed: missed.length,
+    fixtures: missed.filter((like) => like.corpus === 'fixtures').length,
+    open: missed.filter((like) => like.corpus === 'open').length,
+    edgeOnly: missed.filter((like) => like.resvg.pct <= accuracyPct).length,
+    kept: missed.filter((like) => !like.self.pass && like.self.quality === 80).length,
+    agree: scored.filter((like) => like.self.pass === like.resvg.pass).length,
+  };
+};
+
 /**
  * Whether each tool wrote the same bytes every time: `runs[id]` is that tool's repetitions, each
  * `{ repeatsMatch, inputs: [{ name, digest } | { name, error }] }`. An input is listed when its

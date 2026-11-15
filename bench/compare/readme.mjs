@@ -3,7 +3,7 @@
 // here with the tables, so every number in the README comes from the results it sits next to.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { ACCURACY_PCT, EDGE_GATE } from '../../lib/core.mjs';
-import { headToHead, median } from './lib.mjs';
+import { favseedMisses, median, perInput as groupPerInput, speedAgainst } from './lib.mjs';
 
 const README = new URL('README.md', import.meta.url);
 
@@ -140,7 +140,7 @@ export function renderReadme(results) {
   const S = (id) => all.tools[id];
   const fixtures = rows.filter((row) => row.corpus === 'fixtures').length;
   const open = rows.filter((row) => row.corpus === 'open').length;
-  const perInput = (id, group = all) => group.tools[id].totalMs / group.common.inputs;
+  const perInput = (id, group = all) => groupPerInput(group, id);
   const others = tools.filter((tool) => tool.id !== 'favseed');
   const fastest = others.toSorted((a, b) => perInput(a.id) - perInput(b.id))[0];
   const commonRows = rows.filter((row) => !all.common.excluded.includes(row.name));
@@ -352,20 +352,13 @@ export function renderReadme(results) {
       "input's time, and how many inputs each builds faster, with any corpus where the mean goes the other way:",
     '',
     ...others.map((tool) => {
-      const h = headToHead(commonRows, 'favseed', tool.id);
-      const mean = perInput('favseed'),
-        theirs = perInput(tool.id);
-      const flips = ['fixtures', 'open']
-        .filter(
-          (group) =>
-            pace(perInput('favseed', summary[group]), perInput(tool.id, summary[group])) !== pace(mean, theirs),
-        )
-        .map(
-          (group) =>
-            `on the ${group === 'open' ? 'open icons' : 'fixtures'} favseed is ` +
-            `${pace(perInput('favseed', summary[group]), perInput(tool.id, summary[group]))} ` +
-            `(${n(perInput('favseed', summary[group]))} against ${n(perInput(tool.id, summary[group]))} ms)`,
-        );
+      const h = speedAgainst(results, 'favseed', tool.id);
+      const [mean, theirs] = h.mean;
+      const flips = h.flips.map(
+        (flip) =>
+          `on the ${flip.group === 'open' ? 'open icons' : 'fixtures'} favseed is ${pace(flip.a, flip.b)} ` +
+          `(${n(flip.a)} against ${n(flip.b)} ms)`,
+      );
       const ties = h.inputs - h.aFaster - h.bFaster;
       return (
         `- **${SHORT[tool.id]}**: favseed is ${pace(mean, theirs)} on the mean (${n(mean)} against ` +
@@ -448,23 +441,14 @@ export function renderReadme(results) {
     })(),
     '',
     (() => {
-      const pngs = rows.flatMap((row) =>
-        [192, 512].map((px) => ({ corpus: row.corpus, ...row.tools.favseed.like[px] })).filter((l) => l.self),
-      );
-      const scored = pngs.filter((l) => l.resvg);
-      const missed = scored.filter((l) => !l.resvg.pass);
-      // No candidate passed: the search kept quality 80 at the colour ceiling and its own gate failed.
-      const kept = missed.filter((l) => !l.self.pass && l.self.quality === 80);
-      const agree = scored.filter((l) => l.self.pass === l.resvg.pass).length;
-      const edgeOnly = missed.filter((l) => l.resvg.pct <= ACCURACY_PCT).length;
+      const m = favseedMisses(rows, ACCURACY_PCT);
       return (
-        `favseed misses against resvg on ${missed.length} of its ${scored.length} PNGs ` +
-        `(${missed.filter((l) => l.corpus === 'fixtures').length} on fixtures, ` +
-        `${missed.filter((l) => l.corpus === 'open').length} on open icons; ${edgeOnly} of them on the edge ` +
-        `clause alone). On ${kept.length === missed.length ? 'every one' : `${kept.length}`} of them, its own ` +
+        `favseed misses against resvg on ${m.missed} of its ${m.scored} PNGs ` +
+        `(${m.fixtures} on fixtures, ${m.open} on open icons; ${m.edgeOnly} of them on the edge ` +
+        `clause alone). On ${m.kept === m.missed ? 'every one' : `${m.kept}`} of them, its own ` +
         'build found no setting on its search lists that passed and kept its quality-80 encode without a ' +
         "warning, as decision 29 in `docs/DECISIONS.md` specifies. Separately, favseed's own verdict, against " +
-        `its own reference, matches this benchmark's resvg verdict on ${agree} of the ${scored.length} PNGs.`
+        `its own reference, matches this benchmark's resvg verdict on ${m.agree} of the ${m.scored} PNGs.`
       );
     })(),
     '',

@@ -5,6 +5,7 @@ import {
   builtByAll,
   classify,
   determinismOf,
+  favseedMisses,
   formatResults,
   groupSummary,
   headToHead,
@@ -15,6 +16,7 @@ import {
   rendererAgreement,
   scoreSize,
   setDigest,
+  speedAgainst,
   summarise,
 } from '../bench/compare/lib.mjs';
 import { renderReadme } from '../bench/compare/readme.mjs';
@@ -257,6 +259,12 @@ describe('bench compare README', () => {
 const rep = (inputs, repeatsMatch = true) => ({ repeatsMatch, inputs });
 const timed = (x, y) => ({ tools: { x: { ms: x }, y: { ms: y } } });
 const pair = (resvg, sharp) => ({ like: { 192: { resvg, sharp }, 512: { resvg, sharp } } });
+const group = (inputs, x, y) => ({ common: { inputs }, tools: { x: { totalMs: x }, y: { totalMs: y } } });
+// One input with favseed's 192 px PNG scored against resvg and by its own build, and no 512 px score.
+const favseedRow = (corpus, resvg, self) => ({
+  corpus,
+  tools: { favseed: { like: { 192: { resvg, self }, 512: {} } } },
+});
 
 describe('bench compare determinism, speed and both references', () => {
   it('flags a success that turns into a failure and two different digests, never a reworded failure', () => {
@@ -279,6 +287,40 @@ describe('bench compare determinism, speed and both references', () => {
       'y',
     );
     assert.deepEqual(h, { inputs: 4, aFaster: 2, bFaster: 1, aMedian: 3, bMedian: 5 });
+  });
+  it('states the mean, the head-to-head and each corpus where the mean goes the other way', () => {
+    const results = {
+      summary: {
+        all: { ...group(3, 30, 60), common: { inputs: 3, excluded: ['z'] } },
+        fixtures: group(1, 20, 10),
+        open: group(2, 10, 50),
+      },
+      inputs: [timed(20, 10), timed(5, 25), timed(5, 25), { name: 'z', ...timed(1, 1) }].map((row, i) => ({
+        name: row.name ?? `i${i}`,
+        ...row,
+      })),
+    };
+    const s = speedAgainst(results, 'x', 'y');
+    assert.deepEqual(s.mean, [10, 20]);
+    assert.deepEqual([s.inputs, s.aFaster, s.bFaster, s.aMedian, s.bMedian], [3, 2, 1, 5, 25]);
+    assert.deepEqual(s.flips, [{ group: 'fixtures', a: 20, b: 10 }]);
+  });
+  it("counts favseed's misses against resvg and the ones its own build kept at quality 80", () => {
+    const scored = [
+      favseedRow('fixtures', { pass: true, pct: 0.1 }, { pass: true, quality: 100 }),
+      favseedRow('open', { pass: false, pct: 0.5 }, { pass: false, quality: 80 }),
+      favseedRow('open', { pass: false, pct: 2 }, { pass: true, quality: 90 }),
+      favseedRow('open', null, { pass: true, quality: 90 }),
+    ];
+    assert.deepEqual(favseedMisses(scored, 1), {
+      scored: 3,
+      missed: 2,
+      fixtures: 0,
+      open: 2,
+      edgeOnly: 1,
+      kept: 1,
+      agree: 2,
+    });
   });
   it('counts the pairs that pass against both references where the references disagree', () => {
     const disagreeing = [

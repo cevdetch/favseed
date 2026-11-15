@@ -30,8 +30,9 @@ const gitUsable = () => {
   return usable;
 };
 
-// Numbers on /outputs come from the byte manifest, so a new manifest changes the page.
-const extra = { '/outputs': ['../test/bytes.json'] };
+// Numbers on /outputs come from the byte manifest, and those on /compare from the comparison's
+// results, so a new manifest or a new run changes the page.
+const extra = { '/outputs': ['../test/bytes.json'], '/compare': ['../bench/compare/results.json'] };
 
 export const pageSources = (pathname) => {
   const path = pathname.replace(/\/$/, '');

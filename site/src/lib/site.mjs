@@ -33,6 +33,7 @@ export const nav = [
   ['/', 'Generator'],
   ['/docs', 'Docs'],
   ['/guides', 'Guides'],
+  ['/compare', 'Compare'],
   ['/benchmarks', 'Benchmarks'],
   ['https://github.com/cevdetch/favseed', 'GitHub'],
 ];

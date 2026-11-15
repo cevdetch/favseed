@@ -93,6 +93,7 @@ covers every file in detail.
 - [Guides](https://favseed.cevdet.ch/guides): the minimal favicon set, maskable icons and dark-mode favicons.
 - [How it works](https://favseed.cevdet.ch/how-it-works): the steps from one SVG to the finished set.
 - [Outputs](https://favseed.cevdet.ch/outputs): each file, the HTML it needs and who reads it.
+- [Compare](https://favseed.cevdet.ch/compare): favseed next to favicons, astro-favicons, Vite PWA and RealFaviconGenerator.
 - [Benchmarks](https://favseed.cevdet.ch/benchmarks): the measurements behind the defaults.
 - [Decisions](https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md): what was measured and what changed.
 - [Changelog](https://github.com/cevdetch/favseed/blob/main/CHANGELOG.md)
