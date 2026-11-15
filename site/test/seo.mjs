@@ -10,6 +10,8 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { pageSources } from '../build/lastmod.mjs';
+import { ACCURACY_PCT } from '../../lib/core.mjs';
+import { favseedMisses, likePassesOnCommon } from '../../bench/compare/lib.mjs';
 
 const SITE = 'https://favseed.cevdet.ch';
 const HOME_TITLE = 'SVG favicon generator: one SVG, an optimised set - favseed';
@@ -52,11 +54,22 @@ const decode = (text) =>
     .replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>')
     .replaceAll('&amp;', '&');
+// Text of an HTML fragment: strip tags until none are left, so a tag split by another cannot survive one pass.
+const textOf = (html) => {
+  let previous;
+  do {
+    previous = html;
+    html = html.replace(/<[^>]*>/g, '');
+  } while (html !== previous);
+  return html;
+};
 export const meta = (html, key) =>
   decode(one(html, new RegExp(`<meta (?:name|property)="${key}" content="([^"]*)"`, 'g'), key));
 export const titleOf = (html) => decode(one(html, /<title>([^<]*)<\/title>/g, 'title'));
 export const graphOf = (html) =>
   JSON.parse(one(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script\s*>/gi, 'JSON-LD'));
+const isArticle = (node) => node['@type'] === 'TechArticle' || node['@type'] === 'Article';
+const articleOf = (path) => graphOf(pages.get(path))['@graph'].find(isArticle);
 // Anything that renders a page without a header bar is not one of the site's pages.
 const navOf = (html) => one(html, /<nav aria-label="Site"[^>]*>([\s\S]*?)<\/nav>/g, 'header bar');
 const hrefs = (html) => all(html, /<a [^>]*href="([^"]+)"/g).map(decode);
@@ -130,7 +143,7 @@ test('every page but the homepage is an article with a breadcrumb trail matching
   for (const path of articles) {
     const html = pages.get(path);
     const graph = graphOf(html)['@graph'];
-    const article = graph.find((node) => node['@type'] === 'TechArticle' || node['@type'] === 'Article');
+    const article = graph.find(isArticle);
     assert.ok(article, `${path}: article`);
     assert.equal(article.url, urlOf(path), path);
     assert.deepEqual(article.author, { '@id': 'https://cevdet.ch/#person' }, path);
@@ -163,9 +176,67 @@ test('every indexable page has the same header bar, and it links only indexable 
 
 test('the header bar lists the sections in the order the site promises', () => {
   const labels = all(navOf(pages.get('/')), /<a [^>]*>([^<]+)<\/a>/g);
-  assert.deepEqual(labels, ['Generator', 'Docs', 'Guides', 'Benchmarks', 'GitHub']);
+  assert.deepEqual(labels, ['Generator', 'Docs', 'Guides', 'Compare', 'Benchmarks', 'GitHub']);
   // The flex layout ignores the whitespace; a text-only reader and a copy-paste do not.
   assert.doesNotMatch(navOf(pages.get('/')), /<\/a><a/, 'two header links with no whitespace between them');
+});
+
+test('/compare is an Article, not a TechArticle', () => {
+  const graph = graphOf(pages.get('/compare'))['@graph'];
+  assert.deepEqual(
+    graph.filter(isArticle).map((node) => node['@type']),
+    ['Article'],
+  );
+});
+
+// The card holding the h2 with this id, and a table's body rows as the text of their cells.
+const cardOf = (html, id) => new RegExp(`<h2 id="${id}">[\\s\\S]*?</section>`).exec(html)?.[0] ?? '';
+const bodyRows = (html) =>
+  all(/<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? '', /<tr>([\s\S]*?)<\/tr>/g).map((row) =>
+    all(row, /<td[^>]*>([\s\S]*?)<\/td>/g).map((cell) => decode(textOf(cell)).trim()),
+  );
+
+// Numbers as /compare formats them.
+const n = (value) => Math.round(value).toLocaleString('en-GB');
+const ratio = ({ pass, scored }) => `${pass}/${scored}`;
+
+test('/compare shows the benchmark numbers exactly as results.json holds them', () => {
+  const results = JSON.parse(readFileSync(new URL('../../bench/compare/results.json', import.meta.url), 'utf8'));
+  const html = pages.get('/compare');
+  const group = results.summary.all;
+  const features = bodyRows(cardOf(html, 'features'));
+  const whole = bodyRows(cardOf(html, 'the-whole-set'));
+  const like = bodyRows(cardOf(html, 'like-for-like'));
+  assert.deepEqual(
+    features.find((row) => row[0] === 'Files in the default set')?.slice(1),
+    results.tools.map((tool) => String(group.tools[tool.id].files.max)),
+  );
+  assert.equal(whole.length, results.tools.length, 'one whole-set row per tool');
+  assert.equal(like.length, results.tools.length, 'one like-for-like row per tool');
+  results.tools.forEach((tool, i) => {
+    const t = group.tools[tool.id];
+    const perInput = t.totalMs / group.common.inputs;
+    assert.deepEqual(
+      whole[i].slice(1),
+      [String(t.files.max), n(t.rasterBytes), n(t.svgBytes), n(t.otherBytes), n(perInput), n(t.coldMs)],
+      `${tool.id}: whole set`,
+    );
+    const { 192: small, 512: large } = t.like.bytes;
+    // favseed's resvg count, and in brackets the same count over the inputs every tool built a pair for.
+    const common = likePassesOnCommon(results, tool.id, 'resvg');
+    const resvg =
+      common.scored === t.like.resvg.scored ? ratio(t.like.resvg) : `${ratio(t.like.resvg)} (${ratio(common)})`;
+    assert.deepEqual(
+      like[i].slice(1),
+      [n(small), n(large), n(small + large), resvg, ratio(t.like.sharp)],
+      `${tool.id}: like for like`,
+    );
+  });
+  const text = decode(textOf(html)).replace(/\s+/g, ' ');
+  const { agree, scored } = group.renderers;
+  assert.ok(text.includes(`${agree} of the ${scored} inputs`), 'the renderer agreement');
+  const misses = favseedMisses(results.inputs, ACCURACY_PCT);
+  assert.ok(text.includes(`${misses.missed} of its ${misses.scored} like-for-like PNGs`), "favseed's misses");
 });
 
 // A guide is any page whose breadcrumb passes through the Guides hub, /outputs included.
@@ -384,7 +455,7 @@ test(
       [...xml.matchAll(/<loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod>/g)].map((match) => [match[1], match[2]]),
     );
     for (const path of articles) {
-      const article = graphOf(pages.get(path))['@graph'].find((node) => node['@type'] === 'TechArticle');
+      const article = articleOf(path);
       assert.ok(article.datePublished && article.dateModified, `${path}: article dates`);
       assert.ok(article.datePublished <= article.dateModified, `${path}: published after modified`);
       assert.equal(article.dateModified, lastmods.get(urlOf(path)), `${path}: dateModified and lastmod differ`);
@@ -394,7 +465,7 @@ test(
 
 test('an article is published on the first commit of its own source file', { skip: shallow }, () => {
   for (const path of articles) {
-    const article = graphOf(pages.get(path))['@graph'].find((node) => node['@type'] === 'TechArticle');
+    const article = articleOf(path);
     const [own] = pageSources(path);
     assert.ok(own, `${path}: no source file`);
     const first = git('log', '--follow', '--format=%cI', '--', own).split('\n').at(-1);

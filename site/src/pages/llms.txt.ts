@@ -10,6 +10,7 @@ const pagesWithoutMarkdown = [
   ['/', 'Generator', 'make the set in your browser; nothing is uploaded'],
   ['/how-it-works', 'How it works', 'from one SVG to the set, step by step'],
   ['/outputs', 'Outputs', 'every file, the HTML it needs and the platforms that read it'],
+  ['/compare', 'Compare', 'favseed next to favicons, astro-favicons, Vite PWA and RealFaviconGenerator, with sources'],
   ['/benchmarks', 'Benchmarks', 'bytes, accuracy and build time, with sources'],
 ];
 

@@ -246,7 +246,7 @@ and selects compatibility. Load failures never silently switch engines. Both rea
 capabilities, and the document can require compatibility even if its worker permits sharing.
 `test/page.spec.mjs` checks homepage title/description, canonical/Open Graph/JSON-LD
 consistency, the served 1200×630 share image, and noindex/no-canonical on `/check` and `/404`.
-The documentation pages (`/docs`, `/how-it-works`, `/outputs`, `/benchmarks`) each get their own title,
+The documentation pages (`/docs`, `/how-it-works`, `/outputs`, `/compare`, `/benchmarks`) each get their own title,
 description and slash-free canonical URL.
 It also guards cold startup before any sign of intent, including form edits and a rejected PNG:
 no workers or engine/WASM requests, at most 5.25 KiB gzipped HTML, 4 KiB gzipped JavaScript,

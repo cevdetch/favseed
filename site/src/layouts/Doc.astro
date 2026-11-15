@@ -14,9 +14,21 @@ interface Props {
   label?: string;
   markdown?: string;
   pager?: { prev?: [string, string]; next?: [string, string] };
+  // A page that weighs tools against each other is an Article; the reference pages are TechArticles.
+  articleType?: 'TechArticle' | 'Article';
 }
 
-const { title, description, heading, lede, crumbs = [], label = heading, markdown, pager } = Astro.props;
+const {
+  title,
+  description,
+  heading,
+  lede,
+  crumbs = [],
+  label = heading,
+  markdown,
+  pager,
+  articleType = 'TechArticle',
+} = Astro.props;
 const path = pathOfUrl(Astro.url.pathname);
 const url = pageUrl(Astro.url.pathname);
 // The newest and oldest commit to the page's own source; none in a shallow clone.
@@ -24,7 +36,7 @@ const { published, modified } = gitDates(pageSources(path));
 const trail: [string, string][] = [['/', 'Home'], ...crumbs, [path, label]];
 const graph = jsonLd([
   {
-    '@type': 'TechArticle',
+    '@type': articleType,
     '@id': `${url}#article`,
     headline: heading,
     description,
