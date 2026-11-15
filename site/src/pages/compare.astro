@@ -7,7 +7,13 @@
 import Doc from '../layouts/Doc.astro';
 import results from '../../../bench/compare/results.json';
 import { ACCURACY_PCT, EDGE_GATE } from '../../../lib/core.mjs';
-import { favseedMisses, perInput, speedAgainst } from '../../../bench/compare/lib.mjs';
+import {
+  favseedMisses,
+  likePassesOnCommon,
+  perInput,
+  speedAgainst,
+  startupImages,
+} from '../../../bench/compare/lib.mjs';
 
 const title = 'favseed vs favicons, Vite PWA and RealFaviconGenerator - favseed';
 const description =
@@ -61,8 +67,7 @@ const time = (id: string) => perInput(all, id);
 const pairBytes = (id: string) => S(id).like.bytes[192] + S(id).like.bytes[512];
 const toolOf = (id: string) => tools.find((entry) => entry.id === id);
 const favseed = toolOf('favseed');
-const startup = (id: string) =>
-  toolOf(id).fileNames.filter((name) => name.startsWith('apple-touch-startup-image')).length;
+const startup = (id: string) => startupImages(toolOf(id).fileNames).count;
 const tiles = (id: string) =>
   toolOf(id).fileNames.filter((name) => name.startsWith('mstile-')).length;
 const mostFiles = tools.toSorted((a, b) => S(b.id).files.max - S(a.id).files.max)[0];
@@ -73,6 +78,12 @@ const coldLongest = others.every((tool) => S(tool.id).coldMs < S('favseed').cold
 const misses = favseedMisses(rows, ACCURACY_PCT);
 const varRows = rows.filter((row) => row.usesVar);
 const deterministic = tools.every((tool) => results.determinism[tool.id].deterministic);
+// favseed's resvg count over the inputs every tool built a pair for, next to its count over all.
+const favseedCommon = likePassesOnCommon(results, 'favseed', 'resvg');
+const resvgCell = (id: string) =>
+  id === 'favseed' && favseedCommon.scored !== S(id).like.resvg.scored
+    ? `${ratio(S(id).like.resvg)} (${ratio(favseedCommon)})`
+    : ratio(S(id).like.resvg);
 // "sharp 0.35.5 (libvips 8.18.7, librsvg 2.63.2)" as "sharp 0.35.5 with librsvg 2.63.2", and its parts.
 const sharpParts = (tool) => /^sharp (\S+) \(libvips [^,]+, librsvg ([^)]+)\)$/.exec(tool.sharpReference).slice(1);
 const sharpName = (tool) => `sharp ${sharpParts(tool)[0]} with librsvg ${sharpParts(tool)[1]}`;
@@ -124,6 +135,16 @@ const features: [string, string[]][] = [
       'astro-favicons': `Yes, ${code('favicon.svg')} and ${code('safari-pinned-tab.svg')} (${measured('measured')})`,
       'vite-pwa': `No: ${code('minimal-2023')} ${a(`${vite}src/presets/minimal-2023.ts#L8-L19`, 'lists')} PNG and ICO only`,
       realfavicon: `Yes, ${a(`${rfg}packages/generate-favicon/src/generation/desktop.ts#L17`, code('favicon.svg'))}`,
+    }),
+  ],
+  [
+    'Animated SVG',
+    byTool({
+      favseed: `Kept: ${code('icon.svg')} keeps CSS and SMIL animation, and the PNG and ICO files are still images (${a('/docs/svg-input#animation', 'Animation')})`,
+      favicons: `Not by default; when asked for, ${code('favicon.svg')} is the ${a(`${favicons}src/helpers.ts#L248-L249`, 'source file unchanged')}, animation included`,
+      'astro-favicons': `Kept: ${code('favicon.svg')} and ${code('safari-pinned-tab.svg')} are the ${a(`${favilib}src/helpers.ts#L244-L245`, 'source file unchanged')} (${measured('checked', 'animated-svg')})`,
+      'vite-pwa': `No SVG written: its favicon link ${a(`${vite}src/api/instructions-resolver.ts#L62-L84`, 'points at your source file')}, which it ${a(`${vite}src/api/generate-assets.ts#L19`, 'does not copy')}, so the animation is whatever that file holds`,
+      realfavicon: `Kept: ${code('favicon.svg')} is the ${a(`${rfg}packages/generate-favicon/src/svg/desktop.ts#L19-L22`, 'source as it is')}, with attribution metadata added (${measured('checked', 'animated-svg')})`,
     }),
   ],
   [
@@ -209,7 +230,7 @@ const features: [string, string[]][] = [
   [
     'Renderer',
     byTool({
-      favseed: `resvg in ${a(`${repo}package.json#L83`, code('@napi-rs/image'))}, a prebuilt native module; this site runs it as WebAssembly`,
+      favseed: `resvg in ${a(`${repo}package.json`, code('@napi-rs/image'))}, a prebuilt native module; this site runs it as WebAssembly`,
       favicons: `${a(`${favicons}package.json#L57`, 'sharp')}: ${sharpOf(toolOf('favicons'))}`,
       'astro-favicons': `${a(`${favilib}package.json#L76`, 'sharp')}, through ${a(`${astro}package.json#L56`, 'favilib')}: ${sharpOf(toolOf('astro-favicons'))}`,
       'vite-pwa': `${a(`${vite}package.json#L94`, 'sharp')}: ${sharpOf(toolOf('vite-pwa'))}`,
@@ -219,7 +240,7 @@ const features: [string, string[]][] = [
   [
     'Node.js',
     byTool({
-      favseed: a(`${repo}package.json#L107-L109`, '24 or newer'),
+      favseed: a(`${repo}package.json`, '24 or newer'),
       favicons: a(`${favicons}package.json#L52-L54`, '20.0.0 or newer'),
       'astro-favicons': `None stated in its ${a(`${astro}package.json`, 'package.json')}`,
       'vite-pwa': a(`${vite}package.json#L76-L78`, '20.19.0 or newer'),
@@ -248,6 +269,10 @@ const features: [string, string[]][] = [
   ],
 ];
 
+// The sets differ in what they hold, so neither their bytes nor their times compare like for like.
+const unlike =
+  `${the(mostFiles.id)} builds ${S(mostFiles.id).files.max} files per input, ${startup(mostFiles.id)} of them Apple ` +
+  `startup images up to ${n(startupImages(mostFiles.fileNames).longest)} px, and favseed builds ${S('favseed').files.max}`;
 const speed = others.map((tool) => {
   const h = speedAgainst(results, 'favseed', tool.id);
   const [mean, theirs] = h.mean;
@@ -266,7 +291,8 @@ const speed = others.map((tool) => {
       : h.bFaster === h.inputs
         ? `it is slower on every one of the ${h.inputs} inputs`
         : `it is faster on ${h.aFaster} of the ${h.inputs} inputs and slower on ${h.bFaster}`) +
-    `${ties ? ` (${ties} tied)` : ''}${flips.length ? `; ${flips.join('; ')}` : ''}.`
+    `${ties ? ` (${ties} tied)` : ''}${flips.length ? `; ${flips.join('; ')}` : ''}.` +
+    (tool.id === mostFiles.id ? ` These times are for different sets: ${unlike}.` : '')
   );
 });
 // The prose with numbers in it is written here, as whole paragraphs: Astro drops a line break
@@ -276,13 +302,14 @@ const wholeIntro =
   `None of the other four built ${all.common.excluded.map((name) => code(`${name}.svg`)).join(' or ')}, ${words(excluded)} fixtures ` +
   `whose root element has only a viewBox far smaller than one unit, which libvips rejects; favseed built ${excluded === 2 ? 'both' : 'them'}. ` +
   'PNG and ICO bytes are the raster total, and SVG files and the rest (manifests and ' +
-  `${code('browserconfig.xml')}) are counted apart. A time per input is the median of ${results.reps} runs, each ` +
-  'tool in a fresh Node process. Cold time runs from starting that process to the end of its first build, of a ' +
-  'warm-up mark that is not one of the inputs, so it holds Node’s start-up and the loading of the tool.';
+  `${code('browserconfig.xml')}) are counted apart. The benchmark ran every tool ${words(results.reps)} times, each ` +
+  'time in a fresh Node process; a time per input is the median of those runs’ totals over the inputs, divided by ' +
+  'their number. Cold time runs from starting that process to the end of its first build, of a warm-up mark that ' +
+  'is not one of the inputs, so it holds Node’s start-up and the loading of the tool.' +
+  (deterministic ? ' Every tool, favseed included, wrote the same bytes for every input on every repeat run.' : '');
 const wholeAfter =
-  `The sets hold different files at different sizes, so their bytes do not compare encoders: ${the(mostFiles.id)} ` +
-  `writes ${S(mostFiles.id).files.max} files, ${startup(mostFiles.id)} of them Apple startup images. The pair ` +
-  `below does. The times come from one laptop, an ${machine.cpu} set to the ` +
+  `The sets differ, so neither their bytes nor their times compare like for like: ${unlike}. The pair ` +
+  `below holds the same two PNGs, framed the same way, from every tool. The times come from one laptop, an ${machine.cpu} set to the ` +
   `${code(machine.power.platformProfile)} platform profile, and hold for that machine only.`;
 const likeIntro =
   'The one pair every tool can write with the same framing: a transparent, unpadded PNG at 192 and 512 px, set up ' +
@@ -290,6 +317,27 @@ const likeIntro =
   `${all.likeCommon.inputs} inputs every tool built a pair for. A pass means both sizes meet favseed’s accuracy ` +
   `bar on a black and on a white ground: at most ${ACCURACY_PCT}% of pixels off by more than 8/255, and an edge ` +
   `error of at most ${EDGE_GATE}.`;
+// The tools whose PNGs are a bare sharp .png(), per the sources the sentence below links.
+const LOSSLESS = ['favicons', 'astro-favicons', 'realfavicon'];
+const encoders =
+  'favicons, astro-favicons and RealFaviconGenerator write lossless truecolour PNGs: each calls sharp’s ' +
+  `${code('.png()')} with no options (${a(`${favicons}src/helpers.ts#L238-L240`, 'favicons')}, ` +
+  `${a(`${favilib}src/helpers.ts#L234-L236`, 'favilib')} and ` +
+  `${a(`${rfg}packages/image-adapter-node/src/adapter.ts#L23-L34`, 'image-adapter-node')}), which keeps sharp’s ` +
+  'defaults of no palette and zlib compression level 6 (' +
+  `${a('https://github.com/lovell/sharp/blob/v0.35.5/lib/constructor.mjs#L346-L348', 'sharp 0.35.5')}, ` +
+  `${a('https://github.com/lovell/sharp/blob/v0.33.5/lib/constructor.js#L285-L287', '0.33.5')} and ` +
+  `${a('https://github.com/lovell/sharp/blob/v0.34.5/lib/constructor.js#L329-L331', '0.34.5')}). ` +
+  `The Vite PWA assets generator quantises at ${a(`${vite}src/api/defaults.ts#L14-L17`, 'quality 60')}, and favseed ` +
+  'searches quantised and lossless encodes for the smallest that passes its bar ' +
+  `(${a('/docs/cli#effort-and-pinned-settings', 'Effort')}). So the byte gap is not a gap at equal fidelity: a ` +
+  'lossless PNG adds no loss to its own render, which is why ' +
+  list(
+    others
+      .filter((tool) => LOSSLESS.includes(tool.id) && S(tool.id).like.sharp.pass === S(tool.id).like.sharp.scored)
+      .map((tool) => the(tool.id)),
+  ) +
+  ' pass against their own renderer on every input.';
 const references =
   'Each PNG is scored against two references at its own size. The resvg reference is the source as favseed’s ' +
   'renderer draws it, so it favours favseed; the sharp reference is the source drawn losslessly by each tool’s ' +
@@ -303,7 +351,8 @@ const agreement =
     ? `only ${all.renderers.passedBoth.passed.length} of the ${n(all.renderers.passedBoth.pairs)} pairs the five tools wrote pass `
     : `none of the ${n(all.renderers.passedBoth.pairs)} pairs the five tools wrote passes `) +
   `against both references. favseed’s resvg count is out of ${S('favseed').like.resvg.scored} ` +
-  `because only favseed built the ${words(excluded)} tiny-viewBox fixtures. The ` +
+  `because only favseed built the ${words(excluded)} tiny-viewBox fixtures; over the ${favseedCommon.scored} inputs ` +
+  `every tool built a pair for, it passes on ${favseedCommon.pass}, in brackets in the table. The ` +
   `${varRows.length} inputs that use ${code('var()')} all give a fallback and define no custom property, so librsvg ` +
   'draws them in the colours resvg uses and no tool drew a mark black here; the ' +
   `${measured('report', 'like-for-like-transparent-192-and-512-px')} also gives every count without them.`;
@@ -349,7 +398,6 @@ const strengths = [
   'RealFaviconGenerator writes an SVG favicon by default, and the project ships a favicon checker, ' +
     `${a('https://www.npmjs.com/package/@realfavicongenerator/check-favicon', code('@realfavicongenerator/check-favicon'))}, ` +
     `which its ${a(`${rfg}packages/cli/src/index.ts#L15-L30`, code('realfavicon check'))} command runs against a URL or a local port.`,
-  ...(deterministic ? ['Every tool, favseed included, wrote the same bytes for every input on every repeat run.'] : []),
 ];
 const reproduce =
   `From a checkout, with Node 24 or newer. ${code('--install')} installs the four other tools at their pinned ` +
@@ -420,11 +468,12 @@ const lede =
         <tbody>
           {tools.map((tool) => {
             const l = S(tool.id).like;
-            return (<tr><td>{NAME[tool.id]}</td><td>{n(l.bytes[192])}</td><td>{n(l.bytes[512])}</td><td>{n(pairBytes(tool.id))}</td><td>{ratio(l.resvg)}</td><td>{ratio(l.sharp)}</td></tr>);
+            return (<tr><td>{NAME[tool.id]}</td><td>{n(l.bytes[192])}</td><td>{n(l.bytes[512])}</td><td>{n(pairBytes(tool.id))}</td><td>{resvgCell(tool.id)}</td><td>{ratio(l.sharp)}</td></tr>);
           })}
         </tbody>
       </table>
     </div>
+    <p set:html={encoders} />
     <p set:html={references} />
     <p set:html={agreement} />
   </section>

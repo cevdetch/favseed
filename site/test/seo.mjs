@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { pageSources } from '../build/lastmod.mjs';
 import { ACCURACY_PCT } from '../../lib/core.mjs';
-import { favseedMisses } from '../../bench/compare/lib.mjs';
+import { favseedMisses, likePassesOnCommon } from '../../bench/compare/lib.mjs';
 
 const SITE = 'https://favseed.cevdet.ch';
 const HOME_TITLE = 'SVG favicon generator: one SVG, an optimised set - favseed';
@@ -213,9 +213,13 @@ test('/compare shows the benchmark numbers exactly as results.json holds them', 
       `${tool.id}: whole set`,
     );
     const { 192: small, 512: large } = t.like.bytes;
+    // favseed's resvg count, and in brackets the same count over the inputs every tool built a pair for.
+    const common = likePassesOnCommon(results, tool.id, 'resvg');
+    const resvg =
+      common.scored === t.like.resvg.scored ? ratio(t.like.resvg) : `${ratio(t.like.resvg)} (${ratio(common)})`;
     assert.deepEqual(
       like[i].slice(1),
-      [n(small), n(large), n(small + large), ratio(t.like.resvg), ratio(t.like.sharp)],
+      [n(small), n(large), n(small + large), resvg, ratio(t.like.sharp)],
       `${tool.id}: like for like`,
     );
   });
