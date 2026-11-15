@@ -16,6 +16,7 @@ export const id = 'astro-favicons';
 export const label = `astro-favicons ${pkg.version}`;
 const favilibPkg = packageJson('favilib', pkg.path);
 export const engine = `favilib ${favilibPkg.version}`;
+export const versions = { 'astro-favicons': pkg.version, favilib: favilibPkg.version };
 // favilib's own sharp copy (0.33.5, nested under it): its reference uses the same librsvg build.
 export const sharpFrom = favilibPkg.path;
 

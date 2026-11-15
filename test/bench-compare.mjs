@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { builtByAll, classify, groupSummary, median, passCounts, setDigest, summarise } from '../bench/compare/lib.mjs';
+import {
+  builtByAll,
+  classify,
+  groupSummary,
+  median,
+  outcomeKey,
+  passCounts,
+  rendererAgreement,
+  scoreSize,
+  setDigest,
+  summarise,
+} from '../bench/compare/lib.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
 
@@ -62,10 +73,17 @@ describe('bench compare helpers', () => {
         ],
       },
     ];
-    assert.deepEqual(summarise(runs), { coldMs: 800, totalMs: 40, perInput: { a: 20, b: 20 } });
+    assert.deepEqual(summarise(runs), {
+      coldMs: 800,
+      totalMs: 40,
+      repsTotalMs: [30, 40, 50],
+      repsColdMs: [700, 800, 900],
+      perInput: { a: 20, b: 20 },
+    });
   });
 });
 
+const files = (n, raster) => ({ ...entry(raster), files: n });
 // Rows as run.mjs builds them: one per input, one entry per tool.
 const like = (size, resvg, sharp) => ({ bytes: size, resvg, sharp });
 const ok = { pct: 0, edge: 0, pass: true },
@@ -131,6 +149,8 @@ describe('bench compare totals', () => {
     assert.equal(s.tools.x.own.totalMs, 7);
     assert.equal(s.tools.y.own.totalMs, 40);
     assert.deepEqual(s.likeCommon, { inputs: 2, excluded: ['b'] });
+    assert.deepEqual(s.tools.x.repsTotalMs, [5]);
+    assert.match(s.scope, /common/);
     assert.deepEqual(s.tools.x.like.bytes, { 192: 20, 512: 40 });
   });
   it('counts passes per reference over the inputs that reference and the candidate both exist for', () => {
@@ -145,5 +165,77 @@ describe('bench compare totals', () => {
       builtByAll(rows, ['x', 'y']).map((r) => r.name),
       ['a', 'c'],
     );
+  });
+  it('counts files over the common inputs at the top level and over its own under own', () => {
+    const counted = [
+      { name: 'a', usesVar: false, tools: { x: files(5, 1), y: files(7, 1) } },
+      { name: 'b', usesVar: false, tools: { x: files(9, 1), y: { error: 'no', like: { error: 'no' } } } },
+    ];
+    const s = groupSummary(counted, runs, ['x', 'y'], [192, 512]);
+    assert.deepEqual(s.tools.x.files, { min: 5, max: 5 });
+    assert.deepEqual(s.tools.x.own.files, { min: 5, max: 9 });
+    assert.deepEqual(s.tools.y.own.files, { min: 7, max: 7 });
+  });
+});
+
+const img = { width: 1, height: 1 };
+const score = (_, ref) => ({ pct: ref.pct, edge: 0, pass: ref.pct <= 1 });
+
+describe('bench compare scoring', () => {
+  it('scores a candidate against every reference', () => {
+    const { like: scored, referenceErrors } = scoreSize({
+      candidate: (into) => ((into.bytes = 3), img),
+      references: { resvg: () => ({ pct: 0.5 }), sharp: () => ({ pct: 2 }) },
+      score,
+    });
+    assert.deepEqual(scored, {
+      bytes: 3,
+      resvg: { pct: 0.5, edge: 0, pass: true },
+      sharp: { pct: 2, edge: 0, pass: false },
+    });
+    assert.deepEqual(referenceErrors, {});
+  });
+  it('leaves a score null for a reference that does not exist or cannot be read, never the candidate', () => {
+    const { like: scored, referenceErrors } = scoreSize({
+      candidate: () => img,
+      references: {
+        resvg: () => null,
+        sharp: () => {
+          throw new Error('ENOENT');
+        },
+      },
+      score,
+    });
+    assert.deepEqual(scored, { resvg: null, sharp: null });
+    assert.equal(scored.error, undefined);
+    assert.deepEqual(referenceErrors, { sharp: 'ENOENT' });
+  });
+  it("records a candidate it cannot decode as the tool's error, keeping what it read", () => {
+    const { like: scored } = scoreSize({
+      candidate: (into) => {
+        into.bytes = 9;
+        throw new Error('100x100, not 192x192');
+      },
+      references: { resvg: () => ({ pct: 0 }) },
+      score,
+    });
+    assert.deepEqual(scored, { bytes: 9, error: '100x100, not 192x192' });
+  });
+});
+
+describe('bench compare determinism and renderers', () => {
+  it('keys a failed build by its failure alone, so a reworded libvips message is not a byte change', () => {
+    assert.equal(outcomeKey({ error: 'Input buffer has corrupt header: svgload_buffer: bad dimensions' }), 'error');
+    assert.equal(outcomeKey({ error: 'Input buffer has corrupt header:' }), 'error');
+    assert.equal(outcomeKey({ digest: 'abc' }), 'abc');
+  });
+  it('counts the inputs where the two references agree at every size', () => {
+    const agreeing = [
+      { name: 'a', renderers: { 192: ok, 512: ok } },
+      { name: 'b', renderers: { 192: ok, 512: bad } },
+      { name: 'c', renderers: { 192: ok } },
+      { name: 'd' },
+    ];
+    assert.deepEqual(rendererAgreement(agreeing, [192, 512]), { scored: 2, agree: 1 });
   });
 });

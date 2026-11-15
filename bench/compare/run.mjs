@@ -2,6 +2,7 @@
 // buildable test fixtures and the open corpus.
 //
 //   node bench/compare/run.mjs [--install] [--only a,b] [--inputs N] [--reps 3] [--write]
+//   node bench/compare/run.mjs --readme
 //
 // --install  copies package.json and package-lock.json from this directory into
 //            bench/out/compare/deps/ and runs `npm ci --ignore-scripts` there. The competitors
@@ -10,7 +11,9 @@
 //            for a smoke run that has to include a particular input.
 // --inputs N the first N inputs only (fixtures sort first), for a smoke run.
 // --reps N   timed repetitions per tool (default 3).
-// --write    also copies results.json to bench/compare/results.json, the committed copy.
+// --write    also copies results.json to bench/compare/results.json, the committed copy, and
+//            regenerates bench/compare/README.md from it (readme.mjs).
+// --readme   regenerates README.md from the committed results.json, running nothing.
 //
 // Two measurements:
 //
@@ -43,12 +46,13 @@
 import { execFileSync, fork } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { cpus } from 'node:os';
+import { cpus, loadavg, release, totalmem, type } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { corpusFiles } from '../corpus/files.mjs';
-import { classify, groupSummary, median, setDigest } from './lib.mjs';
+import { classify, groupSummary, median, outcomeKey, scoreSize, setDigest } from './lib.mjs';
+import { writeReadme } from './readme.mjs';
 import { depsDir, requireDep } from './deps.mjs';
 
 const HERE = new URL('./', import.meta.url);
@@ -66,6 +70,7 @@ const { values: args } = parseArgs({
     inputs: { type: 'string' },
     reps: { type: 'string', default: '3' },
     write: { type: 'boolean' },
+    readme: { type: 'boolean' },
     child: { type: 'string' },
     like: { type: 'boolean' },
     'inputs-file': { type: 'string' },
@@ -80,10 +85,11 @@ const loadTool = (id) => {
   return import(new URL(`tools/${id}.mjs`, HERE).href);
 };
 // What a build produced, comparable whether it succeeded or failed.
-const outcome = (set) => (set.error ? `error: ${set.error}` : setDigest(set.files));
+const outcome = (set) => outcomeKey(set.error ? set : { digest: setDigest(set.files) });
 const ratio = ({ pass, scored }) => `${pass}/${scored}`;
 const git = (...argv) => execFileSync('git', argv, { cwd: fileURLToPath(HERE), encoding: 'utf8' }).trim();
-const sharpLabel = (sharp) => `sharp ${sharp.versions.sharp} (librsvg ${sharp.versions.rsvg})`;
+const sharpLabel = (sharp) =>
+  `sharp ${sharp.versions.sharp} (libvips ${sharp.versions.vips}, librsvg ${sharp.versions.rsvg})`;
 
 // The same density favicons gives sharp (src/svgtool.ts at v7.3.1,
 // https://github.com/itgalaxy/favicons/blob/v7.3.1/src/svgtool.ts#L17-L35): librsvg draws an SVG
@@ -115,24 +121,27 @@ if (args.child) {
     // own sharp copy as raw RGBA, where the parent scores them.
     const sharp = requireDep('sharp', tool.sharpFrom);
     const errors = {},
-      referenceErrors = {};
+      referenceErrors = {},
+      settings = {};
     for (const input of inputs) {
       mkdirSync(input.likeDir, { recursive: true });
       try {
         const pair = await tool.likeForLike(input.path);
         for (const px of SIZES) writeFileSync(join(input.likeDir, `${tool.id}-${px}.png`), pair[px]);
+        if (pair.self) settings[input.name] = pair.self;
       } catch (error) {
         errors[input.name] = error.message;
       }
-      try {
-        const svg = readFileSync(input.path);
-        for (const px of SIZES)
+      // One message per size: a reference that fails at one size can still exist at the other.
+      const svg = readFileSync(input.path);
+      for (const px of SIZES)
+        try {
           writeFileSync(join(input.likeDir, `${tool.id}-${px}.sharp.rgba`), await sharpReference(sharp, svg, px));
-      } catch (error) {
-        referenceErrors[input.name] = error.message;
-      }
+        } catch (error) {
+          (referenceErrors[input.name] ??= {})[px] = error.message;
+        }
     }
-    process.send({ type: 'like', errors, referenceErrors, sharp: sharpLabel(sharp) }, () => process.exit(0));
+    process.send({ type: 'like', errors, referenceErrors, settings, sharp: sharpLabel(sharp) }, () => process.exit(0));
   } else {
     const build = async (path) => {
       const start = performance.now();
@@ -166,6 +175,7 @@ if (args.child) {
       {
         type: 'timed',
         label: tool.label,
+        versions: tool.versions,
         engine: tool.engine,
         preset: tool.preset,
         firstSet,
@@ -236,7 +246,15 @@ function checkout() {
 }
 
 async function main() {
+  if (args.readme) {
+    writeReadme(JSON.parse(readFileSync(new URL('results.json', HERE), 'utf8')));
+    return;
+  }
   if (args.install) install();
+  const started = new Date();
+  // The machine's load before the run and after it: a busy machine slows every tool, but not
+  // equally, so the numbers are only worth what this says about the conditions.
+  const loadBefore = loadavg();
   const reps = Number(args.reps);
   if (!Number.isInteger(reps) || reps < 1) throw new Error('--reps takes a positive integer');
   let inputs = await corpusFiles({ fixtures: true, open: true });
@@ -288,7 +306,6 @@ async function main() {
   const { passesBar, prepareReference } = await import('../../lib/quality.mjs');
   const { engineVersions } = await import('../../bin/favseed.mjs');
   const score = (candidate, ref) => {
-    if (!ref) return null;
     const { pass, pct, edge } = passesBar(candidate, ref);
     return { pct: Number(pct.toFixed(4)), edge: Number(edge.toFixed(4)), pass };
   };
@@ -311,8 +328,16 @@ async function main() {
         resvg[px] = prepareReference(await reference({ source: input.path, px }).then(toRgba));
       } catch (error) {
         resvg[px] = null;
-        row.referenceError = error.message;
+        ((row.referenceError ??= {}).resvg ??= {})[px] = error.message;
       }
+    }
+    // The two renderers against each other: the root sharp copy's render (favseed's sharp
+    // reference) scored against resvg's, losslessly on both sides. Where these disagree, no PNG
+    // can pass against both references.
+    for (const px of SIZES) {
+      if (!resvg[px] || liked.favseed.referenceErrors[input.name]?.[px]) continue;
+      const rgba = new Uint8Array(readFileSync(join(input.likeDir, `favseed-${px}.sharp.rgba`)));
+      (row.renderers ??= {})[px] = score({ width: px, height: px, rgba }, resvg[px]);
     }
     hashes[`${input.corpus}/${input.name}`] = {};
     for (const id of TOOLS) {
@@ -334,31 +359,40 @@ async function main() {
       }
       entry.ms = Number(median(runs.map((r) => r.ms)).toFixed(1));
       entry.like = {};
-      const referenceError = liked[id].referenceErrors[input.name];
-      if (referenceError) entry.like.referenceError = referenceError;
+      // The child's failures to render this tool's sharp reference, then the parent's failures to
+      // read or prepare one, per size: either leaves the sharp score null, never the tool's file.
+      const sharpErrors = { ...liked[id].referenceErrors[input.name] };
       if (liked[id].errors[input.name]) entry.like.error = liked[id].errors[input.name];
       else
         for (const px of SIZES) {
-          let like;
-          try {
-            const bytes = readFileSync(join(input.likeDir, `${id}-${px}.png`));
-            like = { bytes: bytes.length, sha256: sha256(bytes) };
-            const img = toRgba(decode(bytes));
-            like.transparent = hasTransparency(img);
-            if (img.width !== px || img.height !== px) throw new Error(`${img.width}x${img.height}, not ${px}x${px}`);
-            const sharpRef = referenceError
-              ? null
-              : prepareReference({
-                  width: px,
-                  height: px,
-                  rgba: new Uint8Array(readFileSync(join(input.likeDir, `${id}-${px}.sharp.rgba`))),
-                });
-            Object.assign(like, { resvg: score(img, resvg[px]), sharp: score(img, sharpRef) });
-          } catch (error) {
-            like = { ...like, error: error.message };
-          }
-          entry.like[px] = like;
+          const { like, referenceErrors } = scoreSize({
+            candidate: (into) => {
+              const bytes = readFileSync(join(input.likeDir, `${id}-${px}.png`));
+              Object.assign(into, { bytes: bytes.length, sha256: sha256(bytes) });
+              const img = toRgba(decode(bytes));
+              into.transparent = hasTransparency(img);
+              if (img.width !== px || img.height !== px) throw new Error(`${img.width}x${img.height}, not ${px}x${px}`);
+              return img;
+            },
+            references: {
+              resvg: () => resvg[px],
+              sharp: () =>
+                sharpErrors[px]
+                  ? null
+                  : prepareReference({
+                      width: px,
+                      height: px,
+                      rgba: new Uint8Array(readFileSync(join(input.likeDir, `${id}-${px}.sharp.rgba`))),
+                    }),
+            },
+            score,
+          });
+          if (referenceErrors.sharp) sharpErrors[px] = referenceErrors.sharp;
+          // favseed's own verdict and the setting its search kept, from the same build.
+          const self = liked[id].settings[input.name]?.[px];
+          entry.like[px] = self ? { ...like, self } : like;
         }
+      if (Object.keys(sharpErrors).length) entry.like.referenceError = { sharp: sharpErrors };
       row.tools[id] = entry;
     }
     rows.push(row);
@@ -367,9 +401,14 @@ async function main() {
   const { commit, dirty } = checkout();
   const tools = TOOLS.map((id) => {
     const run = timed[id][0];
+    // The names one set holds, from the first input the tool built: every tool here writes the
+    // same names for every input (summary files.min equals files.max when that holds).
+    const built = run.inputs.find((input) => !input.error);
     return {
       id,
       label: run.label,
+      versions: run.versions,
+      fileNames: built ? built.files.map((f) => f.name).toSorted() : [],
       ...(id === 'favseed' && { commit, dirty }),
       ...(run.engine && { engine: run.engine }),
       ...(run.preset && { preset: run.preset }),
@@ -381,8 +420,7 @@ async function main() {
       const differing = inputs
         .filter((input) => {
           const outcomes = timed[id].map((run) => {
-            const r = run.inputs.find((item) => item.name === input.name);
-            return r.error ? outcome(r) : r.digest;
+            return outcomeKey(run.inputs.find((item) => item.name === input.name));
           });
           return new Set(outcomes).size > 1;
         })
@@ -402,12 +440,17 @@ async function main() {
     if (selected.length) summary[group] = groupSummary(selected, timed, TOOLS, SIZES);
 
   const results = {
-    generated: new Date().toISOString(),
+    generated: started.toISOString(),
+    durationS: Math.round((Date.now() - started) / 1000),
     machine: {
       node: process.version,
+      os: `${osName()} (${type()} ${release()})`,
       platform: `${process.platform}-${process.arch}`,
       cpu: cpus()[0]?.model,
       cores: cpus().length,
+      ramGiB: Number((totalmem() / 2 ** 30).toFixed(1)),
+      load: { before: loadBefore.map(round2), after: loadavg().map(round2) },
+      ...power(),
     },
     reps,
     tools,
@@ -428,8 +471,44 @@ async function main() {
   );
   writeFileSync(join(outDir, 'results.json'), text + '\n');
   writeFileSync(join(outDir, 'hashes.json'), JSON.stringify(hashes, null, 2) + '\n');
-  if (args.write) copyFileSync(join(outDir, 'results.json'), new URL('results.json', HERE));
+  if (args.write) {
+    copyFileSync(join(outDir, 'results.json'), new URL('results.json', HERE));
+    writeReadme(results);
+  }
   print(results);
+}
+
+function round2(n) {
+  return Number(n.toFixed(2));
+}
+
+// The distribution's own name, from /etc/os-release where there is one.
+function osName() {
+  try {
+    return /^PRETTY_NAME="?([^"\n]*)"?$/m.exec(readFileSync('/etc/os-release', 'utf8'))?.[1] ?? process.platform;
+  } catch {
+    return process.platform;
+  }
+}
+
+function readOptional(path) {
+  try {
+    return readFileSync(path, 'utf8').trim();
+  } catch {
+    return undefined;
+  }
+}
+
+// The CPU power settings, where Linux exposes them: they move every timing, and a laptop on a
+// low-power profile runs every tool slower than the same machine set to performance.
+function power() {
+  const cpu = '/sys/devices/system/cpu/cpu0/cpufreq/';
+  const found = {
+    platformProfile: readOptional('/sys/firmware/acpi/platform_profile'),
+    governor: readOptional(`${cpu}scaling_governor`),
+    energyPreference: readOptional(`${cpu}energy_performance_preference`),
+  };
+  return Object.values(found).some(Boolean) ? { power: found } : {};
 }
 
 function toRgba(img) {

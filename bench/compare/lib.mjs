@@ -28,6 +28,14 @@ export const classify = (name) => {
   return ext === 'png' || ext === 'ico' ? 'raster' : ext === 'svg' ? 'svg' : 'other';
 };
 
+/**
+ * What a build produced, for the determinism checks: the set digest, or `error` for a build that
+ * failed. Not the message: libvips words the same failure differently from run to run (its
+ * error buffer is shared, and at times cut short), and a build that writes no bytes cannot write
+ * different ones.
+ */
+export const outcomeKey = (result) => (result.error ? 'error' : result.digest);
+
 export const median = (values) => {
   if (!values.length) throw new Error('median of an empty list');
   const sorted = values.toSorted((a, b) => a - b),
@@ -43,9 +51,14 @@ export const median = (values) => {
  */
 export const summarise = (runs) => {
   const names = runs[0].inputs.map((input) => input.name);
+  const totals = runs.map((run) => run.inputs.reduce((sum, input) => sum + input.ms, 0));
   return {
     coldMs: median(runs.map((run) => run.cold)),
-    totalMs: median(runs.map((run) => run.inputs.reduce((sum, input) => sum + input.ms, 0))),
+    totalMs: median(totals),
+    // Every repetition's total and cold time, sorted, so the spread behind each median is on
+    // record next to it.
+    repsTotalMs: totals.toSorted((a, b) => a - b),
+    repsColdMs: runs.map((run) => run.cold).toSorted((a, b) => a - b),
     perInput: Object.fromEntries(
       names.map((name) => [name, median(runs.map((run) => run.inputs.find((input) => input.name === name).ms))]),
     ),
@@ -83,9 +96,66 @@ export const passCounts = (rows, id, sizes, ref) => {
   };
 };
 
+/**
+ * One like-for-like size of one tool, scored against each reference. `candidate()` reads and
+ * decodes the tool's PNG and throws for one it cannot use; `references[ref]()` returns that
+ * reference's prepared pixels, null when it does not exist, or throws when it cannot be read or
+ * prepared. A candidate failure is the tool's (`like.error`); a reference failure is no verdict
+ * on the tool, so it leaves that score null and is returned in `referenceErrors[ref]`.
+ */
+export const scoreSize = ({ candidate, references, score }) => {
+  const like = {},
+    referenceErrors = {};
+  let img;
+  try {
+    img = candidate(like);
+  } catch (error) {
+    return { like: { ...like, error: error.message }, referenceErrors };
+  }
+  for (const [ref, prepare] of Object.entries(references)) {
+    let prepared = null;
+    try {
+      prepared = prepare();
+    } catch (error) {
+      referenceErrors[ref] = error.message;
+    }
+    try {
+      like[ref] = prepared ? score(img, prepared) : null;
+    } catch (error) {
+      return { like: { ...like, error: error.message }, referenceErrors };
+    }
+  }
+  return { like, referenceErrors };
+};
+
+/**
+ * How often the two references themselves agree: the inputs where the sharp render (`row.renderers`,
+ * the root copy's) passes the bar against the resvg render at every size. Where they do not, no
+ * PNG can pass against both.
+ */
+export const rendererAgreement = (rows, sizes) => {
+  const scored = rows.filter((row) => sizes.every((px) => row.renderers?.[px]));
+  return { scored: scored.length, agree: scored.filter((row) => sizes.every((px) => row.renderers[px].pass)).length };
+};
+
 const sumOf = (rows, id, key) => rows.reduce((total, row) => total + row.tools[id][key], 0);
 const timing = (toolRuns, names) =>
   summarise(toolRuns.map((run) => ({ cold: run.cold, inputs: run.inputs.filter((input) => names.has(input.name)) })));
+const round = (ms) => Number(ms.toFixed(1));
+const fileRange = (rows, id) => {
+  const counts = rows.map((row) => row.tools[id].files);
+  return counts.length ? { min: Math.min(...counts), max: Math.max(...counts) } : null;
+};
+
+/** What each part of a group summary covers, stated in results.json next to the numbers. */
+const SCOPE =
+  'Top-level totals per tool (files, rasterBytes, svgBytes, otherBytes, totalMs, repsTotalMs) cover ' +
+  '`common.inputs`, the inputs every tool built. `own` covers the inputs each tool itself built and ' +
+  'is not comparable across tools. coldMs is the warm-up set, the same mark for every tool. ' +
+  'like.bytes covers `likeCommon.inputs`, the inputs every tool built a like-for-like pair for. ' +
+  "Pass counts use each reference's own `scored` set: the inputs where that reference exists and " +
+  'the tool built both sizes; a pass means both sizes pass. renderers counts the inputs where the ' +
+  'resvg and sharp references themselves agree within the bar.';
 
 /**
  * One corpus group, summarised for every tool. The headline totals (bytes, time, like-for-like
@@ -104,23 +174,25 @@ export const groupSummary = (rows, runs, ids, sizes) => {
   const tools = {};
   for (const id of ids) {
     const built = rows.filter((row) => !row.tools[id].error);
-    const counts = built.map((row) => row.tools[id].files);
     const commonTiming = timing(runs[id], commonNames);
     tools[id] = {
       failed: rows.filter((row) => row.tools[id].error).map((row) => row.name),
       likeFailed: rows.filter((row) => !likeBuilt(row.tools[id], sizes)).map((row) => row.name),
-      files: counts.length ? { min: Math.min(...counts), max: Math.max(...counts) } : null,
+      files: fileRange(common, id),
       rasterBytes: sumOf(common, id, 'rasterBytes'),
       svgBytes: sumOf(common, id, 'svgBytes'),
       otherBytes: sumOf(common, id, 'otherBytes'),
-      totalMs: Number(commonTiming.totalMs.toFixed(1)),
-      coldMs: Number(commonTiming.coldMs.toFixed(1)),
+      totalMs: round(commonTiming.totalMs),
+      repsTotalMs: commonTiming.repsTotalMs.map(round),
+      coldMs: round(commonTiming.coldMs),
+      repsColdMs: commonTiming.repsColdMs.map(round),
       own: {
         inputs: built.length,
+        files: fileRange(built, id),
         rasterBytes: sumOf(built, id, 'rasterBytes'),
         svgBytes: sumOf(built, id, 'svgBytes'),
         otherBytes: sumOf(built, id, 'otherBytes'),
-        totalMs: Number(timing(runs[id], new Set(built.map((row) => row.name))).totalMs.toFixed(1)),
+        totalMs: round(timing(runs[id], new Set(built.map((row) => row.name))).totalMs),
       },
       like: {
         bytes: Object.fromEntries(
@@ -133,7 +205,9 @@ export const groupSummary = (rows, runs, ids, sizes) => {
     };
   }
   return {
+    scope: SCOPE,
     inputs: rows.length,
+    renderers: rendererAgreement(rows, sizes),
     common: { inputs: common.length, excluded: excluded(commonNames) },
     likeCommon: { inputs: likeCommon.length, excluded: excluded(likeNames) },
     tools,

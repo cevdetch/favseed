@@ -17,6 +17,10 @@ const adapter = await getNodeImageAdapter();
 
 export const id = 'realfavicon';
 export const label = `RealFaviconGenerator (generate-favicon ${pkg.version})`;
+export const versions = {
+  '@realfavicongenerator/generate-favicon': pkg.version,
+  '@realfavicongenerator/image-adapter-node': adapterPkg.version,
+};
 // The node adapter renders, with its own sharp copy (0.34.5): the reference uses the same one.
 export const sharpFrom = adapterPkg.path;
 
