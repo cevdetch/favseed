@@ -54,6 +54,15 @@ const decode = (text) =>
     .replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>')
     .replaceAll('&amp;', '&');
+// Text of an HTML fragment: strip tags until none are left, so a tag split by another cannot survive one pass.
+const textOf = (html) => {
+  let previous;
+  do {
+    previous = html;
+    html = html.replace(/<[^>]*>/g, '');
+  } while (html !== previous);
+  return html;
+};
 export const meta = (html, key) =>
   decode(one(html, new RegExp(`<meta (?:name|property)="${key}" content="([^"]*)"`, 'g'), key));
 export const titleOf = (html) => decode(one(html, /<title>([^<]*)<\/title>/g, 'title'));
@@ -184,7 +193,7 @@ test('/compare is an Article, not a TechArticle', () => {
 const cardOf = (html, id) => new RegExp(`<h2 id="${id}">[\\s\\S]*?</section>`).exec(html)?.[0] ?? '';
 const bodyRows = (html) =>
   all(/<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? '', /<tr>([\s\S]*?)<\/tr>/g).map((row) =>
-    all(row, /<td[^>]*>([\s\S]*?)<\/td>/g).map((cell) => decode(cell.replace(/<[^>]+>/g, '')).trim()),
+    all(row, /<td[^>]*>([\s\S]*?)<\/td>/g).map((cell) => decode(textOf(cell)).trim()),
   );
 
 // Numbers as /compare formats them.
@@ -223,7 +232,7 @@ test('/compare shows the benchmark numbers exactly as results.json holds them', 
       `${tool.id}: like for like`,
     );
   });
-  const text = decode(html.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ');
+  const text = decode(textOf(html)).replace(/\s+/g, ' ');
   const { agree, scored } = group.renderers;
   assert.ok(text.includes(`${agree} of the ${scored} inputs`), 'the renderer agreement');
   const misses = favseedMisses(results.inputs, ACCURACY_PCT);
