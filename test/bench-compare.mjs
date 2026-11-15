@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
   builtByAll,
@@ -12,6 +13,7 @@ import {
   setDigest,
   summarise,
 } from '../bench/compare/lib.mjs';
+import { renderReadme } from '../bench/compare/readme.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
 
@@ -237,5 +239,13 @@ describe('bench compare determinism and renderers', () => {
       { name: 'd' },
     ];
     assert.deepEqual(rendererAgreement(agreeing, [192, 512]), { scored: 2, agree: 1 });
+  });
+});
+
+describe('bench compare README', () => {
+  it('is the committed results rendered by readme.mjs, so neither drifts from the other', () => {
+    const results = JSON.parse(readFileSync(new URL('../bench/compare/results.json', import.meta.url), 'utf8'));
+    const readme = readFileSync(new URL('../bench/compare/README.md', import.meta.url), 'utf8');
+    assert.equal(renderReadme(results), readme, 'run node bench/compare/run.mjs --readme');
   });
 });

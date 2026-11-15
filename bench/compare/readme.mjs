@@ -1,7 +1,7 @@
 // bench/compare/README.md, generated from results.json by `run.mjs --write` (after a run) or
 // `run.mjs --readme` (from the committed results.json, running nothing). The method prose lives
 // here with the tables, so every number in the README comes from the results it sits next to.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { ACCURACY_PCT, EDGE_GATE } from '../../lib/core.mjs';
 import { median } from './lib.mjs';
 
@@ -61,7 +61,10 @@ const renderer = (tool) => (tool.id === 'favseed' ? 'resvg (@napi-rs/image)' : t
 function failures(rows, pick) {
   const byMessage = new Map();
   for (const row of rows) {
-    const message = pick(row);
+    // The first line only: libvips repeats part of a message on a second line, at times.
+    const message = String(pick(row) || '')
+      .split('\n')[0]
+      .trim();
     if (!message) continue;
     if (!byMessage.has(message)) byMessage.set(message, []);
     byMessage.get(message).push(row.name);
@@ -74,11 +77,32 @@ function timesPerInput(rows, id) {
   return { min: Math.min(...ms), median: median(ms), max: Math.max(...ms) };
 }
 
-export function writeReadme(results, path = README) {
-  writeFileSync(path, render(results));
+// What the fixtures no tool but favseed built have in common, read from the files themselves.
+function excludedFixtures(rows, excluded) {
+  const named = rows.filter((row) => row.corpus === 'fixtures' && excluded.includes(row.name));
+  const boxes = named.map((row) => {
+    const svg = readFileSync(new URL(`../../test/fixtures/${row.name}.svg`, import.meta.url), 'utf8');
+    const root = /<svg\b[^>]*>/.exec(svg)?.[0] ?? '';
+    return {
+      name: row.name,
+      viewBox: /\bviewBox="([^"]*)"/.exec(root)?.[1],
+      sized: /\s(?:width|height)=/.test(root),
+    };
+  });
+  if (!boxes.length || boxes.some((box) => !box.viewBox || box.sized)) return [];
+  return [
+    `${list(code(boxes.map((box) => box.name)))} give their root \`<svg>\` only a viewBox, ` +
+      `${list(boxes.map((box) => `\`${box.viewBox}\``))}, far smaller than one unit, and no width or height. ` +
+      'libvips rejects them before any tool can scale them up; favseed, which reads the viewBox, builds them.',
+    '',
+  ];
 }
 
-function render(results) {
+export function writeReadme(results, path = README) {
+  writeFileSync(path, renderReadme(results));
+}
+
+export function renderReadme(results) {
   const { machine, tools, summary, inputs: rows, determinism } = results;
   const all = summary.all;
   const S = (id) => all.tools[id];
@@ -87,10 +111,13 @@ function render(results) {
   const perInput = (id, group = all) => group.tools[id].totalMs / group.common.inputs;
   const others = tools.filter((tool) => tool.id !== 'favseed');
   const fastest = others.toSorted((a, b) => perInput(a.id) - perInput(b.id))[0];
-  const slowest = tools.toSorted((a, b) => perInput(b.id) - perInput(a.id))[0];
+  const faster = others.filter((tool) => perInput(tool.id) < perInput('favseed'));
+  const slower = others.filter((tool) => perInput(tool.id) >= perInput('favseed'));
+  const varRows = rows.filter((row) => row.usesVar);
   const mostFiles = tools.toSorted((a, b) => S(b.id).files.max - S(a.id).files.max)[0];
   const svgTools = tools.filter((tool) => tool.fileNames.some((name) => name.endsWith('.svg')));
   const favseedLike = S('favseed').like;
+  const favseedTool = tools.find((tool) => tool.id === 'favseed');
   const power = machine.power
     ? `, ${list(
         Object.entries({
@@ -165,8 +192,8 @@ function render(results) {
       '`bench/corpus/` (fetched by `node bench/corpus/fetch.mjs` from four icon sets; licences in ' +
       '`bench/corpus/LICENSES.md`). Two fixtures are left out because they are invalid by design, as in every other ' +
       'sweep here: `unresolved.svg` uses a `var()` with no fallback, and `animvar.svg` uses a `var()` only inside ' +
-      'its animation. The private corpus the search sweep also uses is not, because results here are published per ' +
-      'file.',
+      'its animation. The private corpus that the search sweep also runs over is left out, because this ' +
+      'benchmark publishes its results per file.',
     '',
     '## Two measurements',
     '',
@@ -194,16 +221,17 @@ function render(results) {
     '',
     '### Timing',
     '',
-    `Each tool runs in its own fresh Node process for each of ${plural(results.reps, 'repetition')}, so engine start-up is ` +
-      'counted rather than amortised. The process first builds a warm-up mark that is not one of the inputs (a ' +
+    `Each tool runs in its own fresh Node process for each of ${plural(results.reps, 'repetition')}, so engine start-up ` +
+      'shows in the cold time instead of being amortised across runs. The process first builds a warm-up mark that is not one of the inputs (a ' +
       'filled circle), then every input in order, then the first input again to check it writes the same bytes ' +
       'twice. Each input is timed from the call to the returned files, in memory, with no files written. The ' +
       'warm-up is excluded from the totals; cold time is the time from starting the process to the end of the ' +
       'warm-up build, so it holds Node start-up, module loading and the first build. Tools run one at a time, ' +
       'never concurrently, in an order rotated each repetition. A time is the median of the repetitions. The run ' +
       'took ' +
-      `${plural(Math.round(results.durationS / 60), 'minute')}, with nothing else heavy running; the load averages were ` +
-      `${machine.load.before.join(', ')} before it and ${machine.load.after.join(', ')} after.`,
+      `${plural(Math.round(results.durationS / 60), 'minute')}, with nothing else heavy running. The 1, 5 and ` +
+      `15 minute load averages were ${machine.load.before.join(', ')} as it started and ` +
+      `${machine.load.after.join(', ')} as it ended, the second including the run's own load.`,
     '',
     `Machine: ${machine.cpu}, ${machine.cores} threads, ${machine.ramGiB} GiB RAM, ${machine.os}, Node ` +
       `${machine.node}${power}. These timings hold for this machine only.`,
@@ -221,20 +249,28 @@ function render(results) {
       'other tools.',
     "- **sharp**: the raw SVG rendered losslessly by each tool's own sharp copy, so with the same librsvg build " +
       'the tool used, at the density favicons gives sharp, fitted transparent into the square. favseed is scored ' +
-      `against ${tools.find((tool) => tool.id === 'favseed').sharpReference}. Against this reference, a renderer ` +
+      `against ${favseedTool.sharpReference}. Against this reference, a renderer ` +
       "difference does not count as another tool's encoding loss, but does count against favseed.",
     '',
     'Reporting both separates encoding loss from renderer differences. A tool that passes against its own ' +
       'renderer and fails against the other loses little in encoding and draws the mark differently.',
     '',
+    `The two renderers often disagree with each other. Scored the same way, ${favseedTool.sharpReference.split(' (')[0]}'s ` +
+      `lossless render passes against resvg's on ${all.renderers.agree} of the ${all.renderers.scored} inputs ` +
+      `both can render (${summary.fixtures.renderers.agree} of ${summary.fixtures.renderers.scored} fixtures, ` +
+      `${summary.open.renderers.agree} of ${summary.open.renderers.scored} open icons). On the other ` +
+      `${all.renderers.scored - all.renderers.agree}, no PNG can pass against both references however it is ` +
+      'encoded, so neither pass count alone measures encoding loss.',
+    '',
     '### var()',
     '',
     'librsvg ignores custom property definitions and draws a `var()` with its fallback, or black when it has ' +
-      'none; this was checked directly with sharp 0.33.5, 0.34.5 and 0.35.5. Every `var()` in the fixtures carries ' +
-      'a fallback and none is defined, and the open icons use none, so no tool renders a mark black here. The pass ' +
-      `counts are also given without the ${plural(rows.filter((row) => row.usesVar).length, 'input')} that use \`var()\`, so ` +
-      'a corpus that does show the effect shows it there. favseed resolves `var()` before it renders, including a ' +
-      'value given with `--var`.',
+      'none; this was checked separately with sharp 0.33.5, 0.34.5 and 0.35.5. ' +
+      `${plural(varRows.length, 'input')} use \`var()\` (${list(code(varRows.map((row) => row.name)))}` +
+      `${varRows.every((row) => row.corpus === 'fixtures') ? ', all of them fixtures' : ''}), and every \`var()\` ` +
+      'in them carries a fallback with no definition, so no tool renders a mark black here. The pass counts are ' +
+      'also given without those inputs, so a corpus that does show the effect shows it there. favseed resolves ' +
+      '`var()` before it renders, including a value given with `--var`.',
     '',
     '## Results',
     '',
@@ -272,13 +308,25 @@ function render(results) {
     '',
     `(${plural(summary.fixtures.common.inputs, 'fixture')} and ${plural(summary.open.common.inputs, 'open icon')}.)`,
     '',
-    `favseed ${slowest.id === 'favseed' ? 'is the slowest per input' : 'takes'} at its default effort: ` +
-      `${n(perInput('favseed'))} ms against ${n(perInput(fastest.id))} ms for ${SHORT[fastest.id]}, the fastest ` +
-      'of the others. It searches for the smallest encode that passes its accuracy bar and finishes every PNG ' +
-      'with Zopfli; the sharp tools encode each file once. ' +
-      `${SHORT[mostFiles.id]} covers the most platforms, with ${S(mostFiles.id).files.max} files per set ` +
-      "against favseed's " +
-      `${S('favseed').files.max}. ${list(svgTools.map((tool) => SHORT[tool.id]))} write an SVG favicon.`,
+    `favseed takes ${n(perInput('favseed'))} ms per input at its default effort` +
+      (faster.length
+        ? `, slower than ${list(faster.map((tool) => `${SHORT[tool.id]} (${n(perInput(tool.id))} ms)`))}`
+        : '') +
+      (slower.length
+        ? `${faster.length ? ' and' : ','} faster than ${list(slower.map((tool) => `${SHORT[tool.id]} (${n(perInput(tool.id))} ms)`))}`
+        : '') +
+      '. It searches for the smallest encode that passes its accuracy bar and finishes every PNG with Zopfli; ' +
+      `the sharp tools encode each file once. ${SHORT[fastest.id]} builds a set ` +
+      `${n(perInput('favseed') / perInput(fastest.id))} times as fast as favseed. favseed's cold time, ` +
+      `${n(S('favseed').coldMs)} ms, is Node start-up plus a full default-effort build of the warm-up circle` +
+      (others.every((tool) => S(tool.id).coldMs < S('favseed').coldMs) ? ', the longest of the five.' : '.'),
+    '',
+    `${SHORT[mostFiles.id]} covers the most platforms, with ${S(mostFiles.id).files.max} files per set against ` +
+      `favseed's ${S('favseed').files.max}, among them ` +
+      `${mostFiles.fileNames.filter((name) => name.startsWith('apple-touch-startup-image')).length} Apple startup ` +
+      `(splash screen) images; ${list(svgTools.map((tool) => SHORT[tool.id]))} write an SVG favicon. ` +
+      'Bytes per set do not compare encoders on their own, because the sets hold different files at different ' +
+      'sizes: the like-for-like pair below does.',
     '',
     "The spread across repetitions, as each repetition's total over the common inputs and its cold time:",
     '',
@@ -310,6 +358,45 @@ function render(results) {
     '',
     '"favseed as %" is the size of favseed\'s pair as a percentage of that tool\'s.',
     '',
+    ...others
+      .filter((tool) => S(tool.id).like.sharp.pass === S(tool.id).like.sharp.scored)
+      .flatMap((tool) => {
+        const l = S(tool.id).like;
+        return [
+          `${SHORT[tool.id]} passes against its own renderer on every input it built (${ratio(l.sharp)}), with ` +
+            `a pair ${((l.bytes[192] + l.bytes[512]) / (favseedLike.bytes[192] + favseedLike.bytes[512])).toFixed(1)} ` +
+            "times the size of favseed's.",
+          '',
+        ];
+      }),
+    (() => {
+      const l = S('vite-pwa').like;
+      return (
+        "The Vite PWA assets generator writes the competitors' smallest pair, " +
+        `${n(l.bytes[192] + l.bytes[512])} bytes, with the preset's lossy quality-60 PNG encode; it passes against ` +
+        `its own renderer on ${l.sharp.pass} of ${l.sharp.scored} inputs.`
+      );
+    })(),
+    '',
+    (() => {
+      const pngs = rows.flatMap((row) =>
+        [192, 512].map((px) => ({ corpus: row.corpus, ...row.tools.favseed.like[px] })).filter((l) => l.self),
+      );
+      const missed = pngs.filter((l) => !l.self.pass);
+      const kept = missed.filter((l) => l.self.quality === 80);
+      const agree = pngs.filter((l) => l.resvg && l.self.pass === l.resvg.pass).length;
+      const edgeOnly = missed.filter((l) => l.resvg && l.resvg.pct <= ACCURACY_PCT).length;
+      return (
+        `favseed misses against resvg on ${missed.length} of its ${pngs.length} PNGs ` +
+        `(${missed.filter((l) => l.corpus === 'fixtures').length} on fixtures, ` +
+        `${missed.filter((l) => l.corpus === 'open').length} on open icons; ${edgeOnly} of them on the edge ` +
+        `clause alone). On ${kept.length === missed.length ? 'every one' : `${kept.length}`} of them, no setting ` +
+        'on its search lists passed, and favseed kept its quality-80 encode without a warning, as decision 29 in ' +
+        '`docs/DECISIONS.md` specifies. Its own build reports the same verdict as this benchmark on ' +
+        `${agree} of the ${pngs.length} PNGs.`
+      );
+    })(),
+    '',
     '### Failures',
     '',
     ...tools.flatMap((tool) => {
@@ -340,6 +427,7 @@ function render(results) {
         `References that could not be rendered, and so score nothing: resvg ${resvgErrors.length ? resvgErrors.join('; ') : 'none'}; ` +
           `sharp ${sharpErrors.length ? sharpErrors.join('; ') : 'none'}.`,
         '',
+        ...excludedFixtures(rows, all.common.excluded),
       ];
     })(),
     '### Determinism',
@@ -347,12 +435,15 @@ function render(results) {
     tools.every((tool) => determinism[tool.id].deterministic)
       ? `Every tool wrote identical bytes for every input in each of ${plural(results.reps, 'repetition')}, and for the first ` +
         'input built twice in one process.'
-      : list(
-          tools.map(
+      : tools
+          .map(
             (tool) =>
               `${SHORT[tool.id]}: ${determinism[tool.id].deterministic ? 'identical bytes' : `differing bytes on ${list(code(determinism[tool.id].differing)) || 'the repeat build'}`}`,
-          ),
-        ) + '.',
+          )
+          .join('; ') + '.',
+    '',
+    'A failed build counts as the same outcome whatever its message says, because libvips words the same ' +
+      'failure differently from run to run.',
     '',
     '## Results depend on the input',
     '',
