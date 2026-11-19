@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "icons": "node ../bin/favseed.mjs",
-    "test": "node --test test/worker.mjs test/sections.mjs test/offline-lists.mjs",
+    "test": "node --test test/worker.mjs test/sections.mjs test/offline-lists.mjs test/sw.mjs",
     "test:browser": "playwright test",
     "test:dist": "node --test test/seo.mjs",
     "build": "node build/unshallow.mjs && astro build && deadhead dist --fail-on=harmful",
