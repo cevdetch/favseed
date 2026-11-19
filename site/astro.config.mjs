@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { siteHeaders, developmentHeaders, productionHeaders } from './headers.mjs';
 import { wasiRuntime } from './build/wasi-runtime.mjs';
+import { writeOffline } from './build/write-offline.mjs';
 import { gitDates, pageSources } from './build/lastmod.mjs';
 import sections from './src/lib/sections.mjs';
 import { SITE } from './src/lib/site.mjs';
@@ -62,6 +63,8 @@ export default defineConfig({
             ['LICENSE', 'THIRD-PARTY-NOTICES.txt'].map((name) => readFile(new URL(name, vendor), 'utf8')),
           );
           await writeFile(new URL('engine-licenses.txt', dir), notices.join('\n\n'));
+          // Last: the lists hash every page and asset, so they are read once nothing else writes.
+          await writeOffline(dir);
         },
       },
     },

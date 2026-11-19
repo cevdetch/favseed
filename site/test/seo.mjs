@@ -489,3 +489,32 @@ test('an article is published on the first commit of its own source file', { ski
     assert.equal(article.datePublished, new Date(first).toISOString(), `${path}: datePublished`);
   }
 });
+
+// The first line of sw.js is the lists the build wrote; the rest is site/src/sw/sw.js verbatim.
+const offline = () => {
+  const [first] = readFileSync(join(dist, 'sw.js'), 'utf8').split('\n', 1);
+  return JSON.parse(first.replace(/^self\.FAVSEED_OFFLINE = /, '').replace(/;$/, ''));
+};
+
+test('sw.js precaches every indexable page and the 404, and names only built files', () => {
+  const { pages: listed, engines } = offline();
+  for (const path of [...indexable, '/404']) assert.ok(listed.includes(path), `${path} is not precached`);
+  for (const url of [...listed, ...engines.threaded, ...engines.compatibility]) {
+    if (!url.startsWith('/_astro/') && !url.includes('.')) continue; // a page path, checked above
+    assert.ok(existsSync(join(dist, url)), `${url} is listed but not built`);
+  }
+  assert.ok(engines.threaded.some((u) => /image\.wasm32-wasi-/.test(u)));
+  assert.ok(engines.compatibility.some((u) => /image\.wasm32-wasip1-/.test(u)));
+});
+
+test('version.json names the engine and version sw.js carries', () => {
+  const { engineHash, version } = offline();
+  assert.deepEqual(JSON.parse(readFileSync(join(dist, 'version.json'), 'utf8')), { engine: engineHash, version });
+});
+
+test('_headers serves sw.js and version.json uncached', () => {
+  const headers = readFileSync(join(dist, '_headers'), 'utf8');
+  for (const path of ['/sw.js', '/version.json']) {
+    assert.match(headers, new RegExp(`^${path.replace('.', '\\.')}\\n  Cache-Control: no-cache$`, 'm'), path);
+  }
+});
