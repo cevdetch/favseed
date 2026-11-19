@@ -393,7 +393,8 @@ Options:
       --bg COLOR    Ground of the padded icons, apple-touch-icon.png (180px) and
                     icon-<size>.png (default: #000000). The mark sits inside the safe
                     zone on it, measured and snapped to whole pixels. "none" keeps
-                    the set transparent and unpadded, declared "any" only.
+                    every PNG transparent: icon-<size>.png is then unpadded and declared
+                    "any" only, and apple-touch-icon.png still sits in the safe zone.
       --padding P   How much of each masked icon is margin, as a percentage per side
                     (default: auto). \`auto\` measures the mark's own extent and snaps it to
                     whole pixels, which is smaller and sharper than any fixed number. Give

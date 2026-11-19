@@ -22,8 +22,9 @@ The build writes the set to the output directory, prints each file's size and te
     --colors N    Pin a palette of 2-256 colours at quality 100: one encode, no search.
                   Quality below 100 cannot combine with --colors.
     --sizes LIST  Padded "any maskable" PNG sizes (default: "192 512")
-    --bg COLOR    Ground of the padded icons (default: #000000). "none" keeps the set
-                  transparent and unpadded, declared "any" only.
+    --bg COLOR    Ground of the padded icons (default: #000000). "none" keeps every PNG
+                  transparent: icon-<size>.png is then unpadded and declared "any" only,
+                  and apple-touch-icon.png still sits in the safe zone.
     --padding P   Margin of each padded icon, as a percentage per side (default: auto).
                   `auto` measures the mark's own extent and snaps it to whole pixels;
                   give a number to override it.

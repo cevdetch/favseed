@@ -46,7 +46,7 @@ A file you keep in `public/` under the same name wins in dev and fails the build
 | `quality` | none | Pins a PNG quality from 1 to 100 at the full palette: one encode, no search. Below 100 cannot be combined with `colors`. |
 | `colors` | none | Pins a palette of 2 to 256 colours at quality 100: one encode, no search. |
 | `sizes` | `[192, 512]` | Even pixel sizes for padded maskable PNGs. |
-| `bg` | `'#000000'` | Ground for padded icons. `null` or `'none'` makes the set transparent and unpadded. |
+| `bg` | `'#000000'` | Ground for padded icons. `null` or `'none'` keeps every PNG transparent and the numbered icons unpadded; `apple-touch-icon.png` still sits in the safe zone. |
 | `padding` | `'auto'` | Measured per mark, or a fixed 0 to 45% per side. |
 | `vars` | none | CSS custom properties as an object or `Map`. |
 | `animation` | `true` | Preserve animation; `false` removes it from `icon.svg`. |
