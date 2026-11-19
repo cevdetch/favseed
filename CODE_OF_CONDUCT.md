@@ -10,7 +10,7 @@ apply to this project's issues, pull requests, and other project spaces.
 
 ## Reporting concerns
 
-Cevdet ([cevdetch](https://github.com/cevdetch)) handles conduct reports.
+Cevdet Haran ([cevdetch](https://github.com/cevdetch)) handles conduct reports.
 For a concern that needs private handling, open an issue titled **Private conduct
 report** asking for a private contact channel. Include no incident details,
 names of affected people, or private information in that public request. Share

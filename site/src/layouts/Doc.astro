@@ -2,7 +2,8 @@
 // A documentation page: the shared document, a breadcrumb trail, and the page's cards. Each
 // direct child of the slot is a card, as on the homepage.
 import Page from './Page.astro';
-import { breadcrumbList, ids, jsonLd, pageUrl, pathOfUrl, person, website } from '../lib/site.mjs';
+import { pageUrl, pathOfUrl, SITE } from '../lib/site.mjs';
+import { articleNode, breadcrumbNode, graph as ldGraph, serializeJsonLd } from '../lib/structured-data.ts';
 import { gitDates, pageSources } from '../../build/lastmod.mjs';
 
 interface Props {
@@ -34,25 +35,30 @@ const url = pageUrl(Astro.url.pathname);
 // The newest and oldest commit to the page's own source; none in a shallow clone.
 const { published, modified } = gitDates(pageSources(path));
 const trail: [string, string][] = [['/', 'Home'], ...crumbs, [path, label]];
-const graph = jsonLd([
-  {
-    '@type': articleType,
-    '@id': `${url}#article`,
-    headline: heading,
-    description,
-    url,
-    inLanguage: 'en',
-    isPartOf: { '@id': ids.website },
-    author: { '@id': ids.person },
-    publisher: { '@id': ids.person },
-    breadcrumb: { '@id': `${url}#breadcrumb` },
-    ...(published && { datePublished: published }),
-    ...(modified && { dateModified: modified }),
-  },
-  breadcrumbList(url, trail),
-  website,
-  person,
-]);
+const article = articleNode(articleType, {
+  url,
+  headline: heading,
+  description,
+  datePublished: published ?? '',
+  dateModified: modified,
+  image: new URL('/og.png', SITE).href,
+  inLanguage: 'en',
+  site: `${SITE}/`,
+});
+// No dates rather than empty ones when the clone had no history.
+if (!published) {
+  delete article.datePublished;
+  delete article.dateModified;
+}
+const graph = serializeJsonLd(
+  ldGraph(
+    article,
+    breadcrumbNode(
+      url,
+      trail.map(([href, name]) => ({ name, url: new URL(href, SITE).href })),
+    ),
+  ),
+);
 ---
 <Page {title} {description}>
 <Fragment slot="head">

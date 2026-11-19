@@ -16,7 +16,7 @@ export interface ImageOptions {
   quality?: number;
   /** Padded "any maskable" PNG sizes, even pixel counts. Default: `[192, 512]`. */
   sizes?: number[];
-  /** Ground of the padded icons. `null` (or `'none'`) keeps the set transparent and unpadded, declared `"any"` only. Default: `'#000000'`. */
+  /** Ground of the padded icons. `null` (or `'none'`) keeps every PNG transparent: `icon-<size>.png` is then unpadded and declared `"any"` only, and `apple-touch-icon.png` still sits in the safe zone. Default: `'#000000'`. */
   bg?: string | null;
   /** Margin of each padded icon, as a percentage per side. Default: `'auto'`, measured per mark. */
   padding?: number | 'auto';

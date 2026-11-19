@@ -15,6 +15,7 @@
     "test/bytes.json",
     "test/fixtures/**",
     "lib/zopfli-build.mjs",
+    "site/src/lib/structured-data.ts",
     "pnpm-lock.yaml",
     "**/*.md"
   ]

@@ -3,6 +3,9 @@
 // always clones with --depth=1, where every date is left out. Anywhere else, and in a clone that
 // already has its history, this does nothing. A failed fetch only costs the dates, so it never
 // fails the deployment.
+// To revisit: that failure is silent, so find a source of dates that cannot vanish this way
+// (a date field in each page's front matter, as the other cevdet.ch sites use, or a build that
+// fails on a shallow clone) before the dates matter.
 import { execFileSync } from 'node:child_process';
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();

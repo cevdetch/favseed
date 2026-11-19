@@ -4,6 +4,9 @@
   // correctly "referenced", not unused, and must not fail the build the way an unused
   // dependency does.
   "rules": { "optionalPeerDependencies": "warn" },
+  // The structured-data builders every cevdet.ch site installs as one shared copy. The site
+  // uses a few of them; the copy is replaced whole on each install, never trimmed here.
+  "ignoreIssues": { "site/src/lib/structured-data.ts": ["exports"] },
   "workspaces": {
     ".": {
       "entry": ["test/*.mjs", "bench/**/*.mjs"],
@@ -17,7 +20,7 @@
         "test/*.mjs",
         "headers.mjs"
       ],
-      "project": ["src/**/*.{mjs,astro}", "test/**/*.mjs"],
+      "project": ["src/**/*.{mjs,ts,astro}", "test/**/*.mjs"],
       // buffer is the polyfill engine-worker.mjs installs as globalThis.Buffer for the
       // compatibility build; nothing imports it by name, so knip cannot see it is used.
       // The vendored engines in vendor/image/ import @emnapi/core, @emnapi/runtime and
