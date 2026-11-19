@@ -898,6 +898,43 @@ This supersedes decision 30's "not shipped here" status for the slim-engine find
 recorded: the comparison that ran against the published 1.15.0 build and reported it as a
 follow-up now ships, rebuilt against the 1.16.0 source.
 
+### 32. Android shortcuts show less than the safe zone; this site's icons pad for them
+
+**What was seen.** The site's own `icon-512.png`, placed by `--padding auto`, holds a square
+grid mark whose corners sit at 38.7 % of the icon's size from the centre, inside the W3C
+circle of 40 %. Added to the home screen of a Pixel 9 Pro (GrapheneOS, Android 17) from
+Vanadium 157, Brave 158 and Chrome 158, it came out as a badged shortcut in all three, and the
+launcher's circle cut the mark's corners. Measured from a screenshot, the mark filled 76 % of
+the circle's diameter, so the circle showed about 36 % of the icon from the centre.
+
+Chrome made a shortcut, not a WebAPK, even with sandboxed Google Play installed and both Play
+and Chrome allowed to install apps: `pm list packages` listed no `org.chromium.webapk.*`
+package. The WebAPK path, where `WebappsIconUtils.java` pads a maskable icon by 15.45 % per
+side so that the W3C circle lands on Android's 66 dp safe zone, could not be reached on this
+device and stays unmeasured.
+
+**Fixed paddings on the same launcher**, each a separate shortcut from all three browsers:
+
+| `--padding` | Corners from the centre | On the shortcut |
+|---|---|---|
+| `auto` (22.7 % here) | 38.7 % | corners cut |
+| 22 | 34.8 % | fits, the outer squares almost touching the circle |
+| 26 | 29.6 % | fits, with a margin |
+
+**What changed.** The site's own set is built with `padding: 26` (`site/favseed.config.mjs`),
+and the maskable-icons guide describes the shortcut case with these numbers. The default stays
+`auto` and the spec's 40 %: shrinking it would make every mark smaller on Windows, Linux, macOS,
+iOS and the WebAPK path, where the spec holds, to cover a path measured on one launcher. A
+second launcher (Samsung One UI, a stock Pixel with WebAPKs) would be the evidence to revisit
+it.
+
+**The SVG manifest entry (decision 11) on the same day.** Brave 157 on Linux installed three
+test apps: PNGs only, PNGs plus `icon.svg` at `sizes: "any"`, and `icon.svg` alone. All three
+succeeded. With the PNGs present, the desktop's own app icons were built from the 512 px PNG
+and were byte-identical with and without the SVG entry; Brave only rendered the SVG for its
+in-browser sizes, 16 to 256 px. The Android WebAPK install that crbug.com/40925759 broke was
+not reachable here either, so `icon.svg` stays out of the manifest.
+
 ---
 
 ## History
