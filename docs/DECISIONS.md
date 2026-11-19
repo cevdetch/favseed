@@ -256,8 +256,9 @@ Chrome's Lighthouse installable-manifest doc (2024-04-16) and MDN's Making PWAs 
 icon of 144 px or more, and Chromium 152's `Page.getInstallabilityErrors` reported no error for
 a manifest with only a 512. That is one engine on one platform, with Android, Edge, Samsung
 Internet and Firefox untested, so the documented pair wins; the 192 costs 159 B on a flat mark.
-SVG cannot stand in for either: an SVG entry makes the Android WebAPK install fail
-([crbug.com/40925759](https://issues.chromium.org/issues/40925759)).
+SVG cannot stand in for either: an SVG entry made the Android WebAPK install fail
+([crbug.com/40925759](https://issues.chromium.org/issues/40925759)), fixed by Chrome 158 but not
+in older releases, and with the PNGs present it adds nothing (decision 32).
 
 ### 14. One render per distinct (SVG, size, background)
 
@@ -351,7 +352,7 @@ overrides it (decision 22). What it measures, and the snap that follows it, are 
 |---|---|---|
 | Chrome install criteria | `any` icons at 192 and 512 px (the code on desktop accepts one of 144 px or more) | web.dev, Chrome docs, MDN; `installable_evaluator.cc` |
 | Chrome's launcher icon (Android, ChromeOS, macOS) | `maskable` first, falling back to `any`; Android's minimum is 83 px | `installable_icon_fetcher.cc` |
-| Android WebAPK | PNG and JPEG are sent to the server; an SVG entry fails the install | `webapk_single_icon_hasher.cc`, crbug.com/40925759 |
+| Android WebAPK | PNG and JPEG are sent to the server; an SVG entry failed the install before the fix (Chrome 158 installs it, decision 32) | `webapk_single_icon_hasher.cc`, crbug.com/40925759 |
 | iOS and iPadOS | `apple-touch-icon` over manifest icons; 180, 167 and 152 px documented; `purpose` and SVG ignored | Apple's Configuring Web Applications, firt.dev's iOS PWA notes |
 | Windows | `any` icons, drawn without a plate on light and dark | Microsoft Learn, app icon and PWA icon guidance |
 
@@ -897,6 +898,48 @@ pair), rather than reproducing the engines from source on every deploy.
 This supersedes decision 30's "not shipped here" status for the slim-engine findings it
 recorded: the comparison that ran against the published 1.15.0 build and reported it as a
 follow-up now ships, rebuilt against the 1.16.0 source.
+
+### 32. Android shortcuts show less than the safe zone; this site's icons pad for them
+
+**Two Android paths, measured on one phone.** A Pixel 9 Pro (GrapheneOS, Android 17), the
+default launcher with its circle mask. The site's own `icon-512.png`, placed by `--padding auto`,
+holds a square grid mark whose corners sit at 38.7 % of the icon's size from the centre, inside
+the W3C circle of 40 %. Each test app below was installed twice: as a home-screen shortcut
+(Vanadium 157, Brave 158, and Chrome 158 before Google Play could install apps) and as a WebAPK
+(Chrome 158 once it could; `chrome://webapks` listed all five as
+`org.chromium.webapk.*` packages owned by `com.android.chrome`). Each figure is the mark's
+outermost corner as a share of the launcher circle's radius, measured from screenshots; above
+1.0 the corners are cut.
+
+| `--padding` | Corners from the centre | Shortcut | WebAPK |
+|---|---|---|---|
+| `auto` (22.7 % here) | 38.7 % | 1.07, corners cut | 0.85 |
+| 22 | 34.8 % | about 0.97, the outer squares almost touching the circle | 0.77 |
+| 26 | 29.6 % | about 0.82 | 0.65 |
+
+A shortcut showed about 36 % of the icon from the centre, less than the spec's 40 %. A WebAPK
+showed about 45 %: `WebappsIconUtils.java` pads a maskable icon by 15.45 % per side so that the
+W3C circle lands on Android's 66 dp safe zone, and that padding is what a shortcut on this
+launcher does not get. Only `icon.svg` alone, declared `any` and not maskable, came out on a
+white plate drawn by Android (0.69 on the WebAPK), the look the maintainer preferred on sight.
+
+**What changed.** The site's own set is built with `padding: 26` (`site/favseed.config.mjs`):
+it fits both paths, and on a WebAPK its mark (0.65) is about the size of the white-plate SVG
+(0.69). The maskable-icons guide describes the shortcut case with these numbers. The default
+stays `auto` and the spec's 40 %: on the WebAPK, Windows, Linux, macOS and iOS the spec holds,
+and shrinking every mark there to cover the shortcut path is a trade a user makes with
+`--padding`, not a default. A second launcher (Samsung One UI) would be the evidence to
+revisit it.
+
+**The SVG manifest entry (decision 11), retested.** crbug.com/40925759 is fixed where it was
+reported: the same Chrome 158 installed `icon.svg` alone (`sizes: "any"`) as a working WebAPK,
+and PNGs plus the SVG too. Brave 157 on Linux installed all three variants as well. The entry
+still adds nothing: with the PNGs present, the WebAPK icon was the PNG's, identical to the
+PNG-only app, and the desktop's app icons were built from the 512 px PNG, byte-identical with
+and without the SVG; Brave only rendered the SVG for its in-browser sizes, 16 to 256 px. Releases
+before the fix failed the install outright (the report used Chrome 115), so `icon.svg` stays out
+of the manifest because it costs a risk for no gain, no longer because current Chrome breaks on
+it.
 
 ---
 

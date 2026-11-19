@@ -66,8 +66,10 @@ const json = manifestJson({ sizes: DEFAULT_SIZES, purpose: manifestPurpose(DEFAU
       changes the favicon with the browser’s colour scheme. Use the same <code>/icon.svg</code> URL in the link and
       in <code>&lt;img&gt;</code>, so one cached response serves both.</p>
     <p>It is not in the manifest, which lists only the padded PNGs. An SVG entry used to make Chrome’s Android
-      install fail and fall back to a home-screen bookmark; Chromium now marks that bug fixed
-      (<a href="https://issues.chromium.org/issues/40925759">crbug.com/40925759</a>).</p>
+      install fail and fall back to a home-screen bookmark
+      (<a href="https://issues.chromium.org/issues/40925759">crbug.com/40925759</a>). Chrome 158 installs one, but
+      older releases still fail, and beside the PNGs the SVG changes nothing: Chrome draws the installed icon from
+      the PNG either way.</p>
   </section>
 
   <section>
