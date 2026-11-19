@@ -2,8 +2,8 @@
 // in every browser the site supports. The build (build/write-offline.mjs) puts the file lists in
 // front of this file as `self.FAVSEED_OFFLINE`. Pages are cached when the worker installs; the
 // engine (about 5 MB per build) only when the site runs as an installed app or a build fetches it.
-'use strict';
 (() => {
+  'use strict';
   const { pages, engines, engineHash, version } = self.FAVSEED_OFFLINE;
   const PAGES = `pages-${version}`;
   const ENGINE = `engine-${engineHash}`;
@@ -33,6 +33,16 @@
       await (await caches.open(name)).put(key, response);
     } catch (error) {
       console.warn(`favseed: could not cache ${key} in ${name}`, error);
+    }
+  };
+
+  // Cache housekeeping must never fail a response or stop activation: the network answer or the
+  // activated worker is what the browser needs, and a missed marker or prune is retried later.
+  const tidy = async (task) => {
+    try {
+      await task();
+    } catch (error) {
+      console.warn('favseed: cache housekeeping stopped', error);
     }
   };
 
@@ -72,7 +82,7 @@
       if (hit) return hit;
       const response = await fetch(request);
       await store(ENGINE, url.pathname, response.clone());
-      await markIfComplete();
+      await tidy(markIfComplete);
       return response;
     }
     const cache = await caches.open(PAGES);
@@ -100,9 +110,11 @@
     event.waitUntil(
       (async () => {
         await self.clients.claim();
-        for (const name of await caches.keys())
-          if (name.startsWith('pages-') && name !== PAGES) await caches.delete(name);
-        await markIfComplete();
+        await tidy(async () => {
+          for (const name of await caches.keys())
+            if (name.startsWith('pages-') && name !== PAGES) await caches.delete(name);
+        });
+        await tidy(markIfComplete);
       })(),
     );
   });

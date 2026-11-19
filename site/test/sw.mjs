@@ -111,6 +111,27 @@ test('an older engine is deleted only once the current one is complete', async (
   assert.ok(!caches.store.has('engine-old'), 'old engine dropped once the new one is complete');
 });
 
+test('a failed completion marker does not fail the engine response it follows', async () => {
+  const caches = fakeCaches();
+  const open = caches.open;
+  caches.open = async (name) => {
+    const cache = await open(name);
+    return {
+      ...cache,
+      put: async (key, value) => {
+        if (String(key).startsWith('/__complete/')) throw new DOMException('quota exceeded', 'QuotaExceededError');
+        return cache.put(key, value);
+      },
+    };
+  };
+  const engine = await caches.open('engine-new');
+  await engine.put('/_astro/t.wasm', new Response('t'));
+  await engine.put('/_astro/c.wasm', new Response('c'));
+  const { api } = load({ caches, fetch: async () => new Response('net') });
+  const response = await api.respond('engine', new Request(at('/_astro/e.js')), at('/_astro/e.js'));
+  assert.equal(await response.text(), 'net');
+});
+
 test('get-version answers on the message port', async () => {
   const { listeners } = load();
   const reply = await new Promise((resolve) => {
