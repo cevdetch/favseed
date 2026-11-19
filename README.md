@@ -109,7 +109,7 @@ Follow the [code of conduct](https://github.com/cevdetch/favseed/blob/main/CODE_
 in project discussions. Report sensitive findings through the
 [security policy](https://github.com/cevdetch/favseed/security/policy).
 
-Created and maintained by [Cevdet](https://cevdet.ch/)
+Created and maintained by [Cevdet Haran](https://cevdet.ch/)
 ([cevdetch](https://github.com/cevdetch)).
 
 ## Licence

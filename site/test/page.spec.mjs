@@ -41,9 +41,13 @@ test('homepage metadata agrees with the canonical URL and served share image', a
     url: canonical,
     description,
     inLanguage: 'en',
-    publisher: { '@id': 'https://cevdet.ch/#person' },
+    publisher: {
+      '@type': 'Person',
+      '@id': 'https://cevdet.ch/#person',
+      name: 'Cevdet Haran',
+      url: 'https://cevdet.ch/',
+    },
   });
-  expect(graph.find((node) => node['@type'] === 'Person')).toMatchObject({ name: 'Cevdet', url: 'https://cevdet.ch/' });
 
   const image = new URL(await attribute('meta[property="og:image"]'));
   expect(image.origin).toBe(new URL(canonical).origin);

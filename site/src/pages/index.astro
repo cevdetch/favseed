@@ -3,40 +3,26 @@
 // and something has to resolve and bundle them; the documentation pages share this page's
 // layout.
 import Page from '../layouts/Page.astro';
-import { ids, jsonLd, person } from '../lib/site.mjs';
+import { REPO } from '../lib/site.mjs';
+import { graph as ldGraph, serializeJsonLd, softwareSourceCodeNode, websiteNode } from '../lib/structured-data.ts';
 
 const title = 'SVG favicon generator: one SVG, an optimised set - favseed';
 const description = 'Turn one SVG into favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons, quantised and recompressed. Runs in your browser; nothing is uploaded.';
 const url = new URL('/', Astro.site).href;
-const graph = jsonLd([
-  { '@type': 'WebSite', '@id': ids.website, name: 'favseed', url, description, inLanguage: 'en', publisher: { '@id': ids.person } },
-  {
-    '@type': 'WebApplication',
-    '@id': ids.app,
-    name: 'favseed',
-    url,
-    description: 'Makes favicon.ico, icon.svg, an apple-touch-icon and maskable PWA icons from one SVG, in the browser. The SVG is never uploaded.',
-    applicationCategory: 'DeveloperApplication',
-    operatingSystem: 'Any',
-    browserRequirements: 'Requires WebAssembly and DecompressionStream, over HTTPS',
-    isAccessibleForFree: true,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-    author: { '@id': ids.person },
-    isPartOf: { '@id': ids.website },
-  },
-  {
-    '@type': 'SoftwareSourceCode',
-    '@id': ids.source,
-    name: 'favseed',
-    description: 'The favseed CLI, Vite plugin and Astro integration: one SVG in, an optimised favicon set out.',
-    codeRepository: 'https://github.com/cevdetch/favseed',
-    programmingLanguage: 'JavaScript',
-    runtimePlatform: 'Node.js 24',
-    license: 'https://opensource.org/license/mit',
-    author: { '@id': ids.person },
-  },
-  person,
-]);
+// No WebApplication: Google's rich result for it needs ratings this tool does not have.
+const graph = serializeJsonLd(
+  ldGraph(
+    websiteNode({ url, name: 'favseed', description, inLanguage: 'en' }),
+    softwareSourceCodeNode({
+      url,
+      name: 'favseed',
+      description: 'The favseed CLI, Vite plugin and Astro integration: one SVG in, an optimised favicon set out.',
+      codeRepository: REPO,
+      programmingLanguage: 'JavaScript',
+      license: 'MIT',
+    }),
+  ),
+);
 
 const outputs = [
   ['icon.svg', 'One optimized SVG for the favicon and page images, preserving animation and styling.'],

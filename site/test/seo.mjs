@@ -106,13 +106,19 @@ test('every indexable page has its own title, description and canonical URL, and
   }
 });
 
-test('every JSON-LD graph parses and each @id reference is defined in the same graph', () => {
+// The WebSite node lives on the homepage only, as Google's site-name docs ask; an article points
+// at it by @id. Every other reference is defined on the page that makes it.
+test('every JSON-LD graph parses and each @id reference is defined in the same graph or the homepage', () => {
+  const website = `${SITE}/#website`;
+  assert.ok(
+    graphOf(pages.get('/'))['@graph'].some((node) => node['@id'] === website),
+    '/: WebSite',
+  );
   for (const path of indexable) {
     const { '@context': context, '@graph': graph } = graphOf(pages.get(path));
     assert.equal(context, 'https://schema.org', path);
     assert.ok(Array.isArray(graph), `${path}: @graph`);
-    const defined = new Set(graph.map((node) => node['@id']).filter(Boolean));
-    assert.ok(defined.has(`${SITE}/#website`) && defined.has('https://cevdet.ch/#person'), `${path}: site and person`);
+    const defined = new Set([website, ...graph.map((node) => node['@id']).filter(Boolean)]);
     const references = [];
     const visit = (value) => {
       if (Array.isArray(value)) value.forEach(visit);
@@ -127,16 +133,27 @@ test('every JSON-LD graph parses and each @id reference is defined in the same g
   }
 });
 
-test('the homepage graph describes the site, the web app and the source code', () => {
+// The person as every cevdet.ch site other than cevdet.ch itself credits them: these four fields.
+const person = {
+  '@type': 'Person',
+  '@id': 'https://cevdet.ch/#person',
+  name: 'Cevdet Haran',
+  url: 'https://cevdet.ch/',
+};
+
+test('the homepage graph describes the site and the source code, and nothing needing ratings', () => {
   const graph = graphOf(pages.get('/'))['@graph'];
-  const byType = Object.fromEntries(graph.map((node) => [node['@type'], node]));
-  assert.equal(byType.WebSite.url, `${SITE}/`);
-  assert.deepEqual(byType.WebSite.publisher, { '@id': 'https://cevdet.ch/#person' });
-  assert.equal(byType.WebApplication.url, `${SITE}/`);
-  assert.equal(byType.WebApplication.offers.price, '0');
-  assert.deepEqual(byType.WebApplication.author, { '@id': 'https://cevdet.ch/#person' });
-  assert.equal(byType.SoftwareSourceCode.codeRepository, 'https://github.com/cevdetch/favseed');
-  assert.deepEqual(byType.SoftwareSourceCode.author, { '@id': 'https://cevdet.ch/#person' });
+  assert.deepEqual(
+    graph.map((node) => node['@type']),
+    ['WebSite', 'SoftwareSourceCode'],
+  );
+  const [website, code] = graph;
+  assert.equal(website.url, `${SITE}/`);
+  assert.deepEqual(website.publisher, person);
+  assert.equal(code.codeRepository, 'https://github.com/cevdetch/favseed');
+  assert.deepEqual(code.author, person);
+  // The visible byline names the same person the markup credits.
+  assert.match(pages.get('/'), /By <a href="https:\/\/cevdet\.ch\/">Cevdet Haran<\/a>/);
 });
 
 test('every page but the homepage is an article with a breadcrumb trail matching the one shown', () => {
@@ -146,7 +163,7 @@ test('every page but the homepage is an article with a breadcrumb trail matching
     const article = graph.find(isArticle);
     assert.ok(article, `${path}: article`);
     assert.equal(article.url, urlOf(path), path);
-    assert.deepEqual(article.author, { '@id': 'https://cevdet.ch/#person' }, path);
+    assert.deepEqual(article.author, person, path);
     assert.deepEqual(article.isPartOf, { '@id': `${SITE}/#website` }, path);
     const list = graph.find((node) => node['@type'] === 'BreadcrumbList');
     assert.ok(list, `${path}: BreadcrumbList`);
