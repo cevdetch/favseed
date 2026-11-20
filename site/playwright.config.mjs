@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test',
-  testMatch: ['browser.spec.mjs', 'page.spec.mjs'],
+  testMatch: ['browser.spec.mjs', 'page.spec.mjs', 'offline.spec.mjs'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
