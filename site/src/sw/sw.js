@@ -2,8 +2,11 @@
 // in every browser the site supports. The build (build/write-offline.mjs) puts the file lists in
 // front of this file as `self.FAVSEED_OFFLINE`. Pages are cached when the worker installs; the
 // engine (about 5 MB per build) only when the site runs as an installed app or a build fetches it.
-(() => {
+// Every worker global is read through `self`, so the Node tests can import a fresh copy of this
+// file against their own stand-ins.
+((self) => {
   'use strict';
+  const { caches, fetch } = self;
   const { pages, engines, engineHash, version } = self.FAVSEED_OFFLINE;
   const PAGES = `pages-${version}`;
   const ENGINE = `engine-${engineHash}`;
@@ -163,4 +166,4 @@
   });
 
   self.favseedWorker = { route, keyOf, respond, markIfComplete, download };
-})();
+})(self);

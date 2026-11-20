@@ -1,9 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
 
-const source = readFileSync(new URL('../src/sw/sw.js', import.meta.url), 'utf8');
+const worker = new URL('../src/sw/sw.js', import.meta.url);
 const ORIGIN = 'https://favseed.cevdet.ch';
 const lists = {
   pages: ['/', '/404', '/_astro/index.A.js', '/docs', '/icon.svg'],
@@ -31,11 +29,16 @@ const fakeCaches = () => {
   return { store, open, keys: async () => [...store.keys()], delete: async (n) => store.delete(n) };
 };
 
-const load = ({ caches = fakeCaches(), fetch = async () => new Response('net') } = {}) => {
+// Each load imports its own copy of the worker; the worker reads every global through `self`
+// once, so copies never share a stand-in.
+let copies = 0;
+const load = async ({ caches = fakeCaches(), fetch = async () => new Response('net') } = {}) => {
   const listeners = {};
   const self = {
     FAVSEED_OFFLINE: lists,
     location: { origin: ORIGIN },
+    caches,
+    fetch,
     addEventListener: (type, fn) => (listeners[type] = fn),
     skipWaiting: () => {
       self.skipped = true;
@@ -43,13 +46,19 @@ const load = ({ caches = fakeCaches(), fetch = async () => new Response('net') }
     },
     clients: { claim: async () => {} },
   };
-  vm.runInNewContext(source, { self, caches, fetch, URL, Request, Response, console });
+  globalThis.self = self;
+  copies += 1;
+  try {
+    await import(`${worker}?copy=${copies}`);
+  } finally {
+    delete globalThis.self;
+  }
   return { self, api: self.favseedWorker, listeners, caches };
 };
 const at = (path) => new URL(path, ORIGIN);
 
-test('routes: engine files, navigations, listed pages, never sw.js or version.json, nothing cross-origin', () => {
-  const { api } = load();
+test('routes: engine files, navigations, listed pages, never sw.js or version.json, nothing cross-origin', async () => {
+  const { api } = await load();
   assert.equal(api.route(at('/_astro/t.wasm'), 'cors'), 'engine');
   assert.equal(api.route(at('/docs'), 'navigate'), 'navigate');
   assert.equal(api.route(at('/check'), 'navigate'), 'navigate');
@@ -61,8 +70,8 @@ test('routes: engine files, navigations, listed pages, never sw.js or version.js
   assert.equal(api.route(new URL('https://example.com/docs'), 'navigate'), 'pass');
 });
 
-test('a page path keys the cache the way the site serves it, without its query', () => {
-  const { api } = load();
+test('a page path keys the cache the way the site serves it, without its query', async () => {
+  const { api } = await load();
   assert.equal(api.keyOf('/'), '/');
   assert.equal(api.keyOf('/index.html'), '/');
   assert.equal(api.keyOf('/docs.html'), '/docs');
@@ -71,7 +80,7 @@ test('a page path keys the cache the way the site serves it, without its query',
 });
 
 test('install precaches every page and never activates itself', async () => {
-  const { self, listeners, caches } = load();
+  const { self, listeners, caches } = await load();
   let wait;
   listeners.install({ waitUntil: (p) => (wait = p) });
   await wait;
@@ -84,7 +93,7 @@ test('offline, an uncached navigation gets the cached 404 page with status 404',
   await (
     await caches.open('pages-v2')
   ).put('/404', new Response('not found page', { headers: { 'content-type': 'text/html' } }));
-  const { api } = load({ caches, fetch: async () => Promise.reject(new TypeError('offline')) });
+  const { api } = await load({ caches, fetch: async () => Promise.reject(new TypeError('offline')) });
   const response = await api.respond('navigate', new Request(at('/check')), at('/check'));
   assert.equal(response.status, 404);
   assert.equal(await response.text(), 'not found page');
@@ -94,7 +103,7 @@ test('an older engine is deleted only once the current one is complete', async (
   const caches = fakeCaches();
   await (await caches.open('engine-old')).put('/__complete/threaded', new Response(''));
   const fetched = [];
-  const { api } = load({
+  const { api } = await load({
     caches,
     fetch: async (request) => {
       fetched.push(new URL(typeof request === 'string' ? at(request) : request.url).pathname);
@@ -127,13 +136,13 @@ test('a failed completion marker does not fail the engine response it follows', 
   const engine = await caches.open('engine-new');
   await engine.put('/_astro/t.wasm', new Response('t'));
   await engine.put('/_astro/c.wasm', new Response('c'));
-  const { api } = load({ caches, fetch: async () => new Response('net') });
+  const { api } = await load({ caches, fetch: async () => new Response('net') });
   const response = await api.respond('engine', new Request(at('/_astro/e.js')), at('/_astro/e.js'));
   assert.equal(await response.text(), 'net');
 });
 
 test('get-version answers on the message port', async () => {
-  const { listeners } = load();
+  const { listeners } = await load();
   const reply = await new Promise((resolve) => {
     const channel = new MessageChannel();
     channel.port1.onmessage = ({ data }) => {
@@ -160,7 +169,7 @@ const message = (listeners, data) => {
 
 test('asking for the engine records the variant in a cache no deploy drops', async () => {
   const fetched = [];
-  const { listeners, caches } = load({ fetch: netFetch(fetched) });
+  const { listeners, caches } = await load({ fetch: netFetch(fetched) });
   await message(listeners, { type: 'cache-engine', variant: 'compatibility' });
   const flag = await (await caches.open('favseed-state')).match('/__installed');
   assert.deepEqual(await flag.json(), { variant: 'compatibility' });
@@ -168,7 +177,7 @@ test('asking for the engine records the variant in a cache no deploy drops', asy
 });
 
 test('the flag is written before the download, so a failed download still leaves it', async () => {
-  const { listeners, caches } = load({ fetch: netFetch([], true) });
+  const { listeners, caches } = await load({ fetch: netFetch([], true) });
   await message(listeners, { type: 'cache-engine', variant: 'threaded' });
   assert.deepEqual(await (await (await caches.open('favseed-state')).match('/__installed')).json(), {
     variant: 'threaded',
@@ -180,7 +189,7 @@ test('a new worker of an installed app downloads its engine while it installs', 
   await (await caches.open('favseed-state')).put('/__installed', new Response('{"variant":"threaded"}'));
   await (await caches.open('engine-old')).put('/__complete/threaded', new Response(''));
   const fetched = [];
-  const { listeners } = load({ caches, fetch: netFetch(fetched) });
+  const { listeners } = await load({ caches, fetch: netFetch(fetched) });
   let wait;
   listeners.install({ waitUntil: (p) => (wait = p) });
   await wait;
@@ -191,7 +200,7 @@ test('a new worker of an installed app downloads its engine while it installs', 
 
 test('a worker that finds no flag installs without downloading an engine', async () => {
   const fetched = [];
-  const { listeners, caches } = load({ fetch: netFetch(fetched) });
+  const { listeners, caches } = await load({ fetch: netFetch(fetched) });
   let wait;
   listeners.install({ waitUntil: (p) => (wait = p) });
   await wait;
@@ -203,7 +212,7 @@ test('an installed app whose engine download fails does not install the new work
   const caches = fakeCaches();
   await (await caches.open('favseed-state')).put('/__installed', new Response('{"variant":"threaded"}'));
   await (await caches.open('engine-old')).put('/__complete/threaded', new Response(''));
-  const { listeners } = load({ caches, fetch: netFetch([], true) });
+  const { listeners } = await load({ caches, fetch: netFetch([], true) });
   let wait;
   listeners.install({ waitUntil: (p) => (wait = p) });
   await assert.rejects(wait);
