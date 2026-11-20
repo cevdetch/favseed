@@ -158,8 +158,12 @@ rules. Cloudflare Pages builds `main`, so the website follows `main`, not the re
 
 If a broken `sw.js` reaches production, deploy this as `site/src/sw/sw.js` (the build still puts
 the lists in front of it, and they are ignored). Each visitor's browser picks it up on the next
-navigation; it deletes every cache, unregisters itself and reloads the open pages, which then run
-without a worker.
+navigation; it deletes every cache, unregisters itself and reloads the open pages. The homepage
+registers `/sw.js` on every visit, so each visit installs the switch again, and it removes itself
+again, until the fixed worker ships.
+
+`site/test/sw.mjs` and `site/test/offline.spec.mjs` test the real worker, so they fail while the
+switch is deployed. Skip or remove them for that deploy, and restore them with the fixed worker.
 
 ```js
 'use strict';
