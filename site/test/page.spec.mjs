@@ -210,8 +210,8 @@ test('cold startup stays small and loads no engine before a sign of intent', asy
   expect(totals.htmlGzip).toBeGreaterThan(0);
   expect(totals.jsGzip).toBeGreaterThan(0);
   expect(totals.htmlGzip, 'HTML gzip budget').toBeLessThanOrEqual(5.25 * 1024);
-  expect(totals.jsGzip, 'JS gzip budget').toBeLessThanOrEqual(4.9 * 1024);
-  expect(totals.totalGzip, 'HTML + JS + CSS gzip budget').toBeLessThanOrEqual(9.8 * 1024);
+  expect(totals.jsGzip, 'JS gzip budget').toBeLessThanOrEqual(5.2 * 1024);
+  expect(totals.totalGzip, 'HTML + JS + CSS gzip budget').toBeLessThanOrEqual(10.1 * 1024);
   expect(totals.cssRaw, 'Inline + external CSS raw budget').toBeLessThanOrEqual(5 * 1024);
 
   // Prove the same page can observe and run the engine after a valid selection.

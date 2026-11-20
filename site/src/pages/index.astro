@@ -197,6 +197,12 @@ const outputs = [
   try { storage = sessionStorage; } catch {}
   try { sw = navigator.serviceWorker; } catch {}   // Chrome throws from this getter too
 
+  // A worker that replaces the one this page loaded under, without this tab asking, belongs to an
+  // update another tab applied: the page code here is older than the engine it would now get.
+  const hadController = !!sw?.controller;
+  let updating = false, outdated = false, resumed = null;
+  sw?.addEventListener('controllerchange', () => { if (hadController && !updating) outdated = true; });
+
   // Production only: a worker in `astro dev` would serve stale modules while editing. Nothing here
   // may throw: the form listeners below must attach whatever the browser refuses.
   if (import.meta.env.PROD) {
@@ -236,6 +242,8 @@ const outputs = [
     const ok = f && (/\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
     if (f && !ok) file.value = '';
     drop.querySelector('strong').textContent = ok ? f.name : 'Choose an SVG';
+    resumed = null;
+    file.required = true;
     // A new file ends the build in progress; a quick set it showed stays.
     if (active) { stop(); idle(); }
     if (!ok) return say(f ? 'That is not an SVG.' : '', f ? 'bad' : '');
@@ -313,18 +321,20 @@ const outputs = [
     e.preventDefault();
     const chosen = file.files[0];
     if (chosen) run(chosen.text(), chosen.name);
+    else if (resumed) run(resumed.source, resumed.name);
   });
 
   // `pending` is the SVG text or a promise of it: the status must change in the click's own task,
   // so reading the file happens inside the build, as it always did.
-  const run = async (pending, name) => {
+  // `forced` names a status to build under without checking the engine.
+  const run = async (pending, name, forced) => {
     active?.abort();
     const controller = new AbortController();
     active = controller;
     const data = new FormData(form);
     const current = () => active === controller && !controller.signal.aborted;
     // Whether this build has shown its quick set: its own, not whatever set the page holds.
-    let early = false;
+    let early = false, held = false;
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
@@ -349,18 +359,48 @@ const outputs = [
       };
       // The same bytes as the CLI hold only on the current engine: check before building, and
       // move to a newer one (one reload, the build resumes) when there is one.
-      say('Checking the engine…', '', true);
-      const check = await checkEngine({ sw, fetch, storage }).catch(() => ({
-        status: 'unchecked',
-      }));
+      const fields = Object.fromEntries([...data].filter(([key]) => key !== 'file'));
+      const resume = () => saveResume(storage, { source, name, fields, animation: data.has('animation') });
+      let check = { status: forced };
+      if (outdated && !forced) {
+        // The next check would ask the new worker and hear 'current'; one reload per session fixes it.
+        if (!storage?.getItem('favseed:engine-reloaded') && resume()) {
+          storage.setItem('favseed:engine-reloaded', '1');
+          held = true;
+          say('Updating the engine…');
+          return location.reload();
+        }
+        check = { status: 'stale' };
+      } else if (!forced) {
+        say('Checking the engine…', '', true);
+        check = await checkEngine({ sw, fetch, storage }).catch(() => ({ status: 'unchecked' }));
+      }
       controller.signal.throwIfAborted();
       window.favseedOffline = { checked: check.status };
       if (check.status === 'update') {
-        const fields = Object.fromEntries([...data].filter(([key]) => key !== 'file'));
-        if (saveResume(storage, { source, name, fields, animation: data.has('animation') })) {
+        if (resume()) {
           say('Updating the engine…');
-          sw.addEventListener('controllerchange', () => location.reload(), { once: true });
+          let reloading = false;
+          const reload = () => { reloading = true; location.reload(); };
+          // The page stays busy until the new worker takes over; if it never does, build here.
+          const leave = () => {
+            clearTimeout(timer);
+            controller.signal.removeEventListener('abort', cancelled);
+            sw.removeEventListener('controllerchange', reload);
+            takeResume(storage);
+            updating = false;
+          };
+          const cancelled = () => {
+            if (reloading) return;
+            leave();
+            if (active === controller) { say('Cancelled.'); idle(); }
+          };
+          const timer = setTimeout(() => { leave(); run(source, name, 'stale'); }, 10_000);
+          controller.signal.addEventListener('abort', cancelled, { once: true });
+          updating = true;
+          sw.addEventListener('controllerchange', reload, { once: true });
           check.apply();
+          held = true;
           return;
         }
         window.favseedOffline.checked = 'stale'; // the SVG does not fit in session storage
@@ -402,7 +442,7 @@ const outputs = [
     } finally {
       // A quick set left behind by a stopped search stays, labelled as what it is.
       if (shown === controller && result.dataset.set === 'quick') title.textContent = 'Quick set';
-      if (active === controller) idle();
+      if (active === controller && !held) idle();
     }
   };
   const idle = () => {
@@ -422,16 +462,19 @@ const outputs = [
   });
 
   // After an engine update reload: restore the form and finish the build that asked for it.
-  const resume = takeResume(storage);
-  if (resume) {
-    for (const [key, value] of Object.entries(resume.fields)) {
+  const saved = takeResume(storage);
+  if (saved) {
+    for (const [key, value] of Object.entries(saved.fields)) {
       const field = form.elements[key];
       if (field && field.type !== 'checkbox') field.value = value;
     }
-    form.elements.animation.checked = resume.animation;
+    form.elements.animation.checked = saved.animation;
     updatePalette();
-    drop.querySelector('strong').textContent = resume.name;
-    run(resume.source, resume.name);
+    drop.querySelector('strong').textContent = saved.name;
+    // The file input cannot be refilled: the saved source stands in for it until a file is chosen.
+    resumed = saved;
+    file.required = false;
+    run(saved.source, saved.name);
   }
 </script>
 </Fragment>
