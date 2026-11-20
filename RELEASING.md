@@ -153,3 +153,31 @@ On an up-to-date `main` with a clean working tree and CI green:
 The workflow runs in the GitHub environment `npm`, which the trusted publisher checks. GitHub
 creates it on the first run; create it under Settings → Environments only to add protection
 rules. Cloudflare Pages builds `main`, so the website follows `main`, not the release tags.
+
+## Removing the service worker
+
+If a broken `sw.js` reaches production, deploy this as `site/src/sw/sw.js` (the build still puts
+the lists in front of it, and they are ignored). Each visitor's browser picks it up on the next
+navigation; it deletes every cache, unregisters itself and reloads the open pages. The homepage
+registers `/sw.js` on every visit, so each visit installs the switch again, and it removes itself
+again, until the fixed worker ships.
+
+`site/test/sw.mjs` and `site/test/offline.spec.mjs` test the real worker, so they fail while the
+switch is deployed. Skip or remove them for that deploy, and restore them with the fixed worker.
+
+```js
+'use strict';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      for (const name of await caches.keys()) await caches.delete(name);
+      await self.registration.unregister();
+      for (const client of await self.clients.matchAll({ type: 'window' })) client.navigate(client.url);
+    })(),
+  );
+});
+```
+
+Keep it deployed until the fixed worker ships: removing `sw.js` instead would leave the broken
+one in place, because a browser keeps a worker whose script answers 404.

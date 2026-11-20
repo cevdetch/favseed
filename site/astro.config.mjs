@@ -5,9 +5,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { siteHeaders, developmentHeaders, productionHeaders } from './headers.mjs';
 import { wasiRuntime } from './build/wasi-runtime.mjs';
+import { writeOffline } from './build/write-offline.mjs';
 import { gitDates, pageSources } from './build/lastmod.mjs';
 import sections from './src/lib/sections.mjs';
 import { SITE } from './src/lib/site.mjs';
+import build from './vendor/image/build.json' with { type: 'json' };
+import root from '../package.json' with { type: 'json' };
 
 // A static site on Cloudflare Pages, built from main by the Pages dashboard: no adapter, no
 // deploy workflow. Everything that touches an SVG runs in the visitor's tab: there is no
@@ -62,12 +65,20 @@ export default defineConfig({
             ['LICENSE', 'THIRD-PARTY-NOTICES.txt'].map((name) => readFile(new URL(name, vendor), 'utf8')),
           );
           await writeFile(new URL('engine-licenses.txt', dir), notices.join('\n\n'));
+          // Last: the lists hash every page and asset, so they are read once nothing else writes.
+          await writeOffline(dir);
         },
       },
     },
   ],
   vite: {
     plugins: [wasiRuntime()],
+    // The label a build shows: which engine produced these bytes.
+    define: {
+      'import.meta.env.FAVSEED_ENGINE': JSON.stringify(
+        `@napi-rs/image ${build.imageVersion}, zopfli ${root.devDependencies['@gfx/zopfli']}`,
+      ),
+    },
     // lib/core.mjs lives above this directory: the site shares favseed's isomorphic half by
     // importing the file, not by copying it. Vite refuses to serve outside the project root in
     // dev unless told, and this is the one exception.

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { pageSources } from '../build/lastmod.mjs';
@@ -488,4 +489,45 @@ test('an article is published on the first commit of its own source file', { ski
     const first = git('log', '--follow', '--format=%cI', '--', own).split('\n').at(-1);
     assert.equal(article.datePublished, new Date(first).toISOString(), `${path}: datePublished`);
   }
+});
+
+// The first line of sw.js is the lists the build wrote; the rest is site/src/sw/sw.js verbatim.
+const offline = () => {
+  const [first] = readFileSync(join(dist, 'sw.js'), 'utf8').split('\n', 1);
+  return JSON.parse(first.replace(/^self\.FAVSEED_OFFLINE = /, '').replace(/;$/, ''));
+};
+
+test('sw.js precaches every indexable page and the 404, and names only built files', () => {
+  const { pages: listed, engines } = offline();
+  for (const path of [...indexable, '/404']) assert.ok(listed.includes(path), `${path} is not precached`);
+  for (const url of [...listed, ...engines.threaded, ...engines.compatibility]) {
+    if (!url.startsWith('/_astro/') && !url.includes('.')) continue; // a page path, checked above
+    assert.ok(existsSync(join(dist, url)), `${url} is listed but not built`);
+  }
+  assert.ok(engines.threaded.some((u) => /image\.wasm32-wasi-/.test(u)));
+  assert.ok(engines.compatibility.some((u) => /image\.wasm32-wasip1-/.test(u)));
+});
+
+test('version.json names the engine and version sw.js carries', () => {
+  const { engineHash, version } = offline();
+  assert.deepEqual(JSON.parse(readFileSync(join(dist, 'version.json'), 'utf8')), { engine: engineHash, version });
+});
+
+test('_headers serves sw.js and version.json uncached', () => {
+  const headers = readFileSync(join(dist, '_headers'), 'utf8');
+  for (const path of ['/sw.js', '/version.json']) {
+    assert.match(headers, new RegExp(`^${path.replace('.', '\\.')}\\n  Cache-Control: no-cache$`, 'm'), path);
+  }
+});
+
+test('the manifest has an id and the homepage lede as its description', () => {
+  const manifest = JSON.parse(readFileSync(join(dist, 'site.webmanifest'), 'utf8'));
+  assert.equal(manifest.id, '/');
+  assert.match(pages.get('/'), new RegExp(`<p>${manifest.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</p>`));
+});
+
+test('sw.js stays within its budget', () => {
+  const LIMIT = 3328; // gzip; measured 3128 B on 2026-11-20
+  const size = gzipSync(readFileSync(join(dist, 'sw.js'))).length;
+  assert.ok(size <= LIMIT, `sw.js is ${size} B gzip, over ${LIMIT} B`);
 });

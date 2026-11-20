@@ -101,6 +101,7 @@ const outputs = [
       <tbody id="files"></tbody>
     </table></div>
     <p><small id="fit"></small></p>
+    <p><small id="engine"></small></p>
     <a id="zip" class="button" download="favseed.zip">Download .zip</a>
     <div class="head-tools">
       <h3>Add to your <code>&lt;head&gt;</code></h3>
@@ -138,12 +139,16 @@ const outputs = [
     <p>The engine loads when you reach for the file picker, never before. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
       Browser privacy restrictions can select a slower compatibility mode.
-      Your SVG and generated files stay in this tab.</p>
+      Your SVG and generated files stay in this tab.
+      Installed as an app, the page also works offline: it saves the engine when you install it.</p>
   </aside>
 </main>
 
 <Fragment slot="end">
 <script>
+  import { checkCapabilities } from '../lib/capabilities.mjs';
+  import { checkEngine, registerOffline, saveResume, takeResume } from '../lib/offline.mjs';
+
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
   const { file, quality, colors, effort } = form.elements;
@@ -187,6 +192,37 @@ const outputs = [
     if (!step) announce.textContent = msg;
   };
 
+  // Chrome and Firefox throw from the `sessionStorage` getter itself when site data is blocked.
+  let storage = null, sw;
+  try { storage = sessionStorage; } catch {}
+  try { sw = navigator.serviceWorker; } catch {}   // Chrome throws from this getter too
+
+  // A worker that replaces the one this page loaded under, without this tab asking, belongs to an
+  // update another tab applied: the page code here is older than the engine it would now get.
+  const hadController = !!sw?.controller;
+  let updating = false, outdated = false, resumed = null;
+  sw?.addEventListener('controllerchange', () => { if (hadController && !updating) outdated = true; });
+
+  // Production only: a worker in `astro dev` would serve stale modules while editing. Nothing here
+  // may throw: the form listeners below must attach whatever the browser refuses.
+  if (import.meta.env.PROD) {
+    try {
+      registerOffline({
+        sw,
+        isStandalone: () => matchMedia('(display-mode: standalone)').matches,
+        onInstalled: (fn) => window.addEventListener('appinstalled', fn),
+        variant: () => {
+          try {
+            return checkCapabilities() ? 'threaded' : 'compatibility';
+          } catch {
+            return null; // no WebAssembly: there is no engine to save
+          }
+        },
+        saveData: () => navigator.connection?.saveData === true,
+      });
+    } catch {}
+  }
+
   // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
   // or a chosen file. Never on page load. Each warm names the effort, so the worker fetches Zopfli
   // alongside the engine when the build will need it.
@@ -206,6 +242,8 @@ const outputs = [
     const ok = f && (/\.svg$/i.test(f.name) || f.type === 'image/svg+xml');
     if (f && !ok) file.value = '';
     drop.querySelector('strong').textContent = ok ? f.name : 'Choose an SVG';
+    resumed = null;
+    file.required = true;
     // A new file ends the build in progress; a quick set it showed stays.
     if (active) { stop(); idle(); }
     if (!ok) return say(f ? 'That is not an SVG.' : '', f ? 'bad' : '');
@@ -281,13 +319,22 @@ const outputs = [
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const chosen = file.files[0];
+    if (chosen) run(chosen.text(), chosen.name);
+    else if (resumed) run(resumed.source, resumed.name);
+  });
+
+  // `pending` is the SVG text or a promise of it: the status must change in the click's own task,
+  // so reading the file happens inside the build, as it always did.
+  // `forced` names a status to build under without checking the engine.
+  const run = async (pending, name, forced) => {
     active?.abort();
     const controller = new AbortController();
     active = controller;
     const data = new FormData(form);
     const current = () => active === controller && !controller.signal.aborted;
     // Whether this build has shown its quick set: its own, not whatever set the page holds.
-    let early = false;
+    let early = false, held = false;
     go.disabled = true;
     cancel.hidden = false;
     say('Building…');
@@ -296,11 +343,12 @@ const outputs = [
     try {
       const { buildInBrowser } = await load();
       controller.signal.throwIfAborted();
+      const source = await pending;
       const t0 = performance.now();
       // An empty field is Auto: it is left out, so it pins nothing and the search chooses.
       const pin = (name) => (data.get(name)?.trim() ? { [name]: data.get(name).trim() } : {});
       const byColors = 'colors' in pin('colors');
-      const built = await buildInBrowser(await data.get('file').text(), {
+      const options = {
         ...pin('quality'),
         ...pin('colors'),
         sizes: data.get('sizes').trim().split(/[\s,]+/).map(Number),
@@ -308,7 +356,58 @@ const outputs = [
         padding: data.get('padding').trim(),
         animation: data.has('animation'),
         effort: data.get('effort'),
-      }, {
+      };
+      // The same bytes as the CLI hold only on the current engine: check before building, and
+      // move to a newer one (one reload, the build resumes) when there is one.
+      const fields = Object.fromEntries([...data].filter(([key]) => key !== 'file'));
+      const resume = () => saveResume(storage, { source, name, fields, animation: data.has('animation') });
+      let check = { status: forced };
+      if (outdated && !forced) {
+        // The next check would ask the new worker and hear 'current'; one reload per session fixes it.
+        if (!storage?.getItem('favseed:engine-reloaded') && resume()) {
+          storage.setItem('favseed:engine-reloaded', '1');
+          held = true;
+          say('Updating the engine…');
+          return location.reload();
+        }
+        check = { status: 'stale' };
+      } else if (!forced) {
+        say('Checking the engine…', '', true);
+        check = await checkEngine({ sw, fetch, storage }).catch(() => ({ status: 'unchecked' }));
+      }
+      controller.signal.throwIfAborted();
+      window.favseedOffline = { checked: check.status };
+      if (check.status === 'update') {
+        if (resume()) {
+          say('Updating the engine…');
+          let reloading = false;
+          const reload = () => { reloading = true; location.reload(); };
+          // The page stays busy until the new worker takes over; if it never does, build here.
+          const leave = () => {
+            clearTimeout(timer);
+            controller.signal.removeEventListener('abort', cancelled);
+            sw.removeEventListener('controllerchange', reload);
+            takeResume(storage);
+            updating = false;
+          };
+          const cancelled = () => {
+            if (reloading) return;
+            leave();
+            if (active === controller) { say('Cancelled.'); idle(); }
+          };
+          const timer = setTimeout(() => { leave(); run(source, name, 'stale'); }, 10_000);
+          controller.signal.addEventListener('abort', cancelled, { once: true });
+          updating = true;
+          sw.addEventListener('controllerchange', reload, { once: true });
+          check.apply();
+          held = true;
+          return;
+        }
+        window.favseedOffline.checked = 'stale'; // the SVG does not fit in session storage
+      }
+      const note = { unchecked: ' Built offline: a newer engine may exist.', stale: ' A newer engine may exist.' };
+      $('engine').textContent = `Engine: ${import.meta.env.FAVSEED_ENGINE}.${note[window.favseedOffline.checked] ?? ''}`;
+      const built = await buildInBrowser(source, options, {
         signal: controller.signal,
         onWarn: (message) => {
           if (!current()) return;
@@ -343,9 +442,9 @@ const outputs = [
     } finally {
       // A quick set left behind by a stopped search stays, labelled as what it is.
       if (shown === controller && result.dataset.set === 'quick') title.textContent = 'Quick set';
-      if (active === controller) idle();
+      if (active === controller && !held) idle();
     }
-  });
+  };
   const idle = () => {
     active = undefined;
     go.disabled = false;
@@ -361,6 +460,22 @@ const outputs = [
     // BFCache restores this DOM and its links; their URLs must survive with it.
     if (!event.persisted) for (const u of urls) URL.revokeObjectURL(u);
   });
+
+  // After an engine update reload: restore the form and finish the build that asked for it.
+  const saved = takeResume(storage);
+  if (saved) {
+    for (const [key, value] of Object.entries(saved.fields)) {
+      const field = form.elements[key];
+      if (field && field.type !== 'checkbox') field.value = value;
+    }
+    form.elements.animation.checked = saved.animation;
+    updatePalette();
+    drop.querySelector('strong').textContent = saved.name;
+    // The file input cannot be refilled: the saved source stands in for it until a file is chosen.
+    resumed = saved;
+    file.required = false;
+    run(saved.source, saved.name);
+  }
 </script>
 </Fragment>
 </Page>

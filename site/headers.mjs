@@ -29,9 +29,15 @@ export const siteHeaders = { ...isolationHeaders, ...securityHeaders };
 // Astro's dev tooling injects scripts and connects to Vite's HMR WebSocket.
 export const developmentHeaders = { ...siteHeaders, 'Content-Security-Policy': policy(true) };
 
+// sw.js and version.json are how a deploy is noticed, so neither may be served from a cache.
+const uncached = ['/sw.js', '/version.json'];
+export const uncachedHeaders = { 'Cache-Control': 'no-cache' };
+
 export const productionHeaders =
   '/*\n' +
   Object.entries(siteHeaders)
     .map(([key, value]) => `  ${key}: ${value}\n`)
     .join('') +
-  '/_astro/*\n  Cache-Control: public, max-age=31536000, immutable\n';
+  '/_astro/*\n  Cache-Control: public, max-age=31536000, immutable\n' +
+  uncached.map((path) => `${path}\n  Cache-Control: no-cache\n`).join('');
+export const isUncached = (pathname) => uncached.includes(pathname);
