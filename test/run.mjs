@@ -1282,6 +1282,30 @@ describe('the svg stage on its own', () => {
     assert.match(optimiseSvg(source, { icon: true }).data, /#123456/);
   });
 
+  // The animation strip and the inlining guard read stylesheets with comments removed. Taking
+  // a quoted "/*" for an opener removed everything up to the next real "*/" with it.
+  it('keeps the motion guard and its class after a quoted "/*" in the logo pass', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><style>.a{font-family:"x/*y"}' +
+      '.b{fill:#0E7C68}@media (prefers-reduced-motion:no-preference){.b{animation:s 1s}' +
+      '@keyframes s{to{opacity:.5}}}/* note */</style><text class="a" x="2" y="10">a</text>' +
+      '<circle class="b" cx="16" cy="16" r="10"/></svg>';
+    const logo = optimiseSvg(source, { icon: false }).data;
+    assert.match(logo, /@media \(prefers-reduced-motion:no-preference\)\{\.b\{animation:s 1s\}\}/);
+    assert.match(logo, /<circle[^>]*class="b"/);
+  });
+
+  it('keeps the rules after a quoted "/*" when the icon pass strips motion', () => {
+    const source =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><style>.c{animation:t 1s}' +
+      '.a{font-family:"x/*y"}.b{fill:#0E7C68}/* note */</style><text class="a" x="2" y="10">a</text>' +
+      '<circle class="b" cx="16" cy="16" r="10"/><rect class="c" width="1" height="1"/></svg>';
+    const icon = optimiseSvg(source, { icon: true }).data;
+    assert.match(icon, /<circle[^>]*fill="#0e7c68"/);
+    assert.match(icon, /font-family="x\/\*y"/);
+    assert.ok(!icon.includes('animation'));
+  });
+
   it('resolves var() in CDATA-wrapped <style> content, and throws when unresolved', () => {
     const resolved =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
