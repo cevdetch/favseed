@@ -518,3 +518,9 @@ test('_headers serves sw.js and version.json uncached', () => {
     assert.match(headers, new RegExp(`^${path.replace('.', '\\.')}\\n  Cache-Control: no-cache$`, 'm'), path);
   }
 });
+
+test('the manifest has an id and the homepage lede as its description', () => {
+  const manifest = JSON.parse(readFileSync(join(dist, 'site.webmanifest'), 'utf8'));
+  assert.equal(manifest.id, '/');
+  assert.match(pages.get('/'), new RegExp(`<p>${manifest.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</p>`));
+});

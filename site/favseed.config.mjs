@@ -10,9 +10,10 @@ export default defineConfig({
   // 29.6%. Decision 32.
   padding: 26,
   manifest: {
+    id: '/',
     name: 'favseed',
     short_name: 'favseed',
-    description: 'One SVG in, an optimised favicon set out.',
+    description: 'favseed turns one SVG into an optimised favicon set.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f4f6f8',
