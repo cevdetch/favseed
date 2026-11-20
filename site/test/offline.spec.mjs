@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { buildFiles } from '../../bin/favseed.mjs';
 
@@ -10,6 +10,16 @@ test.use({ serviceWorkers: 'allow' });
 const fixture = fileURLToPath(new URL('../../test/fixtures/tiles.svg', import.meta.url));
 const swFile = new URL('../dist/sw.js', import.meta.url);
 const versionFile = new URL('../dist/version.json', import.meta.url);
+// The update test swaps these two files and keeps the originals beside them. A run killed before
+// its cleanup (SIGKILL, the global timeout) would leave dist mutated and poison every later read,
+// so the next run puts the originals back before it reads anything.
+const heal = () => {
+  for (const file of [swFile, versionFile]) {
+    const pristine = new URL(`${file.href}.pristine`);
+    if (existsSync(pristine)) renameSync(pristine, file);
+  }
+};
+heal();
 const sw = readFileSync(swFile, 'utf8');
 const lists = JSON.parse(
   sw
@@ -105,29 +115,32 @@ test.describe('offline', () => {
     await page.goto('/');
     await controlled(page);
     await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')));
-    await expect.poll(async () => (await engineCache(page)).length, { timeout: 120_000 }).toBe(1);
+    await expect
+      .poll(async () => (await engineCache(page)).flatMap(([, urls]) => urls), { timeout: 120_000 })
+      .toContain('/__complete/threaded');
     // Deploy a "new" worker: same files, new hashes, so it caches the engine again under a new name.
     // Written into dist because Playwright does not route the browser's own worker-script update
-    // check (context.route sees only the first registration), and restored whatever happens.
+    // check (context.route sees only the first registration); heal() undoes it even after a kill.
     const next = sw
       .replace(`"engineHash":"${lists.engineHash}"`, '"engineHash":"next"')
       .replace(`"version":"${lists.version}"`, '"version":"next"');
-    const versionBefore = readFileSync(versionFile);
+    writeFileSync(new URL(`${swFile.href}.pristine`), sw);
+    writeFileSync(new URL(`${versionFile.href}.pristine`), readFileSync(versionFile));
     try {
       writeFileSync(swFile, next);
       writeFileSync(versionFile, JSON.stringify({ engine: 'next', version: 'next' }));
-      const reloaded = page.waitForEvent('load', { timeout: 120_000 });
+      let loads = 0;
+      page.on('load', () => loads++);
       await page.locator('input[type=file]').setInputFiles(fixture);
       await page.getByRole('button', { name: 'Generate', exact: true }).click();
-      await reloaded;
       await expect(page.locator('output')).toHaveClass('good', { timeout: 180_000 });
+      expect(loads).toBe(1);
       expect(await page.evaluate(() => window.favseedOffline.checked)).toBe('current');
       await expect
         .poll(async () => (await engineCache(page)).map(([name]) => name), { timeout: 60_000 })
         .toEqual(['engine-next']);
     } finally {
-      writeFileSync(swFile, sw);
-      writeFileSync(versionFile, versionBefore);
+      heal();
     }
   });
 });
