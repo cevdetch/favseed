@@ -948,15 +948,21 @@ and the 404 page when it installs, with the page scripts and icons they load. Th
 5 MB per build and only one build runs in a given browser, so it is never downloaded up front. An
 installed app (`display-mode: standalone`, or `appinstalled`) asks the worker for the build
 `checkCapabilities()` selects on every launch, and in a browser tab the first build stores what it
-fetched. `site/build/offline-lists.mjs` derives both engine lists from the built chunk graph, and
+fetched. That request also records the variant in a `favseed-state` cache that no deploy drops,
+and a new worker that finds the record downloads that engine while it installs. A failed download
+fails the install, so the old worker keeps serving the old pages and the old engine, and an
+installed app never reaches a version without its generator. `site/build/offline-lists.mjs` derives both engine lists from the built chunk graph, and
 a chunk it cannot place fails the build.
 
 The site promises the CLI's bytes, and a cached engine could break that silently, so pages update
 silently but the engine is checked: before an online build the page compares the worker's engine
 hash with `/version.json`, and on a mismatch it saves the SVG, activates the waiting worker, reloads
 once and resumes. Offline, or when the check cannot finish, the build runs on the cached engine and
-says so. The new worker never activates itself, because an open page loads engine chunks lazily
-and a deploy removes the old ones. `RELEASING.md` has the kill switch.
+says so; so does a build when site data is blocked (nothing can be saved to resume) or when the
+new worker does not take over within 10 s. The new worker never activates itself, because an open
+page loads engine chunks lazily and a deploy removes the old ones. A second tab that sees the
+worker change under it without having asked is on old page code: its next build reloads it once
+and resumes, or says the engine may be outdated when it cannot. `RELEASING.md` has the kill switch.
 
 ---
 
