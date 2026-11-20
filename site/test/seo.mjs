@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { pageSources } from '../build/lastmod.mjs';
@@ -523,4 +524,10 @@ test('the manifest has an id and the homepage lede as its description', () => {
   const manifest = JSON.parse(readFileSync(join(dist, 'site.webmanifest'), 'utf8'));
   assert.equal(manifest.id, '/');
   assert.match(pages.get('/'), new RegExp(`<p>${manifest.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</p>`));
+});
+
+test('sw.js stays within its budget', () => {
+  const LIMIT = 2816; // gzip; measured 2656 B on 2026-11-20
+  const size = gzipSync(readFileSync(join(dist, 'sw.js'))).length;
+  assert.ok(size <= LIMIT, `sw.js is ${size} B gzip, over ${LIMIT} B`);
 });
