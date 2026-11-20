@@ -17,6 +17,9 @@ export default defineConfig({
     navigationTimeout: 30_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // The suite tests the page and engine; the worker gets its own spec (offline.spec.mjs),
+    // which allows it. Blocked here, the page must behave exactly as it does without one.
+    serviceWorkers: 'block',
   },
   webServer: {
     command: 'node test/serve.mjs',

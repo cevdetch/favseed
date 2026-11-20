@@ -101,6 +101,7 @@ const outputs = [
       <tbody id="files"></tbody>
     </table></div>
     <p><small id="fit"></small></p>
+    <p><small id="engine"></small></p>
     <a id="zip" class="button" download="favseed.zip">Download .zip</a>
     <div class="head-tools">
       <h3>Add to your <code>&lt;head&gt;</code></h3>
@@ -138,12 +139,16 @@ const outputs = [
     <p>The engine loads when you reach for the file picker, never before. Its WASM is about 10.3 MB before transfer
       compression and starts with 64 MiB of growable memory. Use a recent browser on HTTPS.
       Browser privacy restrictions can select a slower compatibility mode.
-      Your SVG and generated files stay in this tab.</p>
+      Your SVG and generated files stay in this tab.
+      Installed as an app, the page also works offline: it saves the engine when you install it.</p>
   </aside>
 </main>
 
 <Fragment slot="end">
 <script>
+  import { checkCapabilities } from '../lib/capabilities.mjs';
+  import { checkEngine, registerOffline, saveResume, takeResume } from '../lib/offline.mjs';
+
   const $ = (id) => document.getElementById(id);
   const form = document.querySelector('form');
   const { file, quality, colors, effort } = form.elements;
@@ -186,6 +191,23 @@ const outputs = [
     status.className = kind;
     if (!step) announce.textContent = msg;
   };
+
+  // Production only: a worker in `astro dev` would serve stale modules while editing.
+  if (import.meta.env.PROD) {
+    registerOffline({
+      sw: navigator.serviceWorker,
+      isStandalone: () => matchMedia('(display-mode: standalone)').matches,
+      onInstalled: (fn) => window.addEventListener('appinstalled', fn),
+      variant: () => {
+        try {
+          return checkCapabilities() ? 'threaded' : 'compatibility';
+        } catch {
+          return null; // no WebAssembly: there is no engine to save
+        }
+      },
+      saveData: () => navigator.connection?.saveData === true,
+    });
+  }
 
   // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
   // or a chosen file. Never on page load. Each warm names the effort, so the worker fetches Zopfli
@@ -281,6 +303,13 @@ const outputs = [
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const chosen = file.files[0];
+    if (chosen) run(chosen.text(), chosen.name);
+  });
+
+  // `pending` is the SVG text or a promise of it: the status must change in the click's own task,
+  // so reading the file happens inside the build, as it always did.
+  const run = async (pending, name) => {
     active?.abort();
     const controller = new AbortController();
     active = controller;
@@ -296,11 +325,12 @@ const outputs = [
     try {
       const { buildInBrowser } = await load();
       controller.signal.throwIfAborted();
+      const source = await pending;
       const t0 = performance.now();
       // An empty field is Auto: it is left out, so it pins nothing and the search chooses.
       const pin = (name) => (data.get(name)?.trim() ? { [name]: data.get(name).trim() } : {});
       const byColors = 'colors' in pin('colors');
-      const built = await buildInBrowser(await data.get('file').text(), {
+      const options = {
         ...pin('quality'),
         ...pin('colors'),
         sizes: data.get('sizes').trim().split(/[\s,]+/).map(Number),
@@ -308,7 +338,28 @@ const outputs = [
         padding: data.get('padding').trim(),
         animation: data.has('animation'),
         effort: data.get('effort'),
-      }, {
+      };
+      // The same bytes as the CLI hold only on the current engine: check before building, and
+      // move to a newer one (one reload, the build resumes) when there is one.
+      say('Checking the engine…', '', true);
+      const check = await checkEngine({ sw: navigator.serviceWorker, fetch, storage: sessionStorage }).catch(() => ({
+        status: 'unchecked',
+      }));
+      controller.signal.throwIfAborted();
+      window.favseedOffline = { checked: check.status };
+      if (check.status === 'update') {
+        const fields = Object.fromEntries([...data].filter(([key]) => key !== 'file'));
+        if (saveResume(sessionStorage, { source, name, fields, animation: data.has('animation') })) {
+          say('Updating the engine…');
+          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+          check.apply();
+          return;
+        }
+        window.favseedOffline.checked = 'stale'; // the SVG does not fit in session storage
+      }
+      const note = { unchecked: ' Built offline: a newer engine may exist.', stale: ' A newer engine may exist.' };
+      $('engine').textContent = `Engine: ${import.meta.env.FAVSEED_ENGINE}.${note[window.favseedOffline.checked] ?? ''}`;
+      const built = await buildInBrowser(source, options, {
         signal: controller.signal,
         onWarn: (message) => {
           if (!current()) return;
@@ -345,7 +396,7 @@ const outputs = [
       if (shown === controller && result.dataset.set === 'quick') title.textContent = 'Quick set';
       if (active === controller) idle();
     }
-  });
+  };
   const idle = () => {
     active = undefined;
     go.disabled = false;
@@ -361,6 +412,19 @@ const outputs = [
     // BFCache restores this DOM and its links; their URLs must survive with it.
     if (!event.persisted) for (const u of urls) URL.revokeObjectURL(u);
   });
+
+  // After an engine update reload: restore the form and finish the build that asked for it.
+  const resume = takeResume(sessionStorage);
+  if (resume) {
+    for (const [key, value] of Object.entries(resume.fields)) {
+      const field = form.elements[key];
+      if (field && field.type !== 'checkbox') field.value = value;
+    }
+    form.elements.animation.checked = resume.animation;
+    updatePalette();
+    drop.querySelector('strong').textContent = resume.name;
+    run(resume.source, resume.name);
+  }
 </script>
 </Fragment>
 </Page>

@@ -9,6 +9,8 @@ import { writeOffline } from './build/write-offline.mjs';
 import { gitDates, pageSources } from './build/lastmod.mjs';
 import sections from './src/lib/sections.mjs';
 import { SITE } from './src/lib/site.mjs';
+import build from './vendor/image/build.json' with { type: 'json' };
+import root from '../package.json' with { type: 'json' };
 
 // A static site on Cloudflare Pages, built from main by the Pages dashboard: no adapter, no
 // deploy workflow. Everything that touches an SVG runs in the visitor's tab: there is no
@@ -71,6 +73,12 @@ export default defineConfig({
   ],
   vite: {
     plugins: [wasiRuntime()],
+    // The label a build shows: which engine produced these bytes.
+    define: {
+      'import.meta.env.FAVSEED_ENGINE': JSON.stringify(
+        `@napi-rs/image ${build.imageVersion}, zopfli ${root.devDependencies['@gfx/zopfli']}`,
+      ),
+    },
     // lib/core.mjs lives above this directory: the site shares favseed's isomorphic half by
     // importing the file, not by copying it. Vite refuses to serve outside the project root in
     // dev unless told, and this is the one exception.
