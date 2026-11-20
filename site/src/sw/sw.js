@@ -59,18 +59,20 @@
 
   // A build is complete when every file in its list is stored; the marker goes in last, and only
   // then may an older engine go. The new worker of an installed app downloads its engine while it
-  // installs, so the old worker, pages and engine keep serving until the new ones are all there.
-  const markIfComplete = async () => {
+  // installs, so the old worker, pages and engine keep serving until the new ones are all there;
+  // only an active worker prunes, because a waiting one has tabs still using the older engine.
+  const markIfComplete = async ({ prune = true } = {}) => {
     const cache = await caches.open(ENGINE);
     for (const variant of VARIANTS) {
       if (await cache.match(done(variant))) continue;
       const stored = await Promise.all(engines[variant].map((url) => cache.match(url)));
       if (stored.every(Boolean)) await cache.put(done(variant), new Response(''));
     }
+    if (!prune) return;
     for (const variant of VARIANTS) if (await cache.match(done(variant))) return pruneEngines();
   };
 
-  const download = async (variant) => {
+  const download = async (variant, { prune = true } = {}) => {
     if (!engines[variant]) return;
     const cache = await caches.open(ENGINE);
     if (await cache.match(done(variant))) return;
@@ -80,7 +82,7 @@
       if (!response.ok) throw new Error(`${url} answered ${response.status}`);
       await cache.put(url, response);
     }
-    await markIfComplete();
+    await markIfComplete({ prune });
   };
 
   const respond = async (kind, request, url) => {
@@ -120,8 +122,9 @@
         const cache = await caches.open(PAGES);
         await cache.addAll(pages.map((url) => new Request(absolute(url), { cache: 'reload' })));
         // A failed download fails the install: the old worker then stays, with its own engine.
+        // Activation prunes the older engine once this worker takes over.
         const variant = await installedVariant();
-        if (variant) await download(variant);
+        if (variant) await download(variant, { prune: false });
       })(),
     );
   });

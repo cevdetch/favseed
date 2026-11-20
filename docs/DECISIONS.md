@@ -951,7 +951,9 @@ installed app (`display-mode: standalone`, or `appinstalled`) asks the worker fo
 fetched. That request also records the variant in a `favseed-state` cache that no deploy drops,
 and a new worker that finds the record downloads that engine while it installs. A failed download
 fails the install, so the old worker keeps serving the old pages and the old engine, and an
-installed app never reaches a version without its generator. `site/build/offline-lists.mjs` derives both engine lists from the built chunk graph, and
+installed app never reaches a version without its generator. The older engine is deleted only when
+the new worker activates, because until then the old worker serves open tabs from it.
+`site/build/offline-lists.mjs` derives both engine lists from the built chunk graph, and
 a chunk it cannot place fails the build.
 
 The site promises the CLI's bytes, and a cached engine could break that silently, so pages update

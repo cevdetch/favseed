@@ -195,7 +195,10 @@ test('a new worker of an installed app downloads its engine while it installs', 
   await wait;
   assert.deepEqual(fetched.toSorted(), ['/_astro/e.js', '/_astro/t.wasm']);
   assert.ok(await (await caches.open('engine-new')).match('/__complete/threaded'));
-  assert.ok(!caches.store.has('engine-old'), 'the older engine goes once the new one is complete');
+  assert.ok(caches.store.has('engine-old'), 'the old worker still serves open tabs from the older engine');
+  listeners.activate({ waitUntil: (p) => (wait = p) });
+  await wait;
+  assert.ok(!caches.store.has('engine-old'), 'the older engine goes once the new worker takes over');
 });
 
 test('a worker that finds no flag installs without downloading an engine', async () => {
