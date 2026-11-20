@@ -69,7 +69,8 @@ export async function checkEngine({ sw, fetch, storage, timeoutMs = 3000, instal
   ]);
   if (!mine || !latest) return { status: 'unchecked' };
   if (mine.engineHash === latest.engine) return { status: 'current' };
-  if (storage.getItem(RELOADED)) return { status: 'stale' };
+  // Without storage an update could not resume or be limited to one reload: build on what is here.
+  if (!storage || storage.getItem(RELOADED)) return { status: 'stale' };
   const waiting = await waitForInstalled(await sw.getRegistration(), installTimeoutMs);
   if (!waiting) return { status: 'stale' };
   return {
@@ -83,6 +84,7 @@ export async function checkEngine({ sw, fetch, storage, timeoutMs = 3000, instal
 
 export function saveResume(storage, state) {
   try {
+    if (!storage) return false;
     storage.setItem(RESUME, JSON.stringify(state));
     return true;
   } catch {
@@ -91,9 +93,10 @@ export function saveResume(storage, state) {
 }
 
 export function takeResume(storage) {
-  const raw = storage.getItem(RESUME);
-  storage.removeItem(RESUME);
   try {
+    if (!storage) return null;
+    const raw = storage.getItem(RESUME);
+    storage.removeItem(RESUME);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

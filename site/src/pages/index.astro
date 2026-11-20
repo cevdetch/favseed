@@ -192,21 +192,29 @@ const outputs = [
     if (!step) announce.textContent = msg;
   };
 
-  // Production only: a worker in `astro dev` would serve stale modules while editing.
+  // Chrome and Firefox throw from the `sessionStorage` getter itself when site data is blocked.
+  let storage = null, sw;
+  try { storage = sessionStorage; } catch {}
+  try { sw = navigator.serviceWorker; } catch {}   // Chrome throws from this getter too
+
+  // Production only: a worker in `astro dev` would serve stale modules while editing. Nothing here
+  // may throw: the form listeners below must attach whatever the browser refuses.
   if (import.meta.env.PROD) {
-    registerOffline({
-      sw: navigator.serviceWorker,
-      isStandalone: () => matchMedia('(display-mode: standalone)').matches,
-      onInstalled: (fn) => window.addEventListener('appinstalled', fn),
-      variant: () => {
-        try {
-          return checkCapabilities() ? 'threaded' : 'compatibility';
-        } catch {
-          return null; // no WebAssembly: there is no engine to save
-        }
-      },
-      saveData: () => navigator.connection?.saveData === true,
-    });
+    try {
+      registerOffline({
+        sw,
+        isStandalone: () => matchMedia('(display-mode: standalone)').matches,
+        onInstalled: (fn) => window.addEventListener('appinstalled', fn),
+        variant: () => {
+          try {
+            return checkCapabilities() ? 'threaded' : 'compatibility';
+          } catch {
+            return null; // no WebAssembly: there is no engine to save
+          }
+        },
+        saveData: () => navigator.connection?.saveData === true,
+      });
+    } catch {}
   }
 
   // The engine loads on the first sign of intent: a pointer, focus or drag reaching the drop zone,
@@ -342,16 +350,16 @@ const outputs = [
       // The same bytes as the CLI hold only on the current engine: check before building, and
       // move to a newer one (one reload, the build resumes) when there is one.
       say('Checking the engine…', '', true);
-      const check = await checkEngine({ sw: navigator.serviceWorker, fetch, storage: sessionStorage }).catch(() => ({
+      const check = await checkEngine({ sw, fetch, storage }).catch(() => ({
         status: 'unchecked',
       }));
       controller.signal.throwIfAborted();
       window.favseedOffline = { checked: check.status };
       if (check.status === 'update') {
         const fields = Object.fromEntries([...data].filter(([key]) => key !== 'file'));
-        if (saveResume(sessionStorage, { source, name, fields, animation: data.has('animation') })) {
+        if (saveResume(storage, { source, name, fields, animation: data.has('animation') })) {
           say('Updating the engine…');
-          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+          sw.addEventListener('controllerchange', () => location.reload(), { once: true });
           check.apply();
           return;
         }
@@ -414,7 +422,7 @@ const outputs = [
   });
 
   // After an engine update reload: restore the form and finish the build that asked for it.
-  const resume = takeResume(sessionStorage);
+  const resume = takeResume(storage);
   if (resume) {
     for (const [key, value] of Object.entries(resume.fields)) {
       const field = form.elements[key];

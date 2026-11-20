@@ -109,3 +109,12 @@ test('registration asks for the engine as an installed app, on install, and neve
     null,
   );
 });
+
+test('blocked site data: a newer engine is stale without storage, and the resume helpers tolerate null', async () => {
+  const waiting = { postMessage: () => {} };
+  const sw = { controller: controller('a'), getRegistration: async () => registration({ waiting }) };
+  assert.equal((await checkEngine({ sw, fetch: versionJson('b'), storage: null })).status, 'stale');
+  assert.equal((await checkEngine({ sw, fetch: versionJson('a'), storage: null })).status, 'current');
+  assert.equal(takeResume(null), null);
+  assert.equal(saveResume(null, { source: '<svg/>' }), false);
+});
