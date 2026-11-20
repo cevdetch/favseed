@@ -136,6 +136,8 @@ test.describe('offline', () => {
       await expect(page.locator('output')).toHaveClass('good', { timeout: 180_000 });
       expect(loads).toBe(1);
       expect(await page.evaluate(() => window.favseedOffline.checked)).toBe('current');
+      // The resumed build leaves the file input empty: Generate must still be allowed.
+      expect(await page.evaluate(() => document.querySelector('form').checkValidity())).toBe(true);
       await expect
         .poll(async () => (await engineCache(page)).map(([name]) => name), { timeout: 60_000 })
         .toEqual(['engine-next']);
@@ -143,13 +145,96 @@ test.describe('offline', () => {
       heal();
     }
   });
+
+  test('an update that never takes over keeps the form busy, then builds on the current engine', async ({ page }) => {
+    await page.addInitScript(() => {
+      const post = ServiceWorker.prototype.postMessage;
+      ServiceWorker.prototype.postMessage = function (message, ...rest) {
+        if (message?.type !== 'skip-waiting') return post.call(this, message, ...rest);
+      };
+    });
+    await page.goto('/');
+    await controlled(page);
+    const next = sw
+      .replace(`"engineHash":"${lists.engineHash}"`, '"engineHash":"next"')
+      .replace(`"version":"${lists.version}"`, '"version":"next"');
+    writeFileSync(new URL(`${swFile.href}.pristine`), sw);
+    writeFileSync(new URL(`${versionFile.href}.pristine`), readFileSync(versionFile));
+    try {
+      writeFileSync(swFile, next);
+      writeFileSync(versionFile, JSON.stringify({ engine: 'next', version: 'next' }));
+      await page.locator('select[name=effort]').selectOption('fast');
+      await page.locator('input[type=file]').setInputFiles(fixture);
+      const go = page.getByRole('button', { name: 'Generate', exact: true });
+      await go.click();
+      await expect(page.locator('output')).toHaveText('Updating the engine…', { timeout: 60_000 });
+      await expect(go).toBeDisabled();
+      await expect(page.locator('output')).toHaveClass('good', { timeout: 180_000 });
+      await expect(page.locator('#engine')).toContainText('A newer engine may exist.');
+      expect(await page.evaluate(() => sessionStorage.getItem('favseed:resume'))).toBeNull();
+    } finally {
+      heal();
+    }
+  });
+
+  test('a tab left on old page code reloads once before it builds', async ({ page, context }) => {
+    await page.goto('/');
+    await controlled(page);
+    const sibling = await context.newPage();
+    await sibling.goto('/');
+    await controlled(sibling);
+    const next = sw
+      .replace(`"engineHash":"${lists.engineHash}"`, '"engineHash":"next"')
+      .replace(`"version":"${lists.version}"`, '"version":"next"');
+    writeFileSync(new URL(`${swFile.href}.pristine`), sw);
+    writeFileSync(new URL(`${versionFile.href}.pristine`), readFileSync(versionFile));
+    try {
+      writeFileSync(swFile, next);
+      writeFileSync(versionFile, JSON.stringify({ engine: 'next', version: 'next' }));
+      await page.locator('select[name=effort]').selectOption('fast');
+      await generate(page);
+      // The sibling never asked for the new worker, but has it now.
+      await expect
+        .poll(() => sibling.evaluate(() => navigator.serviceWorker.controller?.scriptURL), { timeout: 30_000 })
+        .toContain('/sw.js');
+      let loads = 0;
+      sibling.on('load', () => loads++);
+      await sibling.locator('select[name=effort]').selectOption('fast');
+      await generate(sibling);
+      expect(loads).toBe(1);
+      expect(await sibling.evaluate(() => window.favseedOffline.checked)).toBe('current');
+    } finally {
+      heal();
+    }
+  });
 });
 
-test('the worker does not break the page in any browser', async ({ page }) => {
+test('a page under the worker is isolated and builds in any browser', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await controlled(page);
+  await page.reload();
+  expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
+  await page.locator('select[name=effort]').selectOption('fast');
+  await generate(page);
   await page.goto('/docs');
+  expect(errors).toEqual([]);
+});
+
+test('blocked site data does not stop the form from working', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    for (const name of ['sessionStorage', 'localStorage'])
+      Object.defineProperty(window, name, {
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError');
+        },
+      });
+  });
+  await page.goto('/');
+  await page.locator('select[name=effort]').selectOption('fast');
+  await generate(page);
   expect(errors).toEqual([]);
 });
