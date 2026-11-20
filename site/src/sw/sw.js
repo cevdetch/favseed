@@ -9,6 +9,9 @@
   const ENGINE = `engine-${engineHash}`;
   const VARIANTS = ['threaded', 'compatibility'];
   const done = (variant) => `/__complete/${variant}`;
+  // Survives every deploy: it is what tells a new worker that this browser runs the installed app.
+  const STATE = 'favseed-state';
+  const INSTALLED = '/__installed';
   // Lists hold paths; a Request needs an absolute URL outside the browser (the Node tests).
   const absolute = (path) => new URL(path, self.location.origin);
   const pageSet = new Set(pages);
@@ -52,7 +55,8 @@
   };
 
   // A build is complete when every file in its list is stored; the marker goes in last, and only
-  // then may an older engine go, so an installed app is never left without one.
+  // then may an older engine go. The new worker of an installed app downloads its engine while it
+  // installs, so the old worker, pages and engine keep serving until the new ones are all there.
   const markIfComplete = async () => {
     const cache = await caches.open(ENGINE);
     for (const variant of VARIANTS) {
@@ -97,12 +101,25 @@
     }
   };
 
+  const installedVariant = async () => {
+    try {
+      const flag = await (await caches.open(STATE)).match(INSTALLED);
+      return flag ? (await flag.json()).variant : null;
+    } catch {
+      return null;
+    }
+  };
+
   self.addEventListener('install', (event) => {
     // No skipWaiting: an open page loads engine chunks lazily, and a deploy removes the old ones.
     event.waitUntil(
-      caches
-        .open(PAGES)
-        .then((cache) => cache.addAll(pages.map((url) => new Request(absolute(url), { cache: 'reload' })))),
+      (async () => {
+        const cache = await caches.open(PAGES);
+        await cache.addAll(pages.map((url) => new Request(absolute(url), { cache: 'reload' })));
+        // A failed download fails the install: the old worker then stays, with its own engine.
+        const variant = await installedVariant();
+        if (variant) await download(variant);
+      })(),
     );
   });
 
@@ -132,7 +149,16 @@
     const { type, variant } = event.data ?? {};
     if (type === 'get-version') event.ports[0]?.postMessage({ engineHash, version });
     else if (type === 'cache-engine')
-      event.waitUntil(download(variant).catch((error) => console.warn('favseed: the engine download stopped', error)));
+      event.waitUntil(
+        (async () => {
+          if (VARIANTS.includes(variant))
+            await tidy(async () => {
+              const state = await caches.open(STATE);
+              await state.put(INSTALLED, new Response(JSON.stringify({ variant })));
+            });
+          await download(variant).catch((error) => console.warn('favseed: the engine download stopped', error));
+        })(),
+      );
     else if (type === 'skip-waiting') event.waitUntil(self.skipWaiting());
   });
 

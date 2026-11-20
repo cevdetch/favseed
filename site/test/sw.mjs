@@ -144,3 +144,68 @@ test('get-version answers on the message port', async () => {
   });
   assert.deepEqual(reply, { engineHash: 'new', version: 'v2' });
 });
+
+const netFetch =
+  (fetched, fail = false) =>
+  async (request) => {
+    const path = new URL(typeof request === 'string' ? at(request) : request.url).pathname;
+    fetched.push(path);
+    return fail ? new Response('no', { status: 503 }) : new Response('bytes', { status: 200 });
+  };
+const message = (listeners, data) => {
+  let wait;
+  listeners.message({ data, ports: [], waitUntil: (p) => (wait = p) });
+  return wait;
+};
+
+test('asking for the engine records the variant in a cache no deploy drops', async () => {
+  const fetched = [];
+  const { listeners, caches } = load({ fetch: netFetch(fetched) });
+  await message(listeners, { type: 'cache-engine', variant: 'compatibility' });
+  const flag = await (await caches.open('favseed-state')).match('/__installed');
+  assert.deepEqual(await flag.json(), { variant: 'compatibility' });
+  assert.deepEqual(fetched.toSorted(), ['/_astro/c.wasm', '/_astro/e.js']);
+});
+
+test('the flag is written before the download, so a failed download still leaves it', async () => {
+  const { listeners, caches } = load({ fetch: netFetch([], true) });
+  await message(listeners, { type: 'cache-engine', variant: 'threaded' });
+  assert.deepEqual(await (await (await caches.open('favseed-state')).match('/__installed')).json(), {
+    variant: 'threaded',
+  });
+});
+
+test('a new worker of an installed app downloads its engine while it installs', async () => {
+  const caches = fakeCaches();
+  await (await caches.open('favseed-state')).put('/__installed', new Response('{"variant":"threaded"}'));
+  await (await caches.open('engine-old')).put('/__complete/threaded', new Response(''));
+  const fetched = [];
+  const { listeners } = load({ caches, fetch: netFetch(fetched) });
+  let wait;
+  listeners.install({ waitUntil: (p) => (wait = p) });
+  await wait;
+  assert.deepEqual(fetched.toSorted(), ['/_astro/e.js', '/_astro/t.wasm']);
+  assert.ok(await (await caches.open('engine-new')).match('/__complete/threaded'));
+  assert.ok(!caches.store.has('engine-old'), 'the older engine goes once the new one is complete');
+});
+
+test('a worker that finds no flag installs without downloading an engine', async () => {
+  const fetched = [];
+  const { listeners, caches } = load({ fetch: netFetch(fetched) });
+  let wait;
+  listeners.install({ waitUntil: (p) => (wait = p) });
+  await wait;
+  assert.deepEqual(fetched, []);
+  assert.ok(!caches.store.has('engine-new'));
+});
+
+test('an installed app whose engine download fails does not install the new worker', async () => {
+  const caches = fakeCaches();
+  await (await caches.open('favseed-state')).put('/__installed', new Response('{"variant":"threaded"}'));
+  await (await caches.open('engine-old')).put('/__complete/threaded', new Response(''));
+  const { listeners } = load({ caches, fetch: netFetch([], true) });
+  let wait;
+  listeners.install({ waitUntil: (p) => (wait = p) });
+  await assert.rejects(wait);
+  assert.ok(caches.store.has('engine-old'), 'the old engine keeps serving the old pages');
+});
