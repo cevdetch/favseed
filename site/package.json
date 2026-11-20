@@ -13,7 +13,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/markdown-satteri": "^0.4.7",
+    "@astrojs/markdown-satteri": "^0.4.9",
     "@astrojs/sitemap": "^3.7.4",
     "@emnapi/core": "2.0.0-beta.2",
     "@emnapi/runtime": "2.0.0-beta.2",
