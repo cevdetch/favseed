@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import reference from '@gfx/zopfli';
+import { createZopfliPool } from '../bin/zopfli-pool.mjs';
 import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
 
 const loadWasm = () => readFile(new URL('../lib/zopfli.wasm', import.meta.url));
@@ -121,4 +123,43 @@ test('discards a failed allocator, including calls waiting on the same initializ
   await assert.rejects(pending, /allocation failed/);
   assert.deepEqual(new Uint8Array(inflateSync(await recovery)), Uint8Array.of(1, 2, 3));
   assert.equal(loads, 2);
+});
+
+test('the worker pool returns the in-thread bytes, many calls at once', async () => {
+  const pool = createZopfliPool({ size: 2 });
+  const inputs = Array.from({ length: 5 }, (_, n) =>
+    Uint8Array.from({ length: 4096 + n * 512 }, (_, i) => ((i * (31 + n)) ^ (i >>> 3)) & 255),
+  );
+  for (const iterations of [15, 120]) {
+    const pooled = await Promise.all(inputs.map((data) => pool.zlibAsync(data, options(iterations))));
+    for (const [n, data] of inputs.entries())
+      assert.deepEqual(pooled[n], await compressor.zlibAsync(data, options(iterations)));
+  }
+});
+
+test('the worker pool keeps the error type and message of a rejected call', async () => {
+  const pool = createZopfliPool({ size: 1 });
+  await assert.rejects(pool.zlibAsync(new Uint8Array(4), options(0)), {
+    name: 'RangeError',
+    message: 'Zopfli iterations must be a positive 32-bit integer',
+  });
+  assert.equal((await pool.zlibAsync(new Uint8Array(4), options(1))).length > 0, true);
+});
+
+test('a crashed worker rejects only its own call, and the pool goes on', async () => {
+  const pool = createZopfliPool({ size: 1, script: new URL('./lib/crashing-zopfli-worker.mjs', import.meta.url) });
+  const crash = pool.zlibAsync(Uint8Array.of(0xff), options(1));
+  const after = pool.zlibAsync(Uint8Array.of(1, 2), options(1));
+  await assert.rejects(crash, /Zopfli worker stopped with exit code 3/);
+  assert.deepEqual(await after, Uint8Array.of(1, 2));
+});
+
+test('an idle worker pool does not keep Node running', () => {
+  const script = `
+    import { createZopfliPool } from ${JSON.stringify(new URL('../bin/zopfli-pool.mjs', import.meta.url).href)};
+    const out = await createZopfliPool({ size: 2 }).zlibAsync(new Uint8Array(64), { numiterations: 1 });
+    console.log(out.length > 0);
+  `;
+  const stdout = execFileSync(process.execPath, ['--input-type=module', '-e', script], { timeout: 20000 });
+  assert.equal(String(stdout).trim(), 'true');
 });
