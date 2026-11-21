@@ -29,7 +29,7 @@ import { framingCases } from './lib/framing.mjs';
 
 const FIX = new URL('./fixtures/', import.meta.url);
 const icon = (name) =>
-  squareIconSvg(optimiseSvg(readFileSync(new URL(`${name}.svg`, FIX), 'utf8'), { icon: true }).data).data;
+  squareIconSvg(optimiseSvg(readFileSync(new URL(`${name}.svg`, FIX), 'utf8'), { animation: false }).data).data;
 const scratch = mkdtempSync(join(tmpdir(), 'favseed-engine.'));
 after(() => rmSync(scratch, { recursive: true, force: true }));
 const engine = await loadEngine();

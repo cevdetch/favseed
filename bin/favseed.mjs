@@ -66,17 +66,15 @@ import { inflateSync } from 'node:zlib';
 
 // The isomorphic half of favseed, shared verbatim with the website. lib/core.mjs explains why
 // it is a second file and what the three seams are.
+import { createSvgStage, DEFAULT_BG, FavseedError } from '../lib/core.mjs';
 import {
-  createSvgStage,
-  DEFAULT_BG,
-  FavseedError,
-  icoWrap,
-  linkTags,
-  maskableFit,
-  nestForMask,
-  placeInSafeZone,
-} from '../lib/core.mjs';
-import { checkConfig, defineConfig, normaliseOptions, resolveOptions } from '../lib/config.mjs';
+  checkConfig,
+  CONFIG_KEYS,
+  defineConfig,
+  normaliseOptions,
+  resolveOptions,
+  unknownOptions,
+} from '../lib/config.mjs';
 import { createEngine } from '../lib/engine.mjs';
 import { buildSet, describeSetting } from '../lib/pipeline.mjs';
 import { ZOPFLI_VERSION } from '../lib/zopfli.mjs';
@@ -84,7 +82,7 @@ import { createZopfliPool } from './zopfli-pool.mjs';
 
 // Re-exported: the package root (`.`) is this file's API, and bench/ and the tests import from
 // here.
-export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone };
+export { FavseedError };
 
 const require = createRequire(import.meta.url);
 // Keep this API synchronous while help, version and validation avoid SVGO entirely.
@@ -148,7 +146,13 @@ const registerSweep = () => {
 
 // ============================================================== the options ==
 
+// build() and buildFiles() take the config's keys and onWarn. Anything else is a typo or a
+// leftover, and silently ignoring it would build something other than what was asked for.
+const BUILD_KEYS = [...CONFIG_KEYS, 'onWarn'];
+
 const normalise = (options) => {
+  const unknown = unknownOptions(options, BUILD_KEYS);
+  if (unknown) throw new FavseedError(unknown);
   const o = normaliseOptions(options);
   if (!o.input) throw new FavseedError('no input file given');
   if (!existsSync(o.input)) throw new FavseedError(`no such file: ${o.input}`);
@@ -536,8 +540,7 @@ export async function cli(argv) {
         const a = argv[i];
         if (a.startsWith('-') && a !== '-') {
           process.stderr.write(USAGE + '\n');
-          // The two flags effort replaced get pointed at it, not just refused.
-          die(`unknown option: ${flag}${flag === '--zopfli' || flag === '--no-zopfli' ? '; use --effort' : ''}`);
+          die(`unknown option: ${flag}`);
         }
         if (input !== null) die('only one input file may be given');
         input = a;
@@ -614,7 +617,9 @@ export async function cli(argv) {
           ? '  transparent, unpadded (--bg none)'
           : where.fullBleed
             ? '  full-bleed source, used as it is'
-            : `  mark at ${where.box}px of ${where.canvas} in the safe zone${where.snapped ? ', on whole pixels' : ''}`;
+            : // The box is the source viewBox's square, larger than the icon when the mark has a
+              // margin of its own: the measurement places the mark, not the viewBox.
+              `  viewBox at ${where.box}px on the ${where.canvas}px icon, mark in the safe zone${where.snapped ? ', on whole pixels' : ''}`;
       }
       // A search chooses per raster, so each file names the setting it kept. A pinned build
       // and effort fast use one setting throughout, which the summary line names once.

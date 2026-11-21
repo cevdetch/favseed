@@ -120,7 +120,7 @@ describe('selective SVG precision', () => {
     assert.match(prepared.data, /#112233/);
     assert.doesNotMatch(prepared.data, /var\(/);
     assert.match(optimiseSvg(read('animated'), { reference: true }).data, /@keyframes/);
-    assert.doesNotMatch(optimiseSvg(read('animated'), { reference: true, icon: true }).data, /@keyframes/);
+    assert.doesNotMatch(optimiseSvg(read('animated'), { reference: true, animation: false }).data, /@keyframes/);
   });
 });
 

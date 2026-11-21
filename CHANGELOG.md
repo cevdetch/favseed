@@ -71,10 +71,10 @@ contain.
 - `--quality N` and `--colors N` pin an exact setting: one encode, no search. Quality alone
   uses the full 256-colour palette, colours alone use quality 100, and quality below 100
   cannot combine with colours. A pinned setting that misses the accuracy bar warns with its
-  measurements and still builds. To leave a control to the search, omit it: `colors: null`
-  and `quality: null` are errors, not the default.
-- `zopfli` and `mode` are not options; passing either to `build()`, `buildFiles()`, a config
-  file or an integration fails with a message naming `effort`.
+  measurements and still builds. To leave a control to the search, omit it: `colors: null`,
+  `quality: null` and `effort: null` are errors, not the default.
+- An unknown option fails wherever it is given: `build()`, `buildFiles()`, a config file, the
+  Vite plugin and the Astro integration name the key and list the options.
 - The CLI summary names the effort and its Zopfli iterations, and the setting each PNG kept or
   the pinned one.
 - CSS custom properties are resolved before rendering, in attributes and in `<style>` blocks,

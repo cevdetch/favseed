@@ -64,15 +64,10 @@ describe('normaliseOptions', () => {
     assert.equal(normaliseOptions({ colors: 16, effort: 'max' }).iterations, 120);
   });
 
-  it('refuses zopfli and mode passed at runtime, naming effort', () => {
-    for (const options of [{ zopfli: true }, { zopfli: false }, { mode: 'release' }, { mode: 'fast', effort: 'max' }]) {
-      fails(
-        () => normaliseOptions(options),
-        /^zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)$/,
-      );
-    }
-    // undefined is "not given" everywhere else, and here too.
-    assert.equal(normaliseOptions({ zopfli: undefined, mode: undefined }).effort, 'default');
+  it('takes an absent effort as the default and refuses null, as colors and quality do', () => {
+    assert.equal(normaliseOptions({}).effort, 'default');
+    assert.equal(normaliseOptions({ effort: undefined }).effort, 'default');
+    fails(() => normaliseOptions({ effort: null }), /^effort must be 'fast', 'default' or 'max', got 'null'$/);
   });
 
   it('validates PNG quality and refuses a palette that would override it', () => {
@@ -213,23 +208,6 @@ describe('checkConfig', () => {
     fails(
       () => checkConfig({ colours: 8, quiet: true }, 'favseed.config.mjs'),
       /^favseed\.config\.mjs: unknown options 'colours', 'quiet'; the options are input, out, colors, quality, sizes, bg, padding, vars, animation, manifest, effort, base$/,
-    );
-  });
-
-  it('refuses zopfli and mode, naming effort among the options', () => {
-    for (const key of ['zopfli', 'mode']) {
-      fails(
-        () => checkConfig({ [key]: true }, 'favseed.config.mjs'),
-        new RegExp(
-          `^favseed\\.config\\.mjs: unknown option '${key}'; the options are .*\\beffort\\b.*; ` +
-            `zopfli and mode were replaced by effort \\('fast', 'default' or 'max'\\)$`,
-        ),
-      );
-    }
-    // Any other unknown key keeps the plain message.
-    fails(
-      () => checkConfig({ dev: 'fast' }, 'favseed.config.mjs'),
-      /^favseed\.config\.mjs: unknown option 'dev'; the options are [^;]*$/,
     );
   });
 
@@ -545,7 +523,7 @@ describe('the CLI with a config file', () => {
       /^effort default: the smallest encode that passes the accuracy bar; Zopfli at 15 iterations$/m,
     );
     assert.match(r.stdout, /^favicon\.ico +\d+ B {2}(quality \d+|colors \d+)$/m);
-    assert.match(r.stdout, /^icon-32\.png +\d+ B {2}mark at .*; (quality \d+|colors \d+)$/m);
+    assert.match(r.stdout, /^icon-32\.png +\d+ B {2}viewBox at .*; (quality \d+|colors \d+)$/m);
   });
 
   it('lets --effort override a config, and names a pinned setting once', async () => {
@@ -579,11 +557,9 @@ describe('the CLI with a config file', () => {
     assert.match(bad.stderr, /^favseed: effort must be 'fast', 'default' or 'max', got 'slow'$/m);
     assert.ok(!existsSync(join(dir, 'public')));
     noStack(bad);
-    for (const flag of ['--zopfli', '--no-zopfli']) {
-      const r = await run(dir, [flag, 'logo.svg']);
-      assert.equal(r.code, 1, flag);
-      assert.match(r.stderr, new RegExp(`^favseed: unknown option: ${flag}; use --effort$`, 'm'));
-    }
+    const r = await run(dir, ['--zopfli', 'logo.svg']);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /^favseed: unknown option: --zopfli$/m);
   });
 });
 

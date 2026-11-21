@@ -429,12 +429,15 @@ describe('favseed/vite in a build', () => {
     await assert.rejects(vbuild(root, [favseed({ ...FAST, input: 'nope.svg' })]), /favseed: no such file: .*nope\.svg/);
   });
 
-  it('refuses zopfli and mode, naming effort', async () => {
-    const root = app();
-    for (const options of [{ zopfli: true }, { mode: 'release' }]) {
-      await assert.rejects(
-        vbuild(root, [favseed(options)]),
-        /favseed: zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
+  it('refuses an unknown option when the plugin is created, as a config file does', () => {
+    for (const [options, key] of [
+      [{ imput: 'logo.svg' }, 'imput'],
+      [{ zopfli: true }, 'zopfli'],
+      [{ mode: 'release' }, 'mode'],
+    ]) {
+      assert.throws(
+        () => favseed(options),
+        new RegExp(`^FavseedError: unknown option '${key}'; the options are input, colors, quality, sizes, `),
       );
     }
   });
@@ -641,6 +644,13 @@ describe('favseed/vite types', () => {
       );
     const good = check('good.mts');
     assert.equal(good.status, 0, good.stdout + good.stderr);
+    const client = JSON.stringify(join(ROOT, 'vite', 'client.d.ts').replace(/\\/g, '/'));
+    writeFileSync(
+      join(d, 'virtual.mts'),
+      `/// <reference path=${client} />\nimport { links, files } from 'virtual:favseed';\nconst l: string = links;\nconst href: string = files[0].href;\n// @ts-expect-error files are records, not names.\nconst name: string = files[0];\nexport { l, href, name };\n`,
+    );
+    const virtual = check('virtual.mts');
+    assert.equal(virtual.status, 0, virtual.stdout + virtual.stderr);
     const bad = check('bad.mts');
     assert.notEqual(bad.status, 0);
     assert.match(bad.stdout, /'out'/);

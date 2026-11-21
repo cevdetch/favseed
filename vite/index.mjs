@@ -5,9 +5,16 @@ import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 
-import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, linkTags, loadConfigFile } from '../bin/favseed.mjs';
-import { configurationError, manifestPurpose, normaliseOptions, resolveOptions } from '../lib/config.mjs';
-import { declaresIcon, DEFAULT_BG, manifestIcons } from '../lib/core.mjs';
+import { buildFiles, CONFIG_FILES, engineVersions, FavseedError, loadConfigFile } from '../bin/favseed.mjs';
+import {
+  CONFIG_KEYS,
+  configurationError,
+  manifestPurpose,
+  normaliseOptions,
+  resolveOptions,
+  unknownOptions,
+} from '../lib/config.mjs';
+import { declaresIcon, DEFAULT_BG, linkTags, manifestIcons } from '../lib/core.mjs';
 import { cacheKey, favseedVersion, pruneCache, readSlot, writeSlot } from './cache.mjs';
 
 /**
@@ -59,9 +66,13 @@ const message = (e) =>
  */
 const emitsHere = (env) => env?.mode === 'build' && env.config?.consumer === 'client';
 
+const PLUGIN_KEYS = CONFIG_KEYS.filter((key) => key !== 'out');
+
 export default function favseed(options = {}) {
   if ('out' in options)
     throw new FavseedError("the Vite plugin has no 'out': Vite's build.outDir decides where the files go");
+  const unknown = unknownOptions(options, PLUGIN_KEYS);
+  if (unknown) throw new FavseedError(unknown);
   let root,
     publicDir,
     viteBase,

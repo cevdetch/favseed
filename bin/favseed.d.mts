@@ -2,7 +2,7 @@ import type { Effort, ImageOptions, Placement, RgbaImage } from '../lib/types.mj
 import type { SvgStage } from '../lib/core.mjs';
 export type { Effort, ImageOptions, Placement, RgbaImage, SvgVariables } from '../lib/types.mjs';
 export type { SvgOptions, SvgResult, SafeZonePlacement } from '../lib/core.mjs';
-export { FavseedError, icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone } from '../lib/core.mjs';
+export { FavseedError } from '../lib/core.mjs';
 
 /** Every key favseed.config.js, .mjs or .ts may set. Flags win over it. */
 export interface FavseedConfig extends ImageOptions {

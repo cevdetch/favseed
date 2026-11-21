@@ -8,7 +8,7 @@ import { gridSvg } from './fixtures/small-grid.gen.mjs';
 const engine = await loadEngine();
 const pixels = (rgba) => ({ width: rgba.length / 4, height: 1, rgba: Uint8Array.from(rgba) });
 const solid = () => pixels(Array.from({ length: 100 }, () => [128, 128, 128, 255]).flat());
-const options = { icon: false, vars: {}, name: 'precision.svg' };
+const options = { animation: true, vars: {}, name: 'precision.svg' };
 const select = (source, extra = {}, svgOptions = options) =>
   selectSvg(source, svgOptions, {
     initial: optimiseSvg(source, svgOptions),
@@ -239,7 +239,7 @@ describe('bounded SVG precision selection', () => {
     assert.match(selected.output.data, /#112233/);
     assert.equal(selected.output.animated, true);
     assert.doesNotMatch(selected.output.data, /var\(/);
-    const still = await select(source, {}, { ...svgOptions, icon: true });
+    const still = await select(source, {}, { ...svgOptions, animation: false });
     assert.doesNotMatch(still.output.data, /@keyframes|aria-labelledby|role="img"/);
     assert.doesNotMatch(still.output.data, /<title|<desc/);
     assert.equal(still.output.animated, false);

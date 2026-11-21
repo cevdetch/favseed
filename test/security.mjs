@@ -132,24 +132,24 @@ describe('CSS comment scanning', () => {
       '<style>/* before */.mark{fill:#123456}/* between */' +
       '@media(prefers-reduced-motion:no-preference){.mark{animation:pulse 1s}}/* after */' +
       '</style><path class="mark" d="M0 0h10v10H0z"/></svg>';
-    const icon = optimiseSvg(source, { icon: true }).data;
+    const icon = optimiseSvg(source, { animation: false }).data;
     assert.match(icon, /fill="#123456"/);
     assert.doesNotMatch(icon, /<style/);
-    const logo = optimiseSvg(source, { icon: false }).data;
+    const logo = optimiseSvg(source, { animation: true }).data;
     assert.match(logo, /class="mark"/);
     assert.match(logo, /prefers-reduced-motion/);
     assert.match(logo, /animation:/);
   });
 
   for (const icon of [true, false]) {
-    it(`handles repeated unclosed comments in the ${icon ? 'icon' : 'logo'} pass without stalling`, async () => {
+    it(`handles repeated unclosed comments in the ${icon ? 'static' : 'default'} pass without stalling`, async () => {
       // A child bounds the test even if synchronous regexp backtracking blocks the event loop.
       const script = `
         import assert from 'node:assert/strict';
         import { optimiseSvg } from './bin/favseed.mjs';
         const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
           + '<style>/*' + 'a/*'.repeat(500000) + '</style><path d="M0 0h10v10H0z"/></svg>';
-        const { data } = optimiseSvg(source, { icon: ${icon} });
+        const { data } = optimiseSvg(source, { animation: ${!icon} });
         assert.match(data, /<path/);
         assert.doesNotMatch(data, /<style/);
         console.log('finished');
