@@ -67,15 +67,16 @@ On an up-to-date `main` with a clean working tree and CI green:
    pnpm view favseed       # must fail with 404
    ```
 
-2. Date the release in `CHANGELOG.md`: the `## [1.0.0] - YYYY-MM-DD` heading carries the day
-   you publish. Commit that on its own.
+2. Set `"version": "1.0.0"` in `package.json`, and date the release in `CHANGELOG.md`: the
+   `## [Unreleased]` entries move under `## [1.0.0] - YYYY-MM-DD`, the day you publish, with an
+   empty `## [Unreleased]` above it. Commit that on its own and merge it through CI.
 
 3. Test and pack. The tarball `npm pack` writes is the file you publish.
 
    ```sh
    pnpm install
    pnpm test
-   npm pack --dry-run     # read the list: bin/, lib/, astro/, README, LICENSE, CHANGELOG only
+   npm pack --dry-run     # read the list: bin/, lib/, vite/, astro/, README, LICENSE, CHANGELOG only
    npm pack
    ```
 
