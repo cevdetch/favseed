@@ -29,7 +29,8 @@ The build writes the set to the output directory, prints each file's size and te
                   `auto` measures the mark's own extent and snaps it to whole pixels;
                   give a number to override it.
     --var N=V     Set a CSS custom property, e.g. --var brand=#0E7C68. Repeatable.
-    --no-animation  Explicitly remove motion from icon.svg.
+    --no-animation  Remove motion from icon.svg, and role, aria-*, data-*, class,
+                  <title> and <desc> with it.
     --manifest    Also write site.webmanifest.
     --html        Print the <link> tags.
 -q, --quiet   -V, --version   -h, --help

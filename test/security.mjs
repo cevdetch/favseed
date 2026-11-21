@@ -20,7 +20,6 @@ describe('benchmark path boundaries', () => {
   const outside = parse(ROOT).root;
   for (const [script, outputOnly] of [
     ['default-performance.mjs', false],
-    ['pipeline-concurrency.mjs', true],
     ['png-lossless-screen.mjs', false],
     ['png-quality.mjs', false],
     ['png-quantize-screen.mjs', true],

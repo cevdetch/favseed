@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engineVersions } from '../bin/favseed.mjs';
+import { ICO_SIZE } from '../lib/core.mjs';
 import { decode } from '../test/lib/png.mjs';
 import { reference, score } from '../test/lib/accuracy.mjs';
 
@@ -25,9 +26,9 @@ for (const directory of process.argv.slice(2)) {
         await reference({
           source: fileURLToPath(new URL(`../test/fixtures/${mark}.svg`, import.meta.url)),
           px: row.px,
-          bg: row.px === 32 ? null : '#000000',
+          bg: row.px === ICO_SIZE ? null : '#000000',
           vars: {},
-          fitted: row.px !== 32,
+          fitted: row.px !== ICO_SIZE,
         }),
       );
     const png = readFileSync(join(out, 'outputs', `${row.id}-${row.arm}.png`));
@@ -40,13 +41,13 @@ for (const directory of process.argv.slice(2)) {
     });
   }
   const summaries = [...new Set(graded.map((row) => row.arm))].map((arm) => {
-    const selected = graded.filter((r) => r.arm === arm && r.px !== 32);
+    const selected = graded.filter((r) => r.arm === arm && r.px !== ICO_SIZE);
     const nonGradient = selected.filter((r) => !r.gradient);
     return {
       arm,
       worstPct: Math.max(...selected.map((r) => r.pct)),
       worstNonGradientPct: Math.max(...nonGradient.map((r) => r.pct)),
-      worstIcoPct: Math.max(...graded.filter((r) => r.arm === arm && r.px === 32).map((r) => r.pct)),
+      worstIcoPct: Math.max(...graded.filter((r) => r.arm === arm && r.px === ICO_SIZE).map((r) => r.pct)),
       overOnePercent: selected.filter((r) => r.pct > 1).map(({ id, pct }) => ({ id, pct })),
       overOnePercentNonGradient: nonGradient.filter((r) => r.pct > 1).map(({ id, pct }) => ({ id, pct })),
     };

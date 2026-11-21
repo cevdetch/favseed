@@ -33,4 +33,4 @@ A source with a `@media (prefers-color-scheme: dark)` block keeps it in `icon.sv
 
 The PNG and ICO files are still images. The renderer does not sample an animation timeline, so your source needs a useful static base appearance. Where it suits the mark, put optional motion inside a `prefers-reduced-motion: no-preference` media query.
 
-`--no-animation`, or `animation: false` in a config or the API, removes motion and keeps every other static declaration. CSS variable overrides such as `--var brand=#7C0E68` still apply.
+`--no-animation`, or `animation: false` in a config or the API, is the static pass. It removes motion and keeps every other static declaration, then strips what only a page reads: `role`, `aria-*`, `data-*` and `class` attributes, `<title>` and `<desc>`. Use it when the SVG is only a favicon; keep the default when pages show it. CSS variable overrides such as `--var brand=#7C0E68` still apply.

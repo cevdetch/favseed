@@ -25,7 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { build as viteBuild } from 'vite';
 
-import { build, FavseedError, icoWrap, optimiseSvg } from '../bin/favseed.mjs';
+import { build, FavseedError, icoWrap, linkTags, optimiseSvg } from '../bin/favseed.mjs';
 import favseedAstro from '../astro/index.mjs';
 import { reference, score, THRESHOLD_PCT } from './lib/accuracy.mjs';
 import { decode, encode, header } from './lib/png.mjs';
@@ -562,10 +562,9 @@ describe('optional outputs and option syntax', () => {
     assert.match(r.stdout, /<link rel="icon" href="\/favicon\.ico" sizes="48x48">/);
     assert.match(r.stdout, /<link rel="icon" href="\/icon\.svg" type="image\/svg\+xml">/);
     assert.match(r.stdout, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png">/);
-    // logo.svg appears in the size summary; what matters is that nothing LINKS to it.
+    // Exactly the three tags linkTags() makes, nothing more.
     const links = r.stdout.split('\n').filter((l) => l.startsWith('<link'));
-    assert.ok(links.length > 0);
-    assert.ok(!links.some((l) => l.includes('logo.svg')), 'logo.svg must not be linked');
+    assert.deepEqual(links, linkTags('/', false).trimEnd().split('\n'));
   });
 
   it('accepts --opt=value', async () => {

@@ -177,11 +177,9 @@ export default function favseed(options = {}) {
   // Vite's configResolved realpaths `root` but takes an already-absolute `publicDir` (e.g.
   // Astro's) as given, so a symlinked project directory (macOS puts the temp dir behind
   // /var -> /private/var) makes the two diverge; resolve both the same way before comparing.
-  const toReal = (p) => toRealPath(p);
-
   /** Where the clashing file is, from the root: public/ for Vite, often static/ for Astro. */
   const publicPath = (f) =>
-    relative(toReal(root), join(toReal(publicDir), f.name))
+    relative(toRealPath(root), join(toRealPath(publicDir), f.name))
       .split(sep)
       .join('/');
 

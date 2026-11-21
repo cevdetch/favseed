@@ -8,7 +8,7 @@
 // Adam7 is unsupported by design: neither of the engine's encodes interlaces, so supporting
 // it would be untested code standing in for a clear error.
 
-import { deflateSync, inflateSync } from 'node:zlib';
+import { crc32, deflateSync, inflateSync } from 'node:zlib';
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -145,23 +145,12 @@ export function encode({ width, height, data, palette }) {
     raw[y * (stride + 1)] = 0; // filter: none
     Buffer.from(data.buffer, data.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1);
   }
-  const crcTable = [];
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    crcTable[n] = c >>> 0;
-  }
-  const crc = (b) => {
-    let c = 0xffffffff;
-    for (const byte of b) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  };
   const chunk = (type, data) => {
     const len = Buffer.alloc(4);
     len.writeUInt32BE(data.length);
     const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
     const c = Buffer.alloc(4);
-    c.writeUInt32BE(crc(body));
+    c.writeUInt32BE(crc32(body));
     return Buffer.concat([len, body, c]);
   };
   const ihdr = Buffer.alloc(13);

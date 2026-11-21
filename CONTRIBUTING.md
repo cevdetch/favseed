@@ -188,10 +188,10 @@ inlined to `fill=` attributes and `class="blink"` still on the element. `animate
 is the opposite case, where the same class is named both inside and outside the guard and
 inlining has to be switched off. Both directions are asserted; neither alone is enough.
 
-`heavy.svg` is also the tightest non-gradient fixture in the suite, by design: at the default
-palette it sits at 0.114 % on the 192 px icon, and at `--colors 8` at 0.70 % on the 180 px
-apple icon, against a 1.0 % bar. If it is the *only* thing that fails after an engine bump,
-that is the fixture doing its job. Run
+Under the search (decision 29) every raster is the smallest encode that passes, so most land
+just inside the 1.0 % bar by design: the tightest default rasters on the fixtures are
+`flat.svg`'s 192 px icon at 0.987 % and `mask.svg`'s apple icon at 0.975 %. A fixture that
+fails after an engine bump is the gate doing its job, not necessarily a regression. Run
 `node bench/bench.mjs accuracy` and compare against `docs/BENCHMARKS.md` before concluding
 favseed regressed.
 
