@@ -173,8 +173,6 @@ try {
     ...process.env,
     CARGO_HOME: cargoHome,
     WASI_SDK_PATH: sdk,
-    BINDGEN_EXTRA_CLANG_ARGS: `--sysroot=${sdk}/share/wasi-sysroot`,
-    CMAKE_BUILD_PARALLEL_LEVEL: '2',
     CARGO_BUILD_JOBS: '8',
     CARGO_TARGET_DIR: join(scratch, 'target'),
     CARGO_NET_OFFLINE: 'true',
@@ -188,6 +186,8 @@ try {
       env: { ...process.env, CARGO_HOME: cargoHome },
     });
   const pages = {};
+  // Each engine's own output directory, by name, so the shared engine table stays as declared.
+  const dirs = {};
   for (const engine of engines) {
     const flags = `${engine.cflags} --sysroot=${sdk}/share/wasi-sysroot -mllvm -wasm-enable-sjlj -lsetjmp ${prefixMaps}`;
     run(
@@ -209,24 +209,38 @@ try {
     // Each build removes the other WASI flavour's outputs from the package directory, so every
     // engine moves to its own directory inside the source tree, where its Node loader still
     // resolves the tooling runtime.
-    engine.dir = join(source, 'engines', engine.name);
-    mkdirSync(engine.dir, { recursive: true });
+    const dir = (dirs[engine.name] = join(source, 'engines', engine.name));
+    mkdirSync(dir, { recursive: true });
     for (const name of [...engine.files, engine.loader, ...engine.node])
-      copyFileSync(join(binding, name), join(engine.dir, name));
+      copyFileSync(join(binding, name), join(dir, name));
     const wasm = engine.files.find((name) => name.endsWith('.wasm'));
-    pages[engine.name] = importedMemoryPages(readFileSync(join(engine.dir, wasm)));
+    pages[engine.name] = importedMemoryPages(readFileSync(join(dir, wasm)));
     if (pages[engine.name] > initialPages)
       throw new Error(`${wasm} needs ${pages[engine.name]} pages, more than the loader's ${initialPages}`);
+    // The setting above is an input; what each generated loader actually starts with is checked.
+    for (const name of [engine.loader, ...engine.files.filter((name) => name.endsWith('-browser.js'))]) {
+      const starts = [...readFileSync(join(dir, name), 'utf8').matchAll(/\binitial:\s*(\d+)/g)].map((m) =>
+        Number(m[1]),
+      );
+      if (!starts.length || starts.some((n) => n !== initialPages))
+        throw new Error(`${name} starts with ${starts.join(', ') || 'no'} memory pages, not ${initialPages}`);
+    }
   }
   console.log('Minimum memory pages imported', pages);
   if (hash(readFileSync(join(source, 'Cargo.lock'))) !== hash(readFileSync(join(here, 'Cargo.lock'))))
     throw new Error('Build changed the reviewed Cargo.lock');
-  // Nothing is written or accepted unless both engines reproduce the native module byte for byte.
+  // Nothing is written or accepted unless both engines reproduce the native module byte for byte,
+  // and only the same release of it: another native version is a different reference.
+  const nativeVersion = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../../node_modules/@napi-rs/image/package.json', import.meta.url))),
+  ).version;
+  if (nativeVersion !== pkg.version)
+    throw new Error(`native @napi-rs/image ${nativeVersion} cannot check engines built from ${pkg.version}`);
   const native = loadImage();
   for (const engine of engines) {
     const { total, mismatches, skipped, hostDependent } = await compareEngines(
       native,
-      loadImage(join(engine.dir, engine.loader)),
+      loadImage(join(dirs[engine.name], engine.loader)),
     );
     // total === 0 would mean every fixture was skipped or host-dependent, so the gate compared
     // nothing and could not have caught a real divergence; skipped > 0 means native itself
@@ -246,7 +260,9 @@ try {
             .join('\n'),
       );
   }
-  const shipped = engines.flatMap((engine) => engine.files.map((name) => ({ name, path: join(engine.dir, name) })));
+  const shipped = engines.flatMap((engine) =>
+    engine.files.map((name) => ({ name, path: join(dirs[engine.name], name) })),
+  );
   const artifacts = Object.fromEntries(shipped.map(({ name, path }) => [name, hash(readFileSync(path))]));
   const manifest = {
     sourceDateEpoch: 0,

@@ -836,7 +836,10 @@ over every fixture in `test/fixtures/` at six sizes, with and without a backgrou
 hashes every output: 5,760 cases per engine. Confirmed on two independent clean builds: threaded
 5,760 of 5,760 identical to native 1.16.0, compatibility 5,760 of 5,760 identical, with one
 fixture (`dependent.svg`) skipped on both sides as host-dependent: it draws text, which native
-resvg renders with system fonts the WASI sandbox does not have.
+resvg renders with system fonts the WASI sandbox does not have. The harness later added
+`finish()`'s own call, `losslessCompressPng({ filter: [1], strip: false })` on each quantised
+PNG, and takes its quantiser options from `lib/engine.mjs`: 7,200 cases per engine, 7,200 of
+7,200 identical on both, from a rebuild that matched every committed artifact (2026-11-21).
 
 **Browser timing**, choose→ready, choose→first set and choose→final set medians at default
 effort, three interleaved repetitions, before (`0089ea0`, the published/vendored 1.15.0

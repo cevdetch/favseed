@@ -75,6 +75,18 @@ pnpm --filter favseed-site build
 pnpm --filter favseed-site test:browser
 ```
 
+The **Engine rebuild** workflow (`.github/workflows/engine-rebuild.yml`, run by hand from the
+Actions tab) makes the same check, without `--write`, on a clean runner.
+
+**If the source archive's hash stops matching.** codeload.github.com generates tarballs on
+request, and GitHub has changed their bytes before without changing the tree inside. The commit
+is the real pin. Clone `Brooooooklyn/Image`, check out `a57319b7506405d991696459830f1a0e60cc88bf`,
+make the archive with `git archive --format=tar.gz
+--prefix=Image-a57319b7506405d991696459830f1a0e60cc88bf/ a57319b7506405d991696459830f1a0e60cc88bf`,
+put its hash in `build.mjs` in place of the old one, and run the build with `--write`. The
+diff under `site/vendor/image/` must then be the one `sourceArchiveSha256` line in `build.json`:
+every artifact identical is what shows the new archive holds the same source.
+
 `build.mjs` checks the archive hashes and the Rust version before building, fetches both
 targets' crates with `cargo fetch --locked`, applies `slim.patch` with `patch -p1 --forward
 --fuzz=0`, and builds offline with `SOURCE_DATE_EPOCH=0` and normalized build/Cargo paths:
@@ -86,7 +98,8 @@ flavour's output as stale.
 
 **The parity gate.** Before anything is written, `compareEngines()` (`bench/wasm-engine/
 parity.mjs`) runs favseed's own `lib/engine.mjs` calls (`render`, `renderRgba`, `decode`,
-`losslessCompressPng`, `encode` and `pngQuantize`) over every fixture in `test/fixtures/` at six
+`losslessCompressPng`, `encode`, `pngQuantize`, and `finish()`'s Sub-filter re-encode of each
+quantised PNG) over every fixture in `test/fixtures/` at six
 sizes, with and without a background, and hashes every output. Nothing is accepted unless both
 engines match the native `@napi-rs/image` module byte for byte; one fixture that draws text is
 skipped on both sides as host-dependent, since native resvg renders it with system fonts and the

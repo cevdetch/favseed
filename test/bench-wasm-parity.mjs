@@ -39,3 +39,18 @@ test('compareEngines skips a host-dependent fixture instead of comparing it', as
   assert.ok(r.total > 0);
   assert.deepEqual(r.mismatches, []);
 });
+
+test('compareEngines skips a fixture the native engine cannot render, and counts it', async () => {
+  const native = await loadImage();
+  // A native module that rejects every SVG: the fixture is skipped on both sides, not compared.
+  class Refusing extends native.Transformer {
+    static fromSvg() {
+      throw new Error('unsupported SVG');
+    }
+  }
+  const refusing = { ...native, Transformer: Refusing };
+  const r = await compareEngines(refusing, native, { fixtures: ['flat.svg'], sizes: [32] });
+  assert.equal(r.skipped, 1);
+  assert.equal(r.total, 0);
+  assert.deepEqual(r.mismatches, []);
+});
