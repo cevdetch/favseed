@@ -672,7 +672,10 @@ for (const restriction of ['document', 'worker', 'worker-isolation'])
     );
     expect(images).toHaveLength(1);
     expect(images[0]).toContain('image.wasm32-wasip1-');
-    expect(workers).toHaveLength(1);
+    // The engine worker starts no image threads of its own, only its two Zopfli workers.
+    const zopfli = workers.filter((worker) => /\/zopfli-worker-[^/]*\.js$/.test(worker.url()));
+    expect(workers.length - zopfli.length).toBe(1);
+    expect(zopfli.length).toBeLessThanOrEqual(2);
   });
 
 for (const compatibility of [false, true])

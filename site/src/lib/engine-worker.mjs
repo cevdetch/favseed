@@ -1,20 +1,20 @@
 import { Buffer } from 'buffer';
 import { optimize } from 'svgo/browser';
-import { createZopfli } from '../../../lib/zopfli.mjs';
 import { createSvgStage } from '../../../lib/core.mjs';
 import { createEngine } from '../../../lib/engine.mjs';
 import { buildSet } from '../../../lib/pipeline.mjs';
 import { createBuildCache, buildKey } from './build-cache.mjs';
 import { zip } from './zip.mjs';
 import { checkCapabilities } from './capabilities.mjs';
+import { createZopfliPool } from './zopfli-pool.mjs';
 
 globalThis.Buffer ??= Buffer;
 const { optimiseSvg } = createSvgStage({ optimize });
 const cache = createBuildCache();
 // One fetch, started as soon as a build that will run Zopfli is in sight (a warm or build
 // message at an effort other than 'fast') so it overlaps the image engine's much larger load,
-// rather than waiting for the first finish. Zopfli awaits that same fetch; a failure clears it
-// so the next attempt fetches again.
+// rather than waiting for the first finish. Zopfli runs in workers of its own (zopfli-pool.mjs),
+// which are sent these bytes; a failure clears the fetch so the next attempt fetches again.
 let zopfliBytes;
 const fetchZopfli = () =>
   (zopfliBytes ??= fetch(new URL('../../../lib/zopfli.wasm', import.meta.url))
@@ -26,7 +26,7 @@ const fetchZopfli = () =>
       zopfliBytes = undefined;
       throw error;
     }));
-const zopfli = createZopfli({ loadWasm: fetchZopfli });
+const zopfli = createZopfliPool({ loadWasm: fetchZopfli });
 let loading;
 const load = (parentThreaded) => {
   if (loading) return loading;

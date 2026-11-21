@@ -122,8 +122,8 @@ const efforts = [
       20.4% fewer bytes than quality 80, within 0.2% of trying all 26 (decision 29).</p>
     <p>Concurrency is bounded. Raster jobs and complete alignment searches overlap, but a shared scheduler limits
       the canvas work in flight, starts the largest job first, keeps large custom sizes serial, and drains active
-      work after a failure before returning. In Node, Zopfli runs in two worker threads, so one file's compression
-      never holds up another's search (decision 34). Candidate selection and output order stay deterministic.</p>
+      work after a failure before returning. Zopfli runs in two workers of its own, in Node and in this page, so one
+      file's compression never holds up another's search (decision 34). Candidate selection and output order stay deterministic.</p>
     <p>Placement probes are bounded too. A small mark still enlarges into its safe zone, but searches over large
       transparent margins render on canvases of the target size, and other probes stay within twice the target size,
       so ordinary renders can still be reused. The full candidate walk remains: this bounds each probe, not the
