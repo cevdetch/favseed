@@ -19,16 +19,16 @@
 //     that ends in quantising throws away everything the recompressor did.
 //   * An ICO holding a PNG is a 22-byte header plus that PNG verbatim, so nothing can be
 //     optimised after packing. The payload has to be final before it goes in.
-//   * Zopfli runs once, on the file that already won the lossy/lossless comparison, and
-//     only when Zopfli is enabled.
-//   * Raster jobs and complete alignment searches use bounded batches; large custom sizes
-//     stay serial. Active native work drains before a failed build returns.
+//   * Zopfli runs once per raster, on the encode the search kept (decision 29), and not at
+//     all at --effort fast.
+//   * Raster jobs run in a bounded sliding window, the largest first when Zopfli runs, and
+//     Zopfli itself in two worker threads (decision 34); large custom sizes stay serial.
+//     Running work finishes before a failed build returns.
 //   * icon.svg preserves animation and styling. The rasterizer uses the mark's base appearance;
 //     keep the geometry in that rest frame, including for reduced-motion viewers.
-//   * resvg does NOT stretch to fill when given both -w and -h. It preserves the aspect
-//     ratio and derives the second dimension, so a 128x64 mark rendered at -w 32 -h 32
-//     comes out 32x16. Center the original viewport in a square raster canvas;
-//     see squareIconSvg in lib/core.mjs.
+//   * resvg does NOT stretch a non-square mark to fill a square. It preserves the aspect
+//     ratio, so a 128x64 mark rendered at 32 px comes out 32x16. Center the original
+//     viewport in a square raster canvas; see squareIconSvg in lib/core.mjs.
 //   * The masked icons are placed by measurement, not by a padding percentage. The safe zone
 //     is a circle of radius 40% of the icon, and what has to sit inside it is the mark's
 //     opaque extent, not its viewBox, because most marks carry a margin of their own. So
