@@ -60,6 +60,9 @@
       "types": "./vite/index.d.mts",
       "default": "./vite/index.mjs"
     },
+    "./vite/client": {
+      "types": "./vite/client.d.ts"
+    },
     "./astro": {
       "types": "./astro/index.d.ts",
       "default": "./astro/index.mjs"

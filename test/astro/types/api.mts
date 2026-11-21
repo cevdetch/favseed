@@ -7,16 +7,13 @@ import {
   loadConfigFile,
   loadEngine,
   optimiseSvg,
-  icoWrap,
-  linkTags,
-  maskableFit,
-  nestForMask,
-  placeInSafeZone,
   type BuildOptions,
   type Effort,
   type Placement,
 } from 'favseed';
+import * as root from 'favseed';
 import * as core from 'favseed/core';
+import { icoWrap, linkTags, maskableFit, nestForMask, placeInSafeZone } from 'favseed/core';
 
 const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="12"/></svg>';
 const vars = new Map<string, string | number>([
@@ -30,16 +27,19 @@ const placement: Placement = result.fit.apple;
 const canvas: number = placement.canvas;
 // @ts-expect-error Build results carry measurements, not the wrapped SVG.
 void placement.svg;
-const optimized = optimiseSvg(source, { vars: normalized, precision: 2, onWarn: (message) => message.toUpperCase() });
+const optimized = optimiseSvg(source, { vars: normalized, animation: false });
 const optimizedText: string = optimized.data;
 const animated: boolean = optimized.animated;
-const stripped: number = optimized.stripped;
+// @ts-expect-error The result has no stripped count.
+void optimized.stripped;
 // @ts-expect-error The optimizer is synchronous.
 optimized.then(() => {});
 // @ts-expect-error SVG source must be text.
 optimiseSvg(new Uint8Array());
-// @ts-expect-error Precision must be numeric.
-optimiseSvg(source, { precision: '2' });
+// @ts-expect-error The static pass is a boolean.
+optimiseSvg(source, { animation: 'no' });
+// @ts-expect-error Precision is the pipeline's own, not an option.
+optimiseSvg(source, { precision: 2 });
 
 const engine = await loadEngine();
 const raw: Uint8Array = await engine.render(source, 48, null);
@@ -73,8 +73,10 @@ await core.placeInSafeZone(
 placeInSafeZone(source, engine.render, 48);
 const nested: string = nestForMask(source, 32, 48);
 const tags: string = linkTags('/blog/', true);
-const sameWrap: typeof icoWrap = core.icoWrap;
-const samePlacement: typeof placeInSafeZone = core.placeInSafeZone;
+// @ts-expect-error The core helpers live in favseed/core only.
+void root.icoWrap;
+// @ts-expect-error The core helpers live in favseed/core only.
+void root.placeInSafeZone;
 const sameError: typeof FavseedError = core.FavseedError;
 
 const files: string[] = CONFIG_FILES;
@@ -94,8 +96,9 @@ const defaults: number[] = [
   core.EFFORT_ITERATIONS.default,
   core.EFFORT_ITERATIONS.max,
   core.MASK_SAFE_RADIUS,
-  core.SNAP_WINDOW,
 ];
+// @ts-expect-error The snap window is internal to placement.
+void core.SNAP_WINDOW;
 const effort: Effort = core.DEFAULT_EFFORT;
 // @ts-expect-error The table has the three efforts only.
 void core.EFFORT_ITERATIONS.release;
@@ -128,7 +131,6 @@ export {
   canvas,
   optimizedText,
   animated,
-  stripped,
   pixels,
   ground,
   ico,
@@ -137,8 +139,6 @@ export {
   safePadding,
   nested,
   tags,
-  sameWrap,
-  samePlacement,
   sameError,
   files,
   configFile,

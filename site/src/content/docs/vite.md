@@ -37,6 +37,8 @@ favseed adds its `<link>` tags to `index.html`, unless the page already has a `<
 import { links, files } from 'virtual:favseed'
 ```
 
+`links` is the `<link>` block as a string, and `files` lists every generated file as `{ name, href, type }`. For TypeScript, add `"favseed/vite/client"` to `compilerOptions.types`, as with Vite's own `vite/client`.
+
 ## Options
 
 The plugin takes the same options as [`favseed.config.*`](/docs/cli#a-config-file), except `out`: Vite decides the output directory. Options passed to the plugin win over the config file. `base` defaults to Vite's `base`.

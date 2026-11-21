@@ -25,7 +25,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { build as viteBuild } from 'vite';
 
-import { build, FavseedError, icoWrap, linkTags, optimiseSvg } from '../bin/favseed.mjs';
+import { build, FavseedError, optimiseSvg } from '../bin/favseed.mjs';
+import { icoWrap, linkTags } from '../lib/core.mjs';
 import favseedAstro from '../astro/index.mjs';
 import { reference, score, THRESHOLD_PCT } from './lib/accuracy.mjs';
 import { decode, encode, header } from './lib/png.mjs';
@@ -788,8 +789,8 @@ describe('the masked icons', () => {
       [['/icon-32.png', '32x32', 'any maskable']],
     );
     assert.ok(!m.icons.some((i) => i.src.endsWith('.svg')), 'an SVG entry breaks Android WebAPK installs');
-    assert.match(r.stdout, /apple-touch-icon\.png .* mark at \d+px of 180 in the safe zone/);
-    assert.match(r.stdout, /icon-32\.png .* mark at \d+px of 32 in the safe zone/);
+    assert.match(r.stdout, /apple-touch-icon\.png .* viewBox at \d+px on the 180px icon, mark in the safe zone/);
+    assert.match(r.stdout, /icon-32\.png .* viewBox at \d+px on the 32px icon, mark in the safe zone/);
   });
 
   it('leave the set transparent and unpadded when --bg none', async () => {
@@ -952,7 +953,7 @@ describe('the single SVG preserves animation', () => {
     const logo = readFileSync(join(out, 'icon.svg'), 'utf8');
     assert.match(logo, /@media[^{]*prefers-reduced-motion/, 'the reduced-motion guard is gone');
     assert.match(logo, /animation:/, 'the animation declaration is gone');
-    assert.ok(!logo.includes('var('), 'an unresolved var() reached logo.svg');
+    assert.ok(!logo.includes('var('), 'an unresolved var() reached icon.svg');
     assert.match(logo, /aria-label="Animated fixture"/, 'page-image accessibility was removed');
 
     const selectors = new Set([...logo.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]));
@@ -968,7 +969,7 @@ describe('the single SVG preserves animation', () => {
     // top level, and a motion class named ONLY inside the reduced-motion guard. Nothing
     // inlines `.blink`, so nothing can strip it: inlining the palette is safe, and turning
     // it off "to be careful" cost 44 B on a real logo.
-    const logo = optimiseSvg(readFileSync(fixture('tiles.svg'), 'utf8'), { icon: false }).data;
+    const logo = optimiseSvg(readFileSync(fixture('tiles.svg'), 'utf8'), { animation: true }).data;
     assert.match(logo, /fill="#2f4858"/, 'the palette was not inlined onto the element');
     assert.match(logo, /fill="#f6ae2d"/, 'the palette was not inlined onto the element');
     assert.ok(!/\.base\s*\{/.test(logo), '.base survived as a rule instead of being inlined');
@@ -982,7 +983,7 @@ describe('the single SVG preserves animation', () => {
     // animated.svg names .ring both at the top level and inside the guard. Inlining the
     // first would delete the class the second still needs, and csso would then drop the
     // @media rule as unused: a static "animated" logo, with no warning.
-    const logo = optimiseSvg(readFileSync(fixture('animated.svg'), 'utf8'), { icon: false }).data;
+    const logo = optimiseSvg(readFileSync(fixture('animated.svg'), 'utf8'), { animation: true }).data;
     assert.match(logo, /@media[^{]*prefers-reduced-motion/);
     assert.match(logo, /class="ring"/, '.ring was consumed despite the guard still needing it');
     assert.match(logo, /\.ring\s*\{/, 'the .ring rule was inlined away');
@@ -1166,6 +1167,7 @@ describe('the published tarball', () => {
         'lib/zopfli.mjs',
         'lib/zopfli.wasm',
         'vite/cache.mjs',
+        'vite/client.d.ts',
         'vite/index.d.mts',
         'vite/index.mjs',
       ].sort(),
@@ -1188,25 +1190,26 @@ describe('the published tarball', () => {
 describe('the svg stage on its own', () => {
   const read = (n) => readFileSync(fixture(`${n}.svg`), 'utf8');
 
-  it('strips animation for icon.svg and keeps it for logo.svg', () => {
+  it('strips animation in the static pass and keeps it by default', () => {
     const src = read('animated');
-    const icon = optimiseSvg(src, { icon: true });
-    const logo = optimiseSvg(src, { icon: false });
-    assert.ok(icon.stripped > 0, 'nothing was reported as stripped');
-    assert.ok(!icon.data.includes('<style'), 'icon.svg kept a stylesheet');
-    assert.ok(!icon.data.includes('animation'), 'icon.svg kept an animation');
-    assert.match(logo.data, /prefers-reduced-motion/);
-    assert.match(logo.data, /animation:/);
+    const still = optimiseSvg(src, { animation: false });
+    const kept = optimiseSvg(src);
+    assert.equal(still.animated, false);
+    assert.equal(kept.animated, true);
+    assert.ok(!still.data.includes('<style'), 'the static pass kept a stylesheet');
+    assert.ok(!still.data.includes('animation'), 'the static pass kept an animation');
+    assert.match(kept.data, /prefers-reduced-motion/);
+    assert.match(kept.data, /animation:/);
   });
 
-  it('reports a static source as having nothing to strip', () => {
-    assert.equal(optimiseSvg(read('general'), { icon: true }).stripped, 0);
+  it('reports a static source as not animated', () => {
+    assert.equal(optimiseSvg(read('general')).animated, false);
   });
 
   it('hoists @keyframes out of the at-rule svgo 4.1.0 cannot walk', () => {
     // Nested @keyframes reaches css-select as the selector `0%` and throws
     // "Unmatched selector: %". The hoist is what stops that being a crash.
-    const logo = optimiseSvg(read('animated'), { icon: false });
+    const logo = optimiseSvg(read('animated'), { animation: true });
     const style = /<style>([\s\S]*?)<\/style>/.exec(logo.data)[1];
     const mediaAt = style.indexOf('@media');
     const kfAt = style.indexOf('@keyframes');
@@ -1215,9 +1218,9 @@ describe('the svg stage on its own', () => {
   });
 
   it('resolves var() from the fallback and from an override', () => {
-    const a = optimiseSvg(read('general'), { icon: true });
+    const a = optimiseSvg(read('general'), { animation: false });
     assert.match(a.data, /#1f3a5f/i);
-    const b = optimiseSvg(read('general'), { icon: true, vars: { ground: '#123456' } });
+    const b = optimiseSvg(read('general'), { animation: false, vars: { ground: '#123456' } });
     assert.match(b.data, /#123456/);
     assert.ok(!/#1f3a5f/i.test(b.data));
   });
@@ -1227,7 +1230,7 @@ describe('the svg stage on its own', () => {
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
       '<style>/* uses var(--undefined) */ .a{fill:var(--c, #123456)}</style>' +
       '<rect class="a"/></svg>';
-    const result = optimiseSvg(source, { icon: true });
+    const result = optimiseSvg(source, { animation: false });
     assert.match(result.data, /#123456/);
   });
 
@@ -1236,7 +1239,7 @@ describe('the svg stage on its own', () => {
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
       '<style>/* fine */ .a{fill:var(--undefined2)}</style><rect class="a"/></svg>';
     assert.throws(
-      () => optimiseSvg(source, { icon: true }),
+      () => optimiseSvg(source, { animation: false }),
       (e) => {
         assert.ok(e instanceof FavseedError);
         assert.match(e.message, /unresolved var\(--undefined2\)/);
@@ -1256,7 +1259,7 @@ describe('the svg stage on its own', () => {
       '@media (prefers-color-scheme: dark){.a{fill:red}}</style>' +
       '<rect class="a" width="10" height="10"/></svg>';
     assert.throws(
-      () => optimiseSvg(source, { icon: true }),
+      () => optimiseSvg(source, { animation: false }),
       (e) => {
         assert.ok(e instanceof FavseedError);
         assert.match(e.message, /unresolved var\(--undefined\)/);
@@ -1272,7 +1275,7 @@ describe('the svg stage on its own', () => {
     // Later svgo stages may re-serialise the declaration (e.g. HTML-escaping the quotes once
     // it becomes an attribute); what matters here is that the "/*" text itself was never
     // swallowed as an unterminated comment, not its exact surrounding syntax.
-    assert.ok(optimiseSvg(source, { icon: true }).data.includes('/*'));
+    assert.ok(optimiseSvg(source, { animation: false }).data.includes('/*'));
   });
 
   it('still skips a real comment that follows a quoted "/*" string', () => {
@@ -1280,28 +1283,28 @@ describe('the svg stage on its own', () => {
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
       '<style>.a{content:"/*"} /* uses var(--undefined) */ .b{fill:var(--c, #123456)}</style>' +
       '<rect class="b" width="10" height="10"/></svg>';
-    assert.match(optimiseSvg(source, { icon: true }).data, /#123456/);
+    assert.match(optimiseSvg(source, { animation: false }).data, /#123456/);
   });
 
   // The animation strip and the inlining guard read stylesheets with comments removed. Taking
   // a quoted "/*" for an opener removed everything up to the next real "*/" with it.
-  it('keeps the motion guard and its class after a quoted "/*" in the logo pass', () => {
+  it('keeps the motion guard and its class after a quoted "/*" in the default pass', () => {
     const source =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><style>.a{font-family:"x/*y"}' +
       '.b{fill:#0E7C68}@media (prefers-reduced-motion:no-preference){.b{animation:s 1s}' +
       '@keyframes s{to{opacity:.5}}}/* note */</style><text class="a" x="2" y="10">a</text>' +
       '<circle class="b" cx="16" cy="16" r="10"/></svg>';
-    const logo = optimiseSvg(source, { icon: false }).data;
+    const logo = optimiseSvg(source, { animation: true }).data;
     assert.match(logo, /@media \(prefers-reduced-motion:no-preference\)\{\.b\{animation:s 1s\}\}/);
     assert.match(logo, /<circle[^>]*class="b"/);
   });
 
-  it('keeps the rules after a quoted "/*" when the icon pass strips motion', () => {
+  it('keeps the rules after a quoted "/*" when the static pass strips motion', () => {
     const source =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><style>.c{animation:t 1s}' +
       '.a{font-family:"x/*y"}.b{fill:#0E7C68}/* note */</style><text class="a" x="2" y="10">a</text>' +
       '<circle class="b" cx="16" cy="16" r="10"/><rect class="c" width="1" height="1"/></svg>';
-    const icon = optimiseSvg(source, { icon: true }).data;
+    const icon = optimiseSvg(source, { animation: false }).data;
     assert.match(icon, /<circle[^>]*fill="#0e7c68"/);
     assert.match(icon, /font-family="x\/\*y"/);
     assert.ok(!icon.includes('animation'));
@@ -1311,7 +1314,7 @@ describe('the svg stage on its own', () => {
     const resolved =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
       '<style><![CDATA[.a{fill:var(--c,#123456)}]]></style><rect class="a"/></svg>';
-    const result = optimiseSvg(resolved, { icon: true });
+    const result = optimiseSvg(resolved, { animation: false });
     assert.match(result.data, /#123456/);
     assert.ok(!result.data.includes('var('));
 
@@ -1319,7 +1322,7 @@ describe('the svg stage on its own', () => {
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">' +
       '<style><![CDATA[.a{fill:var(--undefined3)}]]></style><rect class="a"/></svg>';
     assert.throws(
-      () => optimiseSvg(unresolved, { icon: true }),
+      () => optimiseSvg(unresolved, { animation: false }),
       (e) => {
         assert.ok(e instanceof FavseedError);
         assert.match(e.message, /unresolved var\(--undefined3\)/);
@@ -1328,9 +1331,9 @@ describe('the svg stage on its own', () => {
     );
   });
 
-  it('throws FavseedError on a var() with no fallback, in the icon pass', () => {
+  it('throws FavseedError on a var() with no fallback, in the static pass', () => {
     assert.throws(
-      () => optimiseSvg(read('unresolved'), { icon: true }),
+      () => optimiseSvg(read('unresolved'), { animation: false }),
       (e) => {
         assert.ok(e instanceof FavseedError);
         assert.match(e.message, /unresolved var\(--brand\)/);
@@ -1339,11 +1342,11 @@ describe('the svg stage on its own', () => {
     );
   });
 
-  it('throws FavseedError, naming --no-animation only for the logo pass', () => {
+  it('throws FavseedError, naming --no-animation only for the default pass', () => {
     const src = read('animvar');
-    assert.doesNotThrow(() => optimiseSvg(src, { icon: true }));
+    assert.doesNotThrow(() => optimiseSvg(src, { animation: false }));
     assert.throws(
-      () => optimiseSvg(src, { icon: false }),
+      () => optimiseSvg(src, { animation: true }),
       (e) => {
         assert.ok(e instanceof FavseedError);
         assert.match(e.message, /unresolved var\(--beat\)/);
@@ -1354,7 +1357,7 @@ describe('the svg stage on its own', () => {
   });
 
   it('keeps a non-motion declaration when it strips a motion one beside it', () => {
-    const icon = optimiseSvg(read('smil'), { icon: true });
+    const icon = optimiseSvg(read('smil'), { animation: false });
     assert.ok(!icon.data.includes('<animate'));
     assert.ok(!icon.data.includes('animation'));
     assert.match(icon.data, /opacity=/);
@@ -1376,10 +1379,10 @@ describe('the svg stage on its own', () => {
   }
 
   it('preserves accessibility in the reusable SVG and strips it only on explicit static optimization', () => {
-    for (const icon of [true, false]) {
-      const out = optimiseSvg(read('animated'), { icon }).data;
-      assert.equal(/\srole=/.test(out), !icon, `icon=${icon}`);
-      assert.equal(/\saria-/.test(out), !icon, `icon=${icon}`);
+    for (const animation of [false, true]) {
+      const out = optimiseSvg(read('animated'), { animation }).data;
+      assert.equal(/\srole=/.test(out), animation, `animation=${animation}`);
+      assert.equal(/\saria-/.test(out), animation, `animation=${animation}`);
     }
   });
 
@@ -1401,12 +1404,12 @@ describe('the svg stage on its own', () => {
     const byHand = src.slice(0, at) + src.slice(end + 1);
     assert.ok(!byHand.includes('@keyframes'), 'the hand strip missed something');
 
-    assert.equal(optimiseSvg(src, { icon: true }).data, optimiseSvg(byHand, { icon: true }).data);
+    assert.equal(optimiseSvg(src, { animation: false }).data, optimiseSvg(byHand, { animation: false }).data);
   });
 
   it('is deterministic', () => {
     const src = read('mask');
-    assert.equal(optimiseSvg(src, { icon: true }).data, optimiseSvg(src, { icon: true }).data);
+    assert.equal(optimiseSvg(src, { animation: false }).data, optimiseSvg(src, { animation: false }).data);
   });
 });
 
@@ -1558,14 +1561,8 @@ describe('the astro integration', () => {
       [{ sizes: [] }, /sizes is empty/],
       [{ effort: 'slow' }, /effort must be 'fast', 'default' or 'max', got 'slow'/],
       [{ padding: 46 }, /padding must be 'auto' or a percentage 0-45/],
-      [
-        { zopfli: true },
-        /unknown option 'zopfli'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
-      ],
-      [
-        { mode: 'fast' },
-        /unknown option 'mode'.*zopfli and mode were replaced by effort \('fast', 'default' or 'max'\)/,
-      ],
+      [{ zopfli: true }, /unknown option 'zopfli'; the options are [^.]*$/],
+      [{ mode: 'fast' }, /unknown option 'mode'; the options are [^.]*$/],
       [{ animation: 'no' }, /animation must be true or false/],
       [{ manifest: [] }, /manifest must be true, false or an object/],
       [{ vars: { 'bad name': 'red' } }, /vars name must be a CSS custom property/],

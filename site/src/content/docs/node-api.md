@@ -89,12 +89,11 @@ Use `build()` or `buildFiles()` for a complete favicon set. These helpers are al
 
 | Export | Contract |
 |---|---|
-| `optimiseSvg(source, options?)` | Synchronous SVG optimisation; returns `{ data, stripped, animated }`. Options include `vars`, `name`, `precision` (default `1`), `icon` (default `false`), `reference` and `onWarn`. `icon: true` strips motion and accessibility. `reference: true` preserves geometry, validates the viewport and reports text and image dependencies. |
+| `optimiseSvg(source, options?)` | Synchronous SVG optimisation; returns `{ data, animated }`. Options are `animation` (default `true`), `vars` and `name`. `animation: false` is the static pass `--no-animation` runs: it strips motion and accessibility. |
 | `loadEngine()` | Loads and caches the native engine on first use. Returns a promise for `render`, `renderRgba`, `probe`, `encode`, `decode`, `search` and `finish`. Rendering needs a square SVG with a valid viewBox; encoding, decoding and finishing take PNG bytes. `search(raw, reference, { effort, pinned?, seed?, onProbe? })` is the build's per-raster search for the smallest encode that passes the accuracy bar, against a decoded `reference` (`null` only with effort `fast` or a pinned setting). Each method is asynchronous. |
 | `engineVersions()` | Returns the image, Zopfli build and SVGO identities without loading the rendering or SVG optimiser modules. |
 | `loadConfigFile(dir?)` | Imports the first config in `dir` (default: the working directory). Returns `{ config, file, ignored }`; filenames are basenames, and `file` is `null` when there is no config. Checks object shape and known keys only. Field values stay `unknown` in TypeScript until narrowed. |
 | `CONFIG_FILES` | Config discovery order: `.js`, `.mjs`, `.ts`. Treat this shared array as read-only. |
-| `icoWrap`, `maskableFit`, `nestForMask`, `placeInSafeZone`, `linkTags` | The same functions `favseed/core` exposes, described below. |
 | `cli(argv)` | Runs CLI parsing and output. Resolves to an exit code on success; errors may terminate the process. Use the build APIs inside an application. |
 
 `optimiseSvg()` performs one configured optimisation. It does not run the full build's measured SVG precision selection, raster encoding or output publishing; use the build APIs for those guarantees.
@@ -106,7 +105,7 @@ import { optimiseSvg } from 'favseed'
 
 const { data, animated } = optimiseSvg(source, {
   vars: { brand: '#123456' },
-  precision: 3,
+  animation: false,
 })
 ```
 
@@ -130,6 +129,6 @@ const { data, animated } = optimiseSvg(source, {
 
 The low-level link and manifest helpers concatenate `base` as supplied, so include a trailing slash, such as `/blog/`. Full builds normalise `base` for you. The low-level helpers do not apply the full build-option validation.
 
-Core also exports `ICO_SIZE`, `APPLE_SIZE`, `DEFAULT_QUALITY`, `DEFAULT_COLORS`, `DEFAULT_SIZES`, `DEFAULT_BG`, `DEFAULT_EFFORT`, `EFFORT_ITERATIONS`, `ACCURACY_PCT`, `EDGE_GATE`, `SEARCH_QUALITIES`, `SEARCH_COLORS`, `MASK_SAFE_RADIUS` and `SNAP_WINDOW`. Treat `DEFAULT_SIZES` as read-only. The current values describe the engine, and output policy can change in a release that allows byte changes. Import through `favseed/core`; other `lib/` paths are package internals.
+Core also exports `ICO_SIZE`, `APPLE_SIZE`, `DEFAULT_QUALITY`, `DEFAULT_COLORS`, `DEFAULT_SIZES`, `DEFAULT_BG`, `DEFAULT_EFFORT`, `EFFORT_ITERATIONS`, `ACCURACY_PCT`, `EDGE_GATE`, `SEARCH_QUALITIES`, `SEARCH_COLORS` and `MASK_SAFE_RADIUS`. Treat `DEFAULT_SIZES` as read-only. The current values describe the engine, and output policy can change in a release that allows byte changes. Import through `favseed/core`; other `lib/` paths are package internals.
 
 Full builds normalise variable names in objects and Maps. When you call `optimiseSvg()` directly, pass an object, or normalise a Map with `normaliseVars()` first: that helper's Map path expects keys such as `--brand` and uses them as supplied.

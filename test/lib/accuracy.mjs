@@ -14,7 +14,8 @@
 // through the large sizes or fail every small one.
 
 import { readFileSync } from 'node:fs';
-import { loadEngine, placeInSafeZone } from '../../bin/favseed.mjs';
+import { loadEngine } from '../../bin/favseed.mjs';
+import { placeInSafeZone } from '../../lib/core.mjs';
 import { decode } from './png.mjs';
 import { resolveVars } from './resolve.mjs';
 

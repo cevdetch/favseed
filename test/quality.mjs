@@ -64,7 +64,7 @@ describe('lib/quality: a prepared reference scores exactly as a raw one', () => 
   for (const bg of ['#000000', null]) {
     it(`gradient at 192 px, ${bg ? 'on a ground' : 'transparent'}`, async () => {
       const engine = await loadEngine();
-      const svg = optimiseSvg(readFileSync('test/fixtures/gradient.svg', 'utf8'), { icon: true }).data;
+      const svg = optimiseSvg(readFileSync('test/fixtures/gradient.svg', 'utf8'), { animation: false }).data;
       const raw = await engine.render(svg, 192, bg);
       const ref = await engine.renderRgba(svg, 192, bg);
       const prepared = prepareReference(ref);

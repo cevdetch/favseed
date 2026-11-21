@@ -14,30 +14,23 @@ export const DEFAULT_BG: string;
 export const EFFORT_ITERATIONS: Readonly<Record<Effort, number>>;
 export const DEFAULT_EFFORT: Effort;
 export const MASK_SAFE_RADIUS: number;
-export const SNAP_WINDOW: number;
 export const ACCURACY_PCT: number;
 export const EDGE_GATE: number;
 export const SEARCH_QUALITIES: number[];
 export const SEARCH_COLORS: number[];
 
 export interface SvgOptions {
-  /** Explicit static mode: strips motion and accessibility. Default false. */
-  icon?: boolean;
+  /** `false` is the static pass: strips motion and accessibility, as `--no-animation` does. Default true. */
+  animation?: boolean;
   /** Objects are normalized; Maps must already have --prefixed keys. Use normaliseVars. */
   vars?: SvgVariables;
   /** Filename used in errors. Default input.svg. */
   name?: string;
-  /** Numeric precision for this pass. Default 1; no measured accuracy selection. */
-  precision?: number;
-  /** Preserve source geometry and validate its viewport; used for reference renders. */
-  reference?: boolean;
-  /** Dependency warnings from reference preparation. */
-  onWarn?: (message: string) => void;
 }
 
 export interface SvgResult {
   data: string;
-  stripped: number;
+  /** Whether the output keeps an animation. */
   animated: boolean;
 }
 
