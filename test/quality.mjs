@@ -7,7 +7,8 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildFiles } from '../bin/favseed.mjs';
+import { readFileSync } from 'node:fs';
+import { buildFiles, loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { ACCURACY_PCT, EDGE_GATE, SEARCH_COLORS, SEARCH_QUALITIES } from '../lib/core.mjs';
 import { edgeError, passesBar, pctOff, prepareReference } from '../lib/quality.mjs';
 import { edgeError as edgeErrorBench } from '../bench/lib/metrics.mjs';
@@ -52,6 +53,27 @@ describe('lib/quality: pinned to the independent implementations', () => {
         passesBar(candidateRgba, refRgba),
         `${name}: passesBar disagrees between prepared and raw`,
       );
+    });
+  }
+});
+
+describe('lib/quality: a prepared reference scores exactly as a raw one', () => {
+  // passesBar scores a prepared reference in one pass; every probe of every search goes through
+  // it, so its numbers must be bit for bit those of pctOff and edgeError on the raw reference,
+  // failing candidates and transparent pixels included.
+  for (const bg of ['#000000', null]) {
+    it(`gradient at 192 px, ${bg ? 'on a ground' : 'transparent'}`, async () => {
+      const engine = await loadEngine();
+      const svg = optimiseSvg(readFileSync('test/fixtures/gradient.svg', 'utf8'), { icon: true }).data;
+      const raw = await engine.render(svg, 192, bg);
+      const ref = await engine.renderRgba(svg, 192, bg);
+      const prepared = prepareReference(ref);
+      for (const setting of [{ colors: 2 }, { colors: 16 }, { quality: 40 }, { quality: 99 }]) {
+        const candidate = await engine.decode(await engine.encode(raw, setting));
+        const pct = pctOff(candidate, ref),
+          edge = edgeError(candidate, ref);
+        assert.deepEqual(passesBar(candidate, prepared), { pass: passesBar(candidate, ref).pass, pct, edge });
+      }
     });
   }
 });

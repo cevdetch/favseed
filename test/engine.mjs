@@ -325,6 +325,37 @@ describe('encode', () => {
     };
     assert.deepEqual(await createEngine({ image }).encode(Uint8Array.of(0), { colors: 8 }), Uint8Array.of(1, 2));
   });
+  it('makes the lossless candidate once per render, whatever the setting', async () => {
+    let calls = 0;
+    const image = {
+      pngQuantize: async () => Uint8Array.of(1, 1, 1),
+      losslessCompressPng: async () => {
+        calls++;
+        return Uint8Array.of(2, 2);
+      },
+    };
+    const engine = createEngine({ image });
+    const raw = Uint8Array.of(0);
+    await Promise.all([engine.encode(raw, { colors: 8 }), engine.encode(raw, { colors: 256, quality: 80 })]);
+    await engine.encode(raw, { colors: 4 });
+    assert.equal(calls, 1);
+    await engine.encode(Uint8Array.of(0), { colors: 8 });
+    assert.equal(calls, 2, 'a different render is encoded afresh');
+  });
+  it('retries a lossless encode that failed', async () => {
+    let calls = 0;
+    const image = {
+      pngQuantize: async () => Uint8Array.of(1, 1, 1),
+      losslessCompressPng: async () => {
+        if (++calls === 1) throw new Error('transient');
+        return Uint8Array.of(2, 2);
+      },
+    };
+    const engine = createEngine({ image });
+    const raw = Uint8Array.of(0);
+    await assert.rejects(engine.encode(raw, { colors: 8 }), /transient/);
+    assert.deepEqual(await engine.encode(raw, { colors: 8 }), Uint8Array.of(2, 2));
+  });
   it('keeps the smaller encode, and the quantised one on a tie', async () => {
     const q = Uint8Array.of(1, 1, 1),
       smaller = Uint8Array.of(2, 2),
