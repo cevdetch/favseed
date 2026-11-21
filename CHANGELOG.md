@@ -9,8 +9,9 @@ pipeline change) are minor at minimum, never patch.** Downstream users diff thes
 
 ## [Unreleased]
 
-Nothing has been published yet. This section describes what the first release, 1.0.0, will
-contain.
+## [1.0.0] - 2026-11-21
+
+The first release.
 
 ### Added
 
