@@ -1,0 +1,46 @@
+name: Engine rebuild
+
+# Proves the website's committed engines come from their recorded inputs: rebuilds both from the
+# pinned archives and toolchain (bench/wasm-engine/build.mjs) and checks every artifact against
+# site/vendor/image/build.json, writing nothing. The site build's hash guard catches accidental
+# drift in the committed files; only a rebuild shows they were built from what build.json says.
+# Run by hand, around an engine upgrade or when that is in doubt: it takes minutes and changes
+# nothing, so it does not run on every push.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # The native @napi-rs/image the parity gate compares both engines against.
+      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+        with:
+          runtime: node@24
+          require-lockfile: true
+
+      # build.mjs refuses any other rustc, so the toolchain is pinned to the reviewed release.
+      - name: Rust 1.99.0 with both WASI targets
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.99.0 --profile minimal --target wasm32-wasip1 --target wasm32-wasip1-threads
+          rustup default 1.99.0
+
+      # The URLs bench/wasm-engine/README.md lists; build.mjs checks both against their pinned hashes.
+      - name: The reviewed source and SDK archives
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/image-source.tar.gz \
+            "https://codeload.github.com/Brooooooklyn/Image/tar.gz/a57319b7506405d991696459830f1a0e60cc88bf"
+          curl -fsSL -o /tmp/wasi-sdk.tar.gz \
+            "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-33.0-x86_64-linux.tar.gz"
+
+      - run: node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz

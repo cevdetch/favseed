@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createEngine } from '../../lib/engine.mjs';
+import { createEngine, quantOptions } from '../../lib/engine.mjs';
 
 const require = createRequire(new URL('../../package.json', import.meta.url));
 
@@ -42,17 +42,6 @@ const attempt = async (fn) => {
   }
 };
 const digestOf = (result) => (result.ok ? sha256(result.bytes) : `error:${result.message}`);
-
-// Same derivation encode() uses internally (lib/engine.mjs): quality below 100 drops colours,
-// since quantOptions.maxQuality already pins the palette size there. Called directly here so a
-// regression in the quantiser itself is caught even on a setting where encode()'s lossless side
-// happens to win and would otherwise hide it.
-const quantOptionsFor = ({ quality, colors }) => ({
-  ...(quality === 100 ? { colors } : {}),
-  speed: 1,
-  minQuality: 0,
-  maxQuality: quality,
-});
 
 export const listFixtures = () =>
   readdirSync(FIXTURES)
@@ -114,6 +103,7 @@ const computeCase = async (engine, image, svgText, px, background) => {
       outputs.push([`encode-${label}`, { ok: false, message: 'no render' }]);
       outputs.push([`decode-encode-${label}`, { ok: false, message: 'no render' }]);
       outputs.push([`pngQuantize-${label}`, { ok: false, message: 'no render' }]);
+      outputs.push([`finish-sub-${label}`, { ok: false, message: 'no render' }]);
       continue;
     }
     const encoded = await attempt(() => engine.encode(render.bytes, setting));
@@ -124,9 +114,20 @@ const computeCase = async (engine, image, svgText, px, background) => {
         ? await attempt(async () => (await engine.decode(encoded.bytes)).rgba)
         : { ok: false, message: 'no encode' },
     ]);
+    // Called directly, with encode()'s own options, so a regression in the quantiser is caught
+    // even on a setting where encode()'s lossless side wins and would otherwise hide it.
+    const quantised = await attempt(
+      async () => new Uint8Array(await image.pngQuantize(render.bytes, quantOptions(setting))),
+    );
+    outputs.push([`pngQuantize-${label}`, quantised]);
+    // finish()'s own call: a 256-colour palette PNG re-encoded with the Sub filter, metadata kept.
     outputs.push([
-      `pngQuantize-${label}`,
-      await attempt(async () => new Uint8Array(await image.pngQuantize(render.bytes, quantOptionsFor(setting)))),
+      `finish-sub-${label}`,
+      quantised.ok
+        ? await attempt(
+            async () => new Uint8Array(await image.losslessCompressPng(quantised.bytes, { filter: [1], strip: false })),
+          )
+        : { ok: false, message: 'no quantise' },
     ]);
   }
   return outputs;
@@ -136,7 +137,7 @@ const computeCase = async (engine, image, svgText, px, background) => {
  * Runs lib/engine.mjs's calls over `fixtures` (default: every SVG in test/fixtures/) at
  * `sizes` (default: the set the icons, the apple touch icon and the ICO payload actually need),
  * each with no ground and on `#000000`, once per raw image module, and hashes every output.
- * `zopfli`/`inflate` are never passed to createEngine: nothing compared here calls finish().
+ * `zopfli`/`inflate` are never passed to createEngine: finish()'s one image call is made directly.
  * A fixture `isHostDependent` flags is skipped on both sides and counted in `hostDependent`,
  * never compared. A fixture `native` cannot even render is skipped on both sides too and
  * counted in `skipped`, rather than letting two unrelated error messages disagree and read as
@@ -202,7 +203,7 @@ async function main(argv) {
     const wasm = loadImage(loaderPath);
     const { total, mismatches, skipped, hostDependent } = await compareEngines(native, wasm, {});
     const notes = [];
-    if (skipped) notes.push(`${skipped} fixture(s) skipped`);
+    if (skipped) notes.push(`${skipped} fixture${skipped === 1 ? '' : 's'} skipped`);
     if (hostDependent) notes.push(`host-dependent, skipped: ${hostDependent}`);
     process.stdout.write(
       `${loaderPath}: ${total - mismatches.length} of ${total} identical` +
