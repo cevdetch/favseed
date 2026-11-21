@@ -140,8 +140,9 @@ for the size and accuracy tradeoff; other file bytes are unchanged.
 
 ## Loading and hosting requirements
 
-The image WASM asset is 10,322,976 bytes before transfer compression; production serves it
-with Brotli (3,193,943 transferred bytes in the measured response). The loader starts with
+The threaded image WASM is 5,722,390 bytes before transfer compression, and the single-thread
+build 5,653,958; production serves them with Brotli (1,896,615 and 1,866,184 transferred bytes,
+measured on 2026-11-21). The loader starts with
 64 MiB of growable shared memory. It preloads four async workers plus two to four spare workers,
 and retains upstream fallback spawning. Loading starts on the first pointer, focus or drag
 that reaches the drop zone, or when an SVG is chosen, never on page load; at Default and

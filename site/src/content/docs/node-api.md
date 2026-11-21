@@ -44,6 +44,7 @@ try {
 | `links` | HTML `<link>` block with `base` applied. |
 | `animated` | Whether `icon.svg` preserves animation. |
 | `fit` | Placement measurements for `apple` and `icons[size]`; numbered icons have `null` placement with `bg: null`. |
+| `quality` | Per raster file (`favicon.ico`, `apple-touch-icon.png`, `icon-<size>.png`): the `setting` chosen, `{ quality, colors }`, and its accuracy-bar measurement, `pct`, `edge` and `pass`. The three are `null` when nothing was gated: effort `fast` with no pinned setting. |
 
 ## buildFiles()
 
@@ -66,7 +67,7 @@ for (const { name, bytes } of result.files) {
 console.log(result.links)
 ```
 
-`buildFiles()` returns `files: { name, bytes }[]` plus `links`, `animated` and `fit`. It has no `dir` and no separate byte-count map. It still reads `input` from disk and validates the same options as `build()`, including `out` if you supply it.
+`buildFiles()` returns `files: { name, bytes }[]` plus `links`, `animated`, `fit` and `quality`. It has no `dir` and no separate byte-count map. It still reads `input` from disk and validates the same options as `build()`, including `out` if you supply it.
 
 ## Options and errors
 
@@ -89,7 +90,7 @@ Use `build()` or `buildFiles()` for a complete favicon set. These helpers are al
 | Export | Contract |
 |---|---|
 | `optimiseSvg(source, options?)` | Synchronous SVG optimisation; returns `{ data, stripped, animated }`. Options include `vars`, `name`, `precision` (default `1`), `icon` (default `false`), `reference` and `onWarn`. `icon: true` strips motion and accessibility. `reference: true` preserves geometry, validates the viewport and reports text and image dependencies. |
-| `loadEngine()` | Loads and caches the native engine on first use. Returns a promise for `render`, `renderRgba`, `probe`, `encode` and `finish`. Rendering needs a square SVG with a valid viewBox; encoding and finishing take PNG bytes. Each method is asynchronous. |
+| `loadEngine()` | Loads and caches the native engine on first use. Returns a promise for `render`, `renderRgba`, `probe`, `encode`, `decode`, `search` and `finish`. Rendering needs a square SVG with a valid viewBox; encoding, decoding and finishing take PNG bytes. `search(raw, reference, { effort, pinned?, seed?, onProbe? })` is the build's per-raster search for the smallest encode that passes the accuracy bar, against a decoded `reference` (`null` only with effort `fast` or a pinned setting). Each method is asynchronous. |
 | `engineVersions()` | Returns the image, Zopfli build and SVGO identities without loading the rendering or SVG optimiser modules. |
 | `loadConfigFile(dir?)` | Imports the first config in `dir` (default: the working directory). Returns `{ config, file, ignored }`; filenames are basenames, and `file` is `null` when there is no config. Checks object shape and known keys only. Field values stay `unknown` in TypeScript until narrowed. |
 | `CONFIG_FILES` | Config discovery order: `.js`, `.mjs`, `.ts`. Treat this shared array as read-only. |

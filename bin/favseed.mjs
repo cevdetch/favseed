@@ -404,7 +404,8 @@ Options:
                     Without it, var(--x, fallback) resolves to its fallback, the way a
                     browser resolves an undefined property.
       --no-animation
-                    Explicitly remove motion from icon.svg. Default: preserve it.
+                    Remove motion from icon.svg, and role, aria-*, data-*, class,
+                    <title> and <desc> with it. Default: preserve them.
       --manifest    Also write site.webmanifest with the icon entries.
       --html        Print the <link> tags for the generated set.
   -q, --quiet       Suppress the size summary.
