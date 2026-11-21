@@ -60,7 +60,7 @@ export function maskableFit(image: RgbaImage): { radius: number; fullBleed: bool
 /** Center a box-sized SVG viewport on the given square canvas. */
 export function nestForMask(iconData: string, box: number, canvas: number): string;
 
-/** Bound active image work, retain input order and drain a failed batch before rejecting. */
+/** Bound active image work in a sliding window; retain input order and let running work finish before rejecting. */
 export function mapImages<T, R>(
   items: readonly T[],
   sizeOf: (item: T) => number,

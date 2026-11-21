@@ -122,7 +122,7 @@ const { data, animated } = optimiseSvg(source, {
 | `nestForMask(svg, box, canvas)` | Centres the SVG viewport on a square canvas and returns SVG text. |
 | `placeInSafeZone(svg, render, canvas, padding?)` | Returns a promise for `{ svg, box, scale, snapped, radius, fullBleed, padding }`. The renderer supplies transparent RGBA pixels, synchronously or asynchronously. The canvas size must be positive and even; padding defaults to `'auto'`. Unlike the build's placement metadata, this result has no `canvas` field. |
 | `squareIconSvg(svg)` | Frames a rectangular viewport; returns `{ data, warning }`, with `warning: null` when no warning applies. |
-| `mapImages(items, sizeOf, work, options?)` | Runs image work in bounded batches and returns results in input order. `sizeOf` supplies canvas pixels; `serial: true` runs one at a time. A failed batch drains before the promise rejects. |
+| `mapImages(items, sizeOf, work, options?)` | Runs image work in a bounded sliding window, in the order given, and returns results in input order. `sizeOf` supplies canvas pixels; `serial: true` runs one at a time. After a failure no item starts, and running items finish before the promise rejects. |
 | `linkTags(base?, manifest?)`, `declaresIcon(html)` | Generate the link block, or detect an existing icon link. |
 | `manifestIcons({ sizes, base?, purpose? })`, `manifestJson({ sizes, base?, purpose?, extra? })` | Generate icon entries or manifest text. `extra.icons` is replaced with the generated entries. |
 | `FavseedError` | The same error class as the root export. |
