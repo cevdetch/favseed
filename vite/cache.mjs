@@ -44,22 +44,21 @@ export const cacheIndex = async (slot) => {
     const entries = await readdir(slot, { withFileTypes: true });
     if (!entries.some((entry) => entry.name === 'index.json' && entry.isFile())) return null;
     const { files, hashes } = JSON.parse(await readFile(join(slot, 'index.json'), 'utf8')) ?? {};
+    // An index without a content hash per file cannot show its assets are unchanged: not a slot.
     if (
       !Array.isArray(files) ||
       !files.length ||
       !files.every(generatedAsset) ||
       new Set(files).size !== files.length ||
-      !files.every((name) => entries.some((entry) => entry.name === name && entry.isFile()))
+      !files.every((name) => entries.some((entry) => entry.name === name && entry.isFile())) ||
+      !hashes ||
+      typeof hashes !== 'object' ||
+      Array.isArray(hashes) ||
+      Object.keys(hashes).length !== files.length ||
+      !files.every((name) => Object.hasOwn(hashes, name) && /^[a-f0-9]{64}$/.test(hashes[name]))
     )
       return null;
-    // Old indexes remain readable, but cannot establish that their assets are unchanged.
-    const verifiedIndex =
-      hashes &&
-      typeof hashes === 'object' &&
-      !Array.isArray(hashes) &&
-      Object.keys(hashes).length === files.length &&
-      files.every((name) => Object.hasOwn(hashes, name) && /^[a-f0-9]{64}$/.test(hashes[name]));
-    return { files, hashes, info, managed: Boolean(verifiedIndex) && entries.length === files.length + 1 };
+    return { files, hashes, info, managed: entries.length === files.length + 1 };
   } catch (error) {
     if (error.code === 'ENOENT' || error.code === 'ENOTDIR' || error instanceof SyntaxError) return null;
     throw error;

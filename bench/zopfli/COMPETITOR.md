@@ -170,6 +170,9 @@ node bench/png-quantize-screen.mjs /fresh/palette-results
 node bench/pipeline-concurrency.mjs /fresh/concurrency-results 0
 ```
 
+`bench/pipeline-concurrency.mjs` was removed after decision 34 replaced the batches it
+measured; it is in git history up to commit ca78907.
+
 Compact data: [generator timings](generator.csv), [Vite builds](vite-build.csv),
 [experiment summary](experiments.csv), [palette regression](palette-regression.csv).
 Raw rows, output PNGs, logs, dependency lockfile and validation are kept locally and not

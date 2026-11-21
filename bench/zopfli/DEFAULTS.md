@@ -118,6 +118,9 @@ node bench/bench.mjs colors
 node bench/browser-memory.mjs
 ```
 
+`bench/pipeline-concurrency.mjs` was removed after decision 34 replaced the batches it
+measured; it is in git history up to commit ca78907.
+
 For an existing local browser, the memory harness accepts `FAVSEED_CHROMIUM_PATH`.
 Compact evidence: [before/after](default-before-after.csv), [generators](default-generator.csv),
 [Vite builds](default-vite-build.csv), [scheduling](default-concurrency.csv),

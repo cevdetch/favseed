@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import * as image from '@napi-rs/image';
 import { engineVersions, loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
+import { ICO_SIZE } from '../lib/core.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
 import { decode } from '../test/lib/png.mjs';
 import { reference, score } from '../test/lib/accuracy.mjs';
@@ -57,9 +58,9 @@ for (const sample of samples) {
   const ref = await reference({
     source: fileURLToPath(new URL(`../test/fixtures/${sample.mark}.svg`, import.meta.url)),
     px: sample.px,
-    bg: sample.px === 32 ? null : '#000000',
+    bg: sample.px === ICO_SIZE ? null : '#000000',
     vars: {},
-    fitted: sample.px !== 32,
+    fitted: sample.px !== ICO_SIZE,
   });
   const lossless = Buffer.from(await image.losslessCompressPng(sample.raw)),
     rawPixels = decode(sample.raw);
@@ -101,7 +102,7 @@ for (const sample of samples) {
 const summaries = choices.map(({ name, options }) => {
   const selected = rows.filter((r) => r.name === name),
     good = selected.filter((r) => !r.error);
-  const nonIco = good.filter((r) => r.px !== 32),
+  const nonIco = good.filter((r) => r.px !== ICO_SIZE),
     nonGradient = nonIco.filter((r) => r.mark !== 'gradient');
   return {
     name,

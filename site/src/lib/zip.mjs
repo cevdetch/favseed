@@ -8,21 +8,7 @@
 // Zip64 is not implemented. An icon set is kilobytes; if one ever exceeds 4 GB the throw below
 // is the correct outcome.
 
-const crcTable = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c >>> 0;
-  }
-  return t;
-})();
-
-const crc32 = (bytes) => {
-  let c = 0xffffffff;
-  for (let i = 0; i < bytes.length; i++) c = crcTable[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
+import { crc32 } from '../../../lib/engine.mjs';
 
 /**
  * `files` is [{ name, bytes }]. Returns a Uint8Array.

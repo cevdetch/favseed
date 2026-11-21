@@ -30,7 +30,7 @@ const snapshot = (dir) =>
         .map((name) => [name, readFileSync(join(dir, name))])
     : null;
 const key = (n) => String(n).padStart(64, '0');
-/** A slot as releases before content hashes wrote it: readable, never pruned. */
+/** A slot whose index has no content hashes: not a slot the cache reads or prunes. */
 const writeLegacySlot = async (cache, name, files) => {
   await writeSlot(cache, name, files);
   writeFileSync(join(cache, name, 'index.json'), JSON.stringify({ files: files.map((f) => f.name) }));
@@ -334,11 +334,14 @@ describe('Astro bounded cache', () => {
       JSON.stringify({ files: [join(root, 'outside.txt')] }),
       JSON.stringify({ files: ['icon.svg', 'icon.svg'] }),
       JSON.stringify({ files: ['icon-48.png'] }),
+      JSON.stringify({ files: ['icon.svg'] }),
+      JSON.stringify({ files: ['icon.svg'], hashes: { 'icon.svg': 'not a hash' } }),
     ]) {
       writeFileSync(join(slot, 'index.json'), text);
       assert.equal(await readCachedSet(slot), null, text);
     }
-    writeFileSync(join(slot, 'index.json'), JSON.stringify({ files: ['icon.svg'] }));
+    const hash = createHash('sha256').update('<svg/>').digest('hex');
+    writeFileSync(join(slot, 'index.json'), JSON.stringify({ files: ['icon.svg'], hashes: { 'icon.svg': hash } }));
     const set = await readCachedSet(slot);
     assert.equal(set[0].name, 'icon.svg');
     assert.equal(Buffer.from(set[0].bytes).toString(), '<svg/>');
