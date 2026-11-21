@@ -79,7 +79,8 @@ import {
 import { checkConfig, defineConfig, normaliseOptions, resolveOptions } from '../lib/config.mjs';
 import { createEngine } from '../lib/engine.mjs';
 import { buildSet, describeSetting } from '../lib/pipeline.mjs';
-import { createZopfli, ZOPFLI_VERSION } from '../lib/zopfli.mjs';
+import { ZOPFLI_VERSION } from '../lib/zopfli.mjs';
+import { createZopfliPool } from './zopfli-pool.mjs';
 
 // Re-exported: the package root (`.`) is this file's API, and bench/ and the tests import from
 // here.
@@ -103,8 +104,7 @@ export const loadEngine = () =>
   (enginePromise ??= (async () => {
     try {
       const image = await import('@napi-rs/image');
-      const zopfli = createZopfli({ loadWasm: () => readFileSync(new URL('../lib/zopfli.wasm', import.meta.url)) });
-      return createEngine({ image, zopfli, inflate: (bytes) => inflateSync(bytes) });
+      return createEngine({ image, zopfli: createZopfliPool(), inflate: (bytes) => inflateSync(bytes) });
     } catch (e) {
       enginePromise = null;
       throw new FavseedError(

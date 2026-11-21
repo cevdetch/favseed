@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { loadEngine, optimiseSvg } from '../bin/favseed.mjs';
 import { normaliseOptions } from '../lib/config.mjs';
 import { buildSet } from '../lib/pipeline.mjs';
-import { EFFORT_ITERATIONS, maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
+import { EFFORT_ITERATIONS, mapImages, maskableFit, MASK_SAFE_RADIUS } from '../lib/core.mjs';
 import { decode, header } from './lib/png.mjs';
 import { reference as suiteReference, score } from './lib/accuracy.mjs';
 import { passesBar } from '../lib/quality.mjs';
@@ -299,19 +299,27 @@ describe('buildSet', () => {
   });
 
   it("counts a gated job's reference memory against the batch budget", async () => {
-    const peakFor = async (extra) => {
-      let active = 0,
-        peak = 0;
+    // What mapImages charges a job: its render canvas, plus, when gated, 46 B/px of reference.
+    const cost = (px, gated) => px * Math.max(1000, px) * 4 + (gated ? px * px * 46 : 0);
+    const run = async (extra, gated) => {
+      const active = [];
+      let peak = 0,
+        peakBytes = 0;
       const counted = {
         ...engine,
         render: async (...args) => {
-          peak = Math.max(peak, ++active);
+          active.push(args[1]);
+          peak = Math.max(peak, active.length);
+          peakBytes = Math.max(
+            peakBytes,
+            active.reduce((n, px) => n + cost(px, gated), 0),
+          );
           await new Promise((resolve) => setTimeout(resolve, 5));
           return engine.render(...args);
         },
-        finish: async (...args) => {
-          const out = await engine.finish(...args);
-          active--;
+        finish: async (png, options) => {
+          const out = await engine.finish(png, options);
+          active.splice(active.indexOf(new DataView(png.buffer, png.byteOffset).getUint32(16)), 1);
           return out;
         },
       };
@@ -319,12 +327,15 @@ describe('buildSet', () => {
         engine: counted,
         optimiseSvg,
       });
-      return peak;
+      return { peak, peakBytes };
     };
-    // Ungated, the four jobs' canvases fit one batch. Gated, the 512 px job's 46 B/px of
-    // reference (12 MB) leaves room for one sibling in each batch of the 16 MB budget.
-    assert.equal(await peakFor({}), 4);
-    assert.equal(await peakFor({ quality: 80 }), 2);
+    // Ungated, the four jobs' canvases fit the 16 MiB budget at once. Gated, the 512 px job's
+    // 46 B/px of reference (12 MB, 14.1 MB with its canvas) means the four never run together,
+    // and what does run together never exceeds the budget, whichever job finishes first.
+    assert.equal((await run({}, false)).peak, 4);
+    const gated = await run({ quality: 80 }, true);
+    assert.ok(gated.peak < 4, `peak ${gated.peak}`);
+    assert.ok(gated.peakBytes <= 16 * 1024 * 1024, `${gated.peakBytes} B in flight`);
   });
 
   it('drains sibling raster jobs before reporting a failed batch', async () => {
@@ -697,5 +708,121 @@ describe('the fast set first', () => {
       events.filter((e) => e.phase === 'raster').map((e) => e.completed),
       [0, 1, 2, 3],
     );
+  });
+});
+
+describe('mapImages', () => {
+  const later = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  it('starts items in the order given and returns results in input order', async () => {
+    const started = [];
+    const results = await mapImages(
+      [16, 512, 180, 48],
+      (px) => px,
+      async (px) => {
+        started.push(px);
+        await later(px === 512 ? 20 : 1);
+        return px * 2;
+      },
+    );
+    assert.deepEqual(started, [16, 512, 180, 48]);
+    assert.deepEqual(results, [32, 1024, 360, 96]);
+  });
+  it('starts the next job as soon as one finishes, not when a whole batch does', async () => {
+    const started = [];
+    let slowDone = false;
+    // Five jobs, four at a time: the fifth must start while the slow one still runs.
+    await mapImages(
+      [512, 16, 16, 16, 16],
+      (px) => px,
+      async (px) => {
+        started.push({ px, slowDone });
+        if (px === 512) {
+          await later(30);
+          slowDone = true;
+        } else await later(1);
+      },
+    );
+    assert.equal(started.length, 5);
+    assert.equal(started[4].slowDone, false);
+  });
+  it('runs one job at a time when serial', async () => {
+    let running = 0,
+      most = 0;
+    await mapImages(
+      [16, 32, 48],
+      (px) => px,
+      async () => {
+        most = Math.max(most, ++running);
+        await later(1);
+        running--;
+      },
+      { serial: true },
+    );
+    assert.equal(most, 1);
+  });
+  it('keeps the working-pixel budget: two 1024 px canvases never run together', async () => {
+    let running = 0,
+      most = 0;
+    // 1024 px costs 4 MiB of canvas; with 10 MiB of extra bytes each, two exceed 16 MiB.
+    await mapImages(
+      [1024, 1024],
+      (px) => px,
+      async () => {
+        most = Math.max(most, ++running);
+        await later(1);
+        running--;
+      },
+      { extraBytes: () => 10 * 1024 * 1024 },
+    );
+    assert.equal(most, 1);
+  });
+  it('stops starting jobs after a failure, lets running ones finish, then rejects with the first', async () => {
+    const failure = new Error('first');
+    const started = [];
+    let drained = false;
+    await assert.rejects(
+      mapImages(
+        [512, 16, 16, 16, 16, 16],
+        (px) => px,
+        async (px) => {
+          started.push(px);
+          if (px === 512) {
+            await later(20);
+            drained = true;
+            return;
+          }
+          throw failure;
+        },
+      ),
+      (error) => error === failure,
+    );
+    assert.ok(drained, 'the running job finished before the rejection');
+    assert.equal(started.length, 4, 'no job starts once one has failed');
+  });
+});
+
+describe('raster job order', () => {
+  // Renders in the order the raster pass starts its jobs; placement renders happen earlier, at
+  // other sizes, and the ICO payload's render of the plain mark is a cache hit of placement's.
+  const renderOrder = async (iterations) => {
+    const order = [];
+    const counted = {
+      ...engine,
+      render: async (svg, px, bg) => {
+        order.push(px);
+        return engine.render(svg, px, bg);
+      },
+    };
+    await buildSet(read('tiles'), opts({ sizes: [192, 512], padding: 20, iterations }), {
+      engine: counted,
+      optimiseSvg,
+    });
+    return order;
+  };
+  it('starts the largest job first when the pass finishes with Zopfli', async () => {
+    assert.equal((await renderOrder(1))[0], 512);
+  });
+  it("keeps the set's order when there is nothing to finish", async () => {
+    assert.deepEqual(await renderOrder(0), [180, 192, 512, 48]);
   });
 });

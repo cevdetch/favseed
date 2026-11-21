@@ -596,16 +596,13 @@ and under 0.2 s for the two small sizes. A parallel build ends when its largest 
 share. Rejected: finishing in turn is not slower by enough to justify a worker pool, its startup
 cost and the code that keeps its output order.
 
-**What runs concurrently instead is the native work.** Jobs go through `mapImages`
-(`lib/core.mjs`) in batches of up to four, within a 16 MiB working-pixel budget that counts the
-renderer's 1000 px floor, and one at a time when any job is above 512 px. In Node, rendering and
-both encodes are asynchronous native tasks, so they overlap; Zopfli is synchronous WASM on the
-calling thread, so the finishes still run one after another. A failed batch drains before
-the build rejects, and results keep their input order. Over four fixtures with Zopfli off,
-bounded batches took 0.901 s against 1.151 s serial, with identical results
-([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)). `--effort max` pays for the
-512 px finish at 120 iterations; the default effort's 15 and `--effort fast`'s none are the
-answer where that wait matters (decision 29 has the build times).
+**What ran concurrently instead was the native work**, in bounded batches through `mapImages`
+(`lib/core.mjs`). Over four fixtures with Zopfli off, bounded batches took 0.901 s against
+1.151 s serial, with identical results ([bench/zopfli/DEFAULTS.md](../bench/zopfli/DEFAULTS.md)).
+
+This measurement predates the search (decision 29), which gives the calling thread work of its
+own while a file is finished. Decision 34 measured again with it in place: in Node, two Zopfli
+worker threads and a largest-first schedule now replace the in-turn finish and the batches.
 
 ### 29. Each raster is the smallest encode that passes the bar and the edge gate
 
@@ -966,6 +963,46 @@ page loads engine chunks lazily and a deploy removes the old ones. A second tab 
 worker change under it without having asked is on old page code: its next build reloads it once
 and resumes, or says the engine may be outdated when it cannot. `RELEASING.md` has the kill switch.
 
+### 34. In Node, Zopfli runs in two worker threads and the largest job starts first
+
+Decisions 27 and 28 measured Zopfli workers on finishing alone, with no search: the calling
+thread had nothing else to do while a file was finished, so a worker only moved the wait. The
+search (decision 29) changed that. Zopfli is synchronous WASM, so an in-thread finish blocks the
+event loop, and no other job's search can start an encode until it ends: in one traced
+`general.svg` build the 180 px search stretched from about 170 ms to 478 ms while the 192 px
+file was finished, and the 512 px job did not start until 1278 ms of a 3280 ms build, behind a
+batch of smaller ones.
+
+So the Node host gives the engine a pool of two worker threads (`bin/zopfli-pool.mjs`) with the
+interface of `lib/zopfli.mjs`, and `mapImages` became a sliding window that gives each freed
+slot to the next job at once, under the same four-job limit and 16 MiB working-pixel budget. A
+pass that finishes with Zopfli starts its largest job first; without that order the same
+workers were 10 to 39 % slower, because the 512 px finish began last. A pass with nothing to
+finish keeps the set's order: on the website's single-threaded engine, largest first made the
+quick set 50 to 75 ms later and saved nothing. Results keep their input order and the bytes are
+identical by construction. Workers start on the first finish, so `--effort fast` starts none;
+an idle worker never keeps the process alive.
+
+**Measured**, CLI wall clock, median of 5 interleaved runs per cell on an 8-core/16-thread
+Ryzen 7 7840U, with the lossless candidate already made once per render:
+
+| fixture | default, before | default, after | max, before | max, after |
+|---|---|---|---|---|
+| general | 1.89 s | 1.44 s (−24.1 %) | 7.15 s | 4.82 s (−32.6 %) |
+| gradient | 3.66 s | 2.52 s (−31.1 %) | 13.89 s | 10.50 s (−24.4 %) |
+| heavy | 2.04 s | 1.55 s (−23.9 %) | 6.88 s | 4.70 s (−31.7 %) |
+| tiles | 0.99 s | 0.83 s (−15.8 %) | 4.40 s | 3.49 s (−20.7 %) |
+
+Every set hashed identically to the build before. `--effort fast` was unchanged (1.24 s on
+`gradient.svg`, both arms). A second worker added 6 to 9 points over one in the investigation
+that preceded this; more would wait on the 512 px finish, the floor decision 27 describes.
+
+The website keeps Zopfli inside its engine worker, in the calling thread, for now, and runs the
+new schedule. `node bench/browser.mjs --reps 3`, unthrottled, choosing a file to the final set:
+on the threaded engine `general.svg` went from 2494 to 2252 ms at the default effort (−9.7 %)
+and `gradient.svg` from 5356 to 4974 ms (−7.1 %), and both fell 5 to 7 % at max; on the
+single-threaded engine every cell, quick set included, stayed within 1.5 %.
+
 ---
 
 ## History
@@ -1097,4 +1134,5 @@ encode work that batches overlap. For an opt-in Zopfli build, `mode: 'fast'` cut
 wait more than any schedule can.
 
 Decision 29 has since put Zopfli back into the default build, at 15 iterations, so the second
-paragraph's premise no longer holds; the lane design has not been measured again since.
+paragraph's premise no longer holds. Decision 34 measured Zopfli workers again, with the search
+in place, and ships two of them in Node.

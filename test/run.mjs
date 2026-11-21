@@ -1151,6 +1151,8 @@ describe('the published tarball', () => {
         'bin/favseed.mjs',
         'bin/index.d.mts',
         'bin/index.mjs',
+        'bin/zopfli-pool.mjs',
+        'bin/zopfli-worker.mjs',
         'lib/WASI-LICENSE',
         'lib/ZOPFLI-LICENSE',
         'lib/config.mjs',
