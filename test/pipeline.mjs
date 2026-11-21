@@ -299,19 +299,27 @@ describe('buildSet', () => {
   });
 
   it("counts a gated job's reference memory against the batch budget", async () => {
-    const peakFor = async (extra) => {
-      let active = 0,
-        peak = 0;
+    // What mapImages charges a job: its render canvas, plus, when gated, 46 B/px of reference.
+    const cost = (px, gated) => px * Math.max(1000, px) * 4 + (gated ? px * px * 46 : 0);
+    const run = async (extra, gated) => {
+      const active = [];
+      let peak = 0,
+        peakBytes = 0;
       const counted = {
         ...engine,
         render: async (...args) => {
-          peak = Math.max(peak, ++active);
+          active.push(args[1]);
+          peak = Math.max(peak, active.length);
+          peakBytes = Math.max(
+            peakBytes,
+            active.reduce((n, px) => n + cost(px, gated), 0),
+          );
           await new Promise((resolve) => setTimeout(resolve, 5));
           return engine.render(...args);
         },
-        finish: async (...args) => {
-          const out = await engine.finish(...args);
-          active--;
+        finish: async (png, options) => {
+          const out = await engine.finish(png, options);
+          active.splice(active.indexOf(new DataView(png.buffer, png.byteOffset).getUint32(16)), 1);
           return out;
         },
       };
@@ -319,12 +327,15 @@ describe('buildSet', () => {
         engine: counted,
         optimiseSvg,
       });
-      return peak;
+      return { peak, peakBytes };
     };
     // Ungated, the four jobs' canvases fit the 16 MiB budget at once. Gated, the 512 px job's
-    // 46 B/px of reference (12 MB, 14.1 MB with its canvas) leaves room for one sibling at a time.
-    assert.equal(await peakFor({}), 4);
-    assert.equal(await peakFor({ quality: 80 }), 2);
+    // 46 B/px of reference (12 MB, 14.1 MB with its canvas) means the four never run together,
+    // and what does run together never exceeds the budget, whichever job finishes first.
+    assert.equal((await run({}, false)).peak, 4);
+    const gated = await run({ quality: 80 }, true);
+    assert.ok(gated.peak < 4, `peak ${gated.peak}`);
+    assert.ok(gated.peakBytes <= 16 * 1024 * 1024, `${gated.peakBytes} B in flight`);
   });
 
   it('drains sibling raster jobs before reporting a failed batch', async () => {
