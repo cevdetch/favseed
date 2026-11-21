@@ -963,7 +963,7 @@ page loads engine chunks lazily and a deploy removes the old ones. A second tab 
 worker change under it without having asked is on old page code: its next build reloads it once
 and resumes, or says the engine may be outdated when it cannot. `RELEASING.md` has the kill switch.
 
-### 34. In Node, Zopfli runs in two worker threads and the largest job starts first
+### 34. Zopfli runs in two workers of its own, and the largest job starts first
 
 Decisions 27 and 28 measured Zopfli workers on finishing alone, with no search: the calling
 thread had nothing else to do while a file was finished, so a worker only moved the wait. The
@@ -997,11 +997,24 @@ Every set hashed identically to the build before. `--effort fast` was unchanged 
 `gradient.svg`, both arms). A second worker added 6 to 9 points over one in the investigation
 that preceded this; more would wait on the 512 px finish, the floor decision 27 describes.
 
-The website keeps Zopfli inside its engine worker, in the calling thread, for now, and runs the
-new schedule. `node bench/browser.mjs --reps 3`, unthrottled, choosing a file to the final set:
-on the threaded engine `general.svg` went from 2494 to 2252 ms at the default effort (−9.7 %)
-and `gradient.svg` from 5356 to 4974 ms (−7.1 %), and both fell 5 to 7 % at max; on the
-single-threaded engine every cell, quick set included, stayed within 1.5 %.
+**The website** made the same move afterwards. Its engine worker ran Zopfli in its own thread,
+so a finish blocked that worker's searches just as it blocked Node's event loop; two Zopfli
+workers of its own (`site/src/lib/zopfli-pool.mjs`) now finish the files, sent the WASM bytes
+the engine worker already fetched. They start on the first finish, not with the engine: started
+with it, they made the engine ready about 40 ms later and the quick set, which runs no Zopfli,
+30 to 50 ms later. Nested workers need no shared memory, so the single-thread engine, whose
+native work all runs in one thread, gains most. `node bench/browser.mjs --reps 3 [--compat]`
+against the build before, unthrottled, choosing a file to the final set:
+
+| fixture, effort | threaded engine | single-thread engine |
+|---|---|---|
+| general, default | 2428 → 2213 ms (−8.9 %) | 3243 → 2650 ms (−18.3 %) |
+| general, max | 8585 → 6722 ms (−21.7 %) | 11186 → 8544 ms (−23.6 %) |
+| gradient, default | 5300 → 4439 ms (−16.2 %) | 7061 → 5684 ms (−19.5 %) |
+| gradient, max | 18294 → 15725 ms (−14.0 %) | 23757 → 18855 ms (−20.6 %) |
+
+The engine's readiness and the quick set stayed within their run-to-run spread on both engines,
+and the website's sets still match the CLI's byte for byte (`site/test/cdp-check.mjs`).
 
 ---
 
