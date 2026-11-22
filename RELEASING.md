@@ -96,8 +96,8 @@ On an up-to-date `main` with a clean working tree and CI green:
    ```
 
 5. Publish it, with npm and in a real terminal: npm signs in with your passkey in the browser,
-   which a non-interactive shell cannot do. (pnpm 12's publish of a new package first created a
-   `0.0.0-stage` placeholder version.)
+   which a non-interactive shell cannot do. npm also creates a `0.0.0-stage` placeholder
+   version for a brand-new package; installs follow `latest`, so it is harmless.
 
    ```sh
    npm login
