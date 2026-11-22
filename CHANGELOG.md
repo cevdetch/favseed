@@ -9,9 +9,10 @@ pipeline change) are minor at minimum, never patch.** Downstream users diff thes
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-21
+## [1.0.1] - 2026-11-22
 
-The first release.
+The first release on npm, and the package 1.0.0 was: 1.0.0 was withdrawn from npm the day it
+was published, and npm never reuses a version number.
 
 ### Added
 
@@ -84,3 +85,7 @@ The first release.
 - The default and maximum efforts walk the quality and palette candidates at the same time.
   The file each raster keeps is the one walking them in turn would keep, byte for byte.
 - Errors print as `favseed: <message>` on stderr with a non-zero exit, never a stack trace.
+
+## [1.0.0] - 2026-11-21 [YANKED]
+
+Published to npm and withdrawn the same day. Its contents are released as 1.0.1.
