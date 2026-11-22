@@ -47,6 +47,7 @@ export const GET: APIRoute = async () => {
     '',
     line('/llms-full.txt', 'Every docs page in one file', 'the Markdown of all docs and guides'),
     '- [Source](https://github.com/cevdetch/favseed)',
+    '- [npm](https://www.npmjs.com/package/favseed): the published package',
     '- [Decisions](https://github.com/cevdetch/favseed/blob/main/docs/DECISIONS.md): every pipeline choice and the measurement behind it',
     '- [Changelog](https://github.com/cevdetch/favseed/blob/main/CHANGELOG.md)',
     '',
