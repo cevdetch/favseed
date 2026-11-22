@@ -175,8 +175,8 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
       deadhead:
-        specifier: 0.3.1
-        version: 0.3.1(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+        specifier: 0.4.0
+        version: 0.4.0(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
       schema-dts:
         specifier: 2.1.0
         version: 2.1.0
@@ -1635,8 +1635,8 @@ packages:
     resolution: {integrity: sha512-0LrrStPOdJj+SPCCrGhzryycLjwcgUSHBtxNA8aIDxf0GLsRh1cKYhB00Gd1lDOS4yGH69+SNn13+TWbVHETFQ==}
     engines: {node: ^10 || ^12.20.0 || ^14.13.0 || >=15.0.0, npm: '>=7.0.0'}
 
-  deadhead@0.3.1:
-    resolution: {integrity: sha512-nKRCIWuUaGY3I29sxEjHArpT4CYPG+22cTA7sIP/Xo0g/6aNoA1ludcCqNoVB7+yYfNWprwe8ENRSRCUCDcmBg==}
+  deadhead@0.4.0:
+    resolution: {integrity: sha512-U09jmWj4YygBiq379T24tanG2j0UzEvTczXyQNpqeSqxvYVIxCQq1qsQL/a+jXysFSIKnAABdX6UxqikK+wknw==}
     engines: {node: '>=24.8.0'}
     hasBin: true
     peerDependencies:
@@ -3483,7 +3483,7 @@ snapshots:
     dependencies:
       css-tree: 2.2.1
 
-  deadhead@0.3.1(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)):
+  deadhead@0.4.0(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)):
     dependencies:
       parse5: 8.1.1
     optionalDependencies:
