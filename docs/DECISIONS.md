@@ -493,7 +493,7 @@ live until the maintainer approves it with 2FA. On that path npm attaches proven
 being asked; the flag adds nothing there.
 
 **The flag would break the first publish.** npm only lets a package configure a trusted
-publisher once the package exists, so 1.0.0 is published by hand (`RELEASING.md`). Provenance
+publisher once the package exists, so the first release is published by hand (`RELEASING.md`). Provenance
 can only be generated inside a supported CI, and with `provenance: true` in `publishConfig` a
 publish from a laptop fails instead of proceeding. `publishConfig` is therefore
 `{"access": "public"}`.

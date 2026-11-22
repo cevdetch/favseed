@@ -8,7 +8,7 @@ your browser, and nothing is uploaded.
 
 ## Install
 
-favseed is not on npm yet: the first published release will be 1.0.0. Until then, use the
+favseed is not on npm yet: the first published release will be 1.0.1. Until then, use the
 website above.
 
 favseed needs Node 24 or newer and nothing else:

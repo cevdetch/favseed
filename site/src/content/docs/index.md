@@ -9,7 +9,7 @@ order: 0
 
 ## Install
 
-favseed is not on npm yet: the first published release will be 1.0.0, and until then [the generator on this site](/) runs the same pipeline in your browser.
+favseed is not on npm yet: the first published release will be 1.0.1, and until then [the generator on this site](/) runs the same pipeline in your browser.
 
 favseed needs Node 24 or newer and nothing else. Add it to a project:
 
