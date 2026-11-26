@@ -1,4 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -30,9 +33,9 @@ const fakeCaches = () => {
   return { store, open, keys: async () => [...store.keys()], delete: async (n) => store.delete(n) };
 };
 
-// Each load runs its own copy of the worker's source (a classic script, so a function body works
-// where a `?copy=` import would be cached by Bun); the worker reads every global through `self`
-// once, so copies never share a stand-in.
+// Each load imports its own copy of the worker from a fresh file, because Bun caches query-string
+// imports; the worker reads every global through `self` once, so copies never share a stand-in.
+let copies = 0;
 const load = async ({ caches = fakeCaches(), fetch = async () => new Response('net') } = {}) => {
   const listeners = {};
   const self = {
@@ -47,7 +50,17 @@ const load = async ({ caches = fakeCaches(), fetch = async () => new Response('n
     },
     clients: { claim: async () => {} },
   };
-  new Function('self', worker)(self);
+  const dir = mkdtempSync(join(tmpdir(), 'favseed-sw-'));
+  copies += 1;
+  const file = join(dir, `sw-${copies}.mjs`);
+  writeFileSync(file, worker);
+  globalThis.self = self;
+  try {
+    await import(pathToFileURL(file).href);
+  } finally {
+    delete globalThis.self;
+    rmSync(dir, { recursive: true, force: true });
+  }
   return { self, api: self.favseedWorker, listeners, caches };
 };
 const at = (path) => new URL(path, ORIGIN);
