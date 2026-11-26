@@ -37,7 +37,7 @@ jobs:
       # No dependency lifecycle scripts in the job that holds the OIDC token. The engine
       # needs none: its platform binary arrives as an optional dependency.
       - run: bun install --frozen-lockfile --ignore-scripts
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
 

@@ -44,7 +44,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
 
@@ -84,7 +84,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: bun run test
@@ -106,7 +106,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: bun run test
@@ -143,7 +143,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: bun run test:astro
@@ -166,7 +166,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: bun --filter favseed-site test
@@ -207,7 +207,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: bunx playwright install --with-deps "$BROWSER_ENGINE"
@@ -249,7 +249,7 @@ jobs:
         with:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - run: node --test test/run.test.mjs test/engine.test.mjs test/pipeline.test.mjs test/config.test.mjs test/vite.test.mjs test/security.test.mjs test/zopfli.test.mjs test/svg-precision.test.mjs test/astro-middleware.test.mjs test/lazy-loading.test.mjs test/astro-dev.test.mjs test/bytes.test.mjs test/write-failures.test.mjs test/bench-corpus.test.mjs test/bench-metrics.test.mjs test/bench-wasm-parity.test.mjs test/bench-compare.test.mjs test/quality.test.mjs test/resolve.test.mjs test/docs.test.mjs
