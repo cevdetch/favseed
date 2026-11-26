@@ -1,5 +1,5 @@
 // Pure helpers for bench/compare/run.mjs, kept free of the competitors and of favseed itself so
-// test/bench-compare.mjs can check them without installing anything.
+// test/bench-compare.test.mjs can check them without installing anything.
 import { createHash } from 'node:crypto';
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');

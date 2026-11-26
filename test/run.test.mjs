@@ -389,7 +389,7 @@ describe('accuracy', () => {
   ];
 
   // Effort 'fast': quality 80, the encode a search falls back to when nothing passes, so the
-  // ICO's encoding error below stays zero. test/pipeline.mjs scores the search's own winners.
+  // ICO's encoding error below stays zero. test/pipeline.test.mjs scores the search's own winners.
   const accuracyBuild = (name) =>
     buildOnce(`acc-${name}`, { input: fixture(`${name}.svg`), sizes: [192, 512], effort: 'fast' });
 

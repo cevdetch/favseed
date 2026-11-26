@@ -37,6 +37,9 @@
   "bin": {
     "favseed": "bin/favseed.mjs"
   },
+  "workspaces": [
+    "site"
+  ],
   "files": [
     "bin",
     "lib",
@@ -75,9 +78,9 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test test/run.mjs test/engine.mjs test/pipeline.mjs test/config.mjs test/vite.mjs test/security.mjs test/zopfli.mjs test/svg-precision.mjs test/astro-middleware.mjs test/lazy-loading.mjs test/astro-dev.mjs test/bytes.mjs test/write-failures.mjs test/bench-corpus.mjs test/bench-metrics.mjs test/bench-wasm-parity.mjs test/bench-compare.mjs test/quality.mjs test/resolve.mjs test/docs.mjs",
-    "test:astro": "node --test test/astro.mjs",
-    "bench": "node bench/bench.mjs",
+    "test": "bun test test/run.test.mjs test/engine.test.mjs test/pipeline.test.mjs test/config.test.mjs test/vite.test.mjs test/security.test.mjs test/zopfli.test.mjs test/svg-precision.test.mjs test/astro-middleware.test.mjs test/lazy-loading.test.mjs test/astro-dev.test.mjs test/bytes.test.mjs test/write-failures.test.mjs test/bench-corpus.test.mjs test/bench-metrics.test.mjs test/bench-wasm-parity.test.mjs test/bench-compare.test.mjs test/quality.test.mjs test/resolve.test.mjs test/docs.test.mjs",
+    "test:astro": "node --test test/astro.test.mjs",
+    "bench": "bun bench/bench.mjs",
     "lint": "oxlint . && knip --include exports,files,dependencies",
     "format": "oxfmt .",
     "format:check": "oxfmt --check ."
@@ -110,5 +113,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@12.3.4"
+  "packageManager": "bun@1.4.5"
 }

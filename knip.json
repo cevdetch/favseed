@@ -9,7 +9,9 @@
   "ignoreIssues": { "site/src/lib/structured-data.ts": ["exports"] },
   "workspaces": {
     ".": {
-      "entry": ["test/*.mjs", "bench/**/*.mjs"],
+      // Every file under test/ is a test, helper or fixture the runner or a spawned process loads;
+      // knip used to infer this from `node --test`, and does not from `bun test`.
+      "entry": ["test/**/*.mjs", "bench/**/*.mjs"],
       "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"]
     },
     "site": {

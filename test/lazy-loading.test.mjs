@@ -11,8 +11,7 @@ const exec = promisify(execFile);
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CLI = new URL('../bin/favseed.mjs', import.meta.url).href;
 const ASTRO = new URL('../astro/index.mjs', import.meta.url).href;
-const probe = (source) =>
-  exec(process.execPath, ['--input-type=module', '--eval', source], { cwd: ROOT, timeout: 15000 });
+const probe = (source) => exec('node', ['--input-type=module', '--eval', source], { cwd: ROOT, timeout: 15000 });
 const guard = (blockBuild = false) => `
   import assert from 'node:assert/strict';
   import { registerHooks } from 'node:module';

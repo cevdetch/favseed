@@ -1,4 +1,4 @@
-// Checks on the built site (run `pnpm --filter favseed-site build` first): every indexable page
+// Checks on the built site (run `bun --filter favseed-site build` first): every indexable page
 // has its own title, description and canonical URL, one H1, a JSON-LD graph whose @id links
 // resolve, the header bar, and links that land on a built page and an existing anchor. Markdown
 // pages also have their .md alternate and are drawn as cards, the sitemap dates every page, and

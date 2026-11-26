@@ -20,12 +20,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm format:check
-      - run: pnpm lint
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - run: bun --bun run format:check
+      - run: bun --bun run lint
 
   linux:
     # Pinned, not ubuntu-latest, so an image flip never arrives inside an unrelated change.
@@ -37,14 +37,16 @@ jobs:
           # Nothing here pushes, so skip the credential helper.
           persist-credentials: false
 
-      # One step installs the pnpm pinned in "packageManager" as a native binary, plus the
-      # runtime, then runs the install. `require-lockfile` makes it --frozen-lockfile and
-      # fails on a missing lockfile rather than resolving one from the registry.
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      # Bun is pinned to the version in "packageManager"; `--frozen-lockfile` fails on a
+      # missing or stale lockfile rather than resolving one from the registry. Node 24 is the
+      # engines floor and the current LTS, and runs the hash guard and the npm commands.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          # Node 24 is both the engines floor and the current LTS, so one version covers both.
-          runtime: node@24
-          require-lockfile: true
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
 
       # icoutils is here for one reason: so the ICO-equivalence test runs instead of skipping.
       # It is not a dependency of the tool; favseed writes the 22-byte container itself.
@@ -61,7 +63,9 @@ jobs:
           sudo tar -xzf /tmp/resvg.tar.gz -C /usr/local/bin resvg
           sudo chmod +x /usr/local/bin/resvg
 
-      - run: pnpm test
+      # Not `bun --bun`: that points `node` at Bun, and the suites spawn real Node (the package's
+      # runtime) for the CLI, the module hooks and the TypeScript config loading.
+      - run: bun run test
       - run: node test/hashes.mjs --check > hashes-linux.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -76,11 +80,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm test
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: bun run test
       - run: node test/hashes.mjs --check > hashes-macos.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -95,11 +102,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm test
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: bun run test
       # bash, not PowerShell: the file must hold the bytes the script printed, LF endings
       # included, or the comparison below fails on line endings alone.
       - run: node test/hashes.mjs --check > hashes-windows.txt
@@ -129,11 +139,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm test:astro
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: bun run test:astro
         env:
           ASTRO_TELEMETRY_DISABLED: '1'
 
@@ -149,13 +162,16 @@ jobs:
           # Full history: the sitemap's lastmod is each page's last commit, and a shallow clone
           # would leave every date out.
           fetch-depth: 0
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm --filter favseed-site test
-      - run: pnpm --filter favseed-site build
-      - run: pnpm --filter favseed-site test:dist
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: bun --filter favseed-site test
+      - run: bun --filter favseed-site build
+      - run: bun --filter favseed-site test:dist
       # The runner image ships Google Chrome, not a `chromium` binary.
       - run: node site/test/cdp-check.mjs
         env:
@@ -187,13 +203,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
-      - run: pnpm --filter favseed-site exec playwright install --with-deps "$BROWSER_ENGINE"
-      - run: pnpm --filter favseed-site build
-      - run: pnpm --filter favseed-site test:browser --project="$BROWSER_PROJECT"
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: bunx playwright install --with-deps "$BROWSER_ENGINE"
+        working-directory: site
+      - run: bun --filter favseed-site build
+      - run: bun --filter favseed-site test:browser --project="$BROWSER_PROJECT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
@@ -214,3 +234,22 @@ jobs:
         with:
           version: 1.30.1
           advanced-security: false
+
+  node-compat:
+    # The published package runs on Node; development runs on Bun. Run the engine's core
+    # suites under Node's own test runner so a Bun-only assumption cannot slip in.
+    needs: linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
+      - run: node --test test/run.test.mjs test/engine.test.mjs test/config.test.mjs

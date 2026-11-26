@@ -95,7 +95,7 @@ export async function precisionSweep(out) {
         // rendered reference it otherwise skips (lib/pipeline.mjs's `gated`), charging the
         // comparison for a render and a score that have nothing to do with selective precision.
         // Quality 100 still needs the explicit pin; the q80 arms get the same bytes from the
-        // plain default (test/run.mjs's "effort fast and colors256" case is the same equivalence).
+        // plain default (test/run.test.mjs's "effort fast and colors256" case is the same equivalence).
         const options = (old ? beforeOptions : normaliseOptions)({
           manifest: true,
           ...(arm === 'selective-q100' ? { quality: 100 } : {}),

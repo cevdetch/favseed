@@ -563,7 +563,7 @@ integration cache key. The bench now measures the engine alone.
 
 **The Zopfli now ships as `lib/zopfli.wasm`.** It compiles the exact Google Zopfli revision
 `@gfx/zopfli` 1.0.15 was built from, with modern LLVM, and both hosts load it through
-`lib/zopfli.mjs`. `@gfx/zopfli` stays as a development dependency only: `test/zopfli.mjs`
+`lib/zopfli.mjs`. `@gfx/zopfli` stays as a development dependency only: `test/zopfli.test.mjs`
 asserts identical compressed bytes against it at 15 and 120 iterations. Full native builds at
 120 iterations got 11.3–26.4 % faster on four fixtures with every byte unchanged
 ([bench/zopfli](../bench/zopfli/README.md)). The cache key's `zopfli` entry carries the WASM's
@@ -710,7 +710,7 @@ set when the search ends. Downloads serve whichever is the best finished set, an
 **How.** `buildSet` takes an `early` callback (`lib/pipeline.mjs`). When a host passes one and
 the effort searches with nothing pinned, the first pass is exactly an effort `fast` build, and
 the callback gets a deep copy of that set, byte-identical to a separate `--effort fast` build
-(asserted in `test/pipeline.mjs`). The copy is the host's to transfer or overwrite: uncopied,
+(asserted in `test/pipeline.test.mjs`). The copy is the host's to transfer or overwrite: uncopied,
 the website's transfer to the page would detach the very buffers the second pass seeds its
 searches with. The second pass reuses the first pass's renders, and each search takes the
 quality-80 encode as a seed, which the binary walk's first probe asks for (index 4 of the
@@ -751,7 +751,7 @@ probe's bytes and gate depend only on the raw render and the setting, so both wa
 exactly the settings they visited one after the other, in the same order each. A setting both
 ask for is one cached encode. The winner is chosen only after both finish, from both probe
 lists in list order, by fewest bytes, then higher quality, then more colours, with nothing
-depending on which encode completed first. `test/engine.mjs` asserts the concurrent search
+depending on which encode completed first. `test/engine.test.mjs` asserts the concurrent search
 matches the sequential walks in bytes, setting, scores and probe count at 192 and 512 px, and
 `node test/hashes.mjs --check` holds the byte manifest's eleven marks at `default`, and two
 at `max`, to the same bytes. The first failed encode stops both walks from starting another;

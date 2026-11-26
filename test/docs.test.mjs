@@ -30,7 +30,7 @@ const docs = list('site/src/content', '.md');
 const pages = list('site/src/pages', '.astro');
 
 const FLAG = /(?:^|\s)(--?[a-zA-Z][\w-]*)/g;
-const COMMAND = /^\s*(?:\$ )?(?:npx |pnpm (?:exec |dlx )?)?favseed\b/;
+const COMMAND = /^\s*(?:\$ )?(?:npx |bunx )?favseed\b/;
 
 // Inline code: a span that starts with a flag names it, and a span that is a favseed command
 // names every flag in it.

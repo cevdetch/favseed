@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const worker = new URL('../src/sw/sw.js', import.meta.url);
+const worker = readFileSync(new URL('../src/sw/sw.js', import.meta.url), 'utf8');
 const ORIGIN = 'https://favseed.cevdet.ch';
 const lists = {
   pages: ['/', '/404', '/_astro/index.A.js', '/docs', '/icon.svg'],
@@ -29,9 +30,9 @@ const fakeCaches = () => {
   return { store, open, keys: async () => [...store.keys()], delete: async (n) => store.delete(n) };
 };
 
-// Each load imports its own copy of the worker; the worker reads every global through `self`
+// Each load runs its own copy of the worker's source (a classic script, so a function body works
+// where a `?copy=` import would be cached by Bun); the worker reads every global through `self`
 // once, so copies never share a stand-in.
-let copies = 0;
 const load = async ({ caches = fakeCaches(), fetch = async () => new Response('net') } = {}) => {
   const listeners = {};
   const self = {
@@ -46,13 +47,7 @@ const load = async ({ caches = fakeCaches(), fetch = async () => new Response('n
     },
     clients: { claim: async () => {} },
   };
-  globalThis.self = self;
-  copies += 1;
-  try {
-    await import(`${worker}?copy=${copies}`);
-  } finally {
-    delete globalThis.self;
-  }
+  new Function('self', worker)(self);
   return { self, api: self.favseedWorker, listeners, caches };
 };
 const at = (path) => new URL(path, ORIGIN);

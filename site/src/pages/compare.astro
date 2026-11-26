@@ -500,7 +500,7 @@ const lede =
   <section>
     <h2 id="reproduce">Reproduce</h2>
     <p set:html={reproduce} />
-    <pre>{`pnpm install
+    <pre>{`bun install
 node bench/corpus/fetch.mjs
 node bench/compare/run.mjs --install --reps ${results.reps} --write`}</pre>
     <p>The <a href={`${report}#reproduce`}>report’s Reproduce section</a> names the exact favseed code and the

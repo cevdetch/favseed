@@ -16,14 +16,14 @@ byte delta and proof that every fixture is still inside the accuracy bar. "Looks
 not evidence, and neither is a screenshot.
 
 ```sh
-pnpm test                      # the definition of done, as node:test
-pnpm test:astro                # install the tarball and exercise real Astro static/dev/SSR
+bun run test                   # the definition of done, run by bun test
+bun run test:astro             # install the tarball and exercise real Astro static/dev/SSR
 node bench/bench.mjs           # every sweep, printed
 node bench/bench.mjs colors    # one sweep only
 node bench/bench.mjs --write   # regenerate docs/BENCHMARKS.md
 ```
 
-TypeScript is a pinned root development dependency. `pnpm test` always runs the config and
+TypeScript is a pinned root development dependency. `bun run test` always runs the config and
 Vite option type checks; a missing compiler fails instead of skipping them.
 
 `test:astro` runs separately in Linux CI because it needs npm registry access. It installs
@@ -64,7 +64,7 @@ git diff -- test/bytes.json
 node test/hashes.mjs --check
 ```
 
-Accepting a baseline does not bypass the patch-release guard. `pnpm test` exercises the
+Accepting a baseline does not bypass the patch-release guard. `bun run test` exercises the
 comparison and release policy; the platform CI jobs run the actual generation check.
 
 ## Measure before you believe it
@@ -84,13 +84,13 @@ Two more traps this repo has already fallen into, both caught only by measuring:
 ## Setting up
 
 ```sh
-pnpm install                   # the whole setup: the root and site/, one workspace, one lockfile
+bun install                    # the whole setup: the root and site/, one workspace, one lockfile
 ```
 
 Two optional tools turn on more checks. `resvg` on PATH runs the render-fidelity test, which
 holds the engine to the resvg CLI pixel for pixel. `icotool` (from `icoutils`) runs the test
 asserting favseed's 22-byte ICO writer is byte-identical to `icotool -c -r`. `bench/` needs
-nothing beyond `pnpm install` to run its ordinary sweeps, but the precision, framing, ico-size
+nothing beyond `bun install` to run its ordinary sweeps, but the precision, framing, ico-size
 and placement sweeps read pinned commits with `git show` and need a checkout with full history,
 and rebuilding `lib/zopfli.wasm` or the browser-compatibility WASM needs clang and rustc
 respectively (see `bench/zopfli/README.md` and `bench/wasm-engine/build.mjs`).
@@ -173,7 +173,7 @@ The root suite, packed-package Astro suite and site browser checks cover these c
 ## Fixtures
 
 `test/fixtures/` contains neutral SVGs authored for this repo. No brand content, ever.
-Each one exists to exercise something specific; `test/run.mjs` names it. If you add a
+Each one exists to exercise something specific; `test/run.test.mjs` names it. If you add a
 fixture, say in a comment what it is for; if it is generated, commit the generator and its
 output together (`heavy.gen.mjs` is the pattern).
 

@@ -84,7 +84,7 @@ describe('lib/quality: unit cases', () => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) rgba.set([...f(x, y), 255], (y * w + x) * 4);
     return { width: w, height: h, rgba };
   };
-  // Same shapes as test/bench-metrics.mjs's `edge`/`ramp`, so the two suites agree on what
+  // Same shapes as test/bench-metrics.test.mjs's `edge`/`ramp`, so the two suites agree on what
   // "collapsed to two levels" means.
   const edge = image(16, 16, (x) => (x < 8 ? [0, 0, 0] : [255, 255, 255]));
   const ramp = image(16, 16, (x) => [x * 16, x * 16, x * 16]);

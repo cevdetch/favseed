@@ -22,10 +22,13 @@ jobs:
           persist-credentials: false
 
       # The native @napi-rs/image the parity gate compares both engines against.
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          require-lockfile: true
+          bun-version: 1.4.5
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
+        with:
+          node-version: 24
 
       # build.mjs refuses any other rustc, so the toolchain is pinned to the reviewed release.
       - name: Rust 1.99.0 with both WASI targets

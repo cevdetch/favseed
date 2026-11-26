@@ -1,7 +1,6 @@
 // Exercise the actual middleware with Web Response bodies. Only Astro's virtual
 // configuration module is supplied here; no implementation code is replaced.
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import { describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -9,21 +8,34 @@ const LINKS =
   '<link rel="icon" href="/blog/favicon.ico" sizes="48x48">\n' +
   '<link rel="icon" href="/blog/icon.svg" type="image/svg+xml">\n' +
   '<link rel="apple-touch-icon" href="/blog/apple-touch-icon.png">\n';
-const hook = registerHooks({
-  resolve(specifier, context, next) {
-    return specifier === 'virtual:favseed'
-      ? {
-          url: `data:text/javascript,${encodeURIComponent(`export const links = ${JSON.stringify(LINKS)};`)}`,
-          shortCircuit: true,
-        }
-      : next(specifier, context);
-  },
-});
+// Node supplies the virtual module through a resolve hook; Bun, which has no registerHooks,
+// through its module plugin API.
+let hook;
+if (globalThis.Bun) {
+  globalThis.Bun.plugin({
+    name: 'virtual-favseed',
+    setup(build) {
+      build.module('virtual:favseed', () => ({ exports: { links: LINKS }, loader: 'object' }));
+    },
+  });
+} else {
+  const { registerHooks } = await import('node:module');
+  hook = registerHooks({
+    resolve(specifier, context, next) {
+      return specifier === 'virtual:favseed'
+        ? {
+            url: `data:text/javascript,${encodeURIComponent(`export const links = ${JSON.stringify(LINKS)};`)}`,
+            shortCircuit: true,
+          }
+        : next(specifier, context);
+    },
+  });
+}
 let onRequest;
 try {
   ({ onRequest } = await import('../astro/middleware.mjs'));
 } finally {
-  hook.deregister();
+  hook?.deregister();
 }
 
 const encode = (text) => new TextEncoder().encode(text);

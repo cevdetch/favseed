@@ -1,4 +1,4 @@
-// A stand-in Zopfli worker for test/zopfli.mjs: it exits on input starting 0xff, and otherwise
+// A stand-in Zopfli worker for test/zopfli.test.mjs: it exits on input starting 0xff, and otherwise
 // echoes its input, so the pool's crash recovery can be tested without a real crash.
 import { parentPort } from 'node:worker_threads';
 

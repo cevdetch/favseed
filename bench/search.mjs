@@ -611,7 +611,7 @@ function writeReadme(results) {
       `The ${fixtureMisses.length} fixture miss(es): ${joinAnd(described)}.` +
         (fixtureMissesAccepted
           ? ' These are the suite’s accepted exception for those two grids (28 of 2,304 pixels, ' +
-            'test/run.mjs and bench/ico-size/README.md), not a regression.'
+            'test/run.test.mjs and bench/ico-size/README.md), not a regression.'
           : ''),
       '',
     );

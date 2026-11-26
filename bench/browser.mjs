@@ -21,7 +21,7 @@
 // its dist, so a rebuilt site starts clean rather than reusing stale numbers), so a restart
 // resumes rather than re-running everything.
 //
-// Build the site first: pnpm --filter favseed-site build. For --before, build the earlier
+// Build the site first: bun --filter favseed-site build. For --before, build the earlier
 // commit in a worktree: see USAGE below and "Reproducing" in bench/browser/README.md.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -66,9 +66,9 @@ and the final set, for the general and gradient fixtures at every effort.
 
 Every DIR must be inside the checkout or the system temporary directory.
 
-  pnpm --filter favseed-site build
+  bun --filter favseed-site build
   git worktree add /tmp/fs-before <commit>
-  (cd /tmp/fs-before && pnpm install --frozen-lockfile && pnpm --filter favseed-site build)
+  (cd /tmp/fs-before && bun install --frozen-lockfile && bun --filter favseed-site build)
   node bench/browser.mjs --write --before /tmp/fs-before/site/dist
   git worktree remove /tmp/fs-before
 `;
@@ -107,7 +107,7 @@ function parseArgs(argv) {
   for (const { dist: dir } of builds) {
     assert.ok(
       existsSync(resolve(dir, 'index.html')),
-      `${dir} is not a site build; run: pnpm --filter favseed-site build`,
+      `${dir} is not a site build; run: bun --filter favseed-site build`,
     );
   }
   assert.ok(builds.length === 1 || builds[0].dist !== builds[1].dist, '--before and --dist name the same build');
@@ -520,9 +520,9 @@ function writeReadme({ date, cpu, threads, chromiumVersion, reps, results, commi
     '## Reproducing',
     '',
     '```sh',
-    'pnpm --filter favseed-site build',
+    'bun --filter favseed-site build',
     `git worktree add /tmp/fs-before ${commits.before}`,
-    '(cd /tmp/fs-before && pnpm install --frozen-lockfile && pnpm --filter favseed-site build)',
+    '(cd /tmp/fs-before && bun install --frozen-lockfile && bun --filter favseed-site build)',
     'node bench/browser.mjs --write --before /tmp/fs-before/site/dist',
     'git worktree remove /tmp/fs-before',
     '```',
