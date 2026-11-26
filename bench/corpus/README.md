@@ -2,7 +2,7 @@
 
 A pinned, real-world set of 80 SVG icons drawn from four open Iconify JSON packages (see
 `LICENSES.md`), used **only** by `bench/`. Nothing here ships in the package, is imported by
-`lib/`, `bin/`, `vite/` or `astro/`, or is read by `test/run.mjs`'s definition-of-done suite —
+`lib/`, `bin/`, `vite/` or `astro/`, or is read by `test/run.test.mjs`'s definition-of-done suite —
 the test fixtures in `test/fixtures/` remain the only inputs the published tool is measured
 against.
 

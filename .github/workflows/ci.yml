@@ -63,8 +63,8 @@ jobs:
           sudo tar -xzf /tmp/resvg.tar.gz -C /usr/local/bin resvg
           sudo chmod +x /usr/local/bin/resvg
 
-      # Not `bun --bun`: that points `node` at Bun, and the suites spawn real Node (the package's
-      # runtime) for the CLI, the module hooks and the TypeScript config loading.
+      # Bun runs the tests; the suites that spawn `node` need the real Node, so not `bun --bun`
+      # (it points `node` at Bun). The node-compat job runs the whole root suite under Node.
       - run: bun run test
       - run: node test/hashes.mjs --check > hashes-linux.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -236,11 +236,11 @@ jobs:
           advanced-security: false
 
   node-compat:
-    # The published package runs on Node; development runs on Bun. Run the engine's core
-    # suites under Node's own test runner so a Bun-only assumption cannot slip in.
+    # The published package runs on Node; development runs on Bun. Run the whole root suite
+    # under Node's own test runner so a Bun-only assumption cannot slip in.
     needs: linux
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -252,4 +252,4 @@ jobs:
       - uses: actions/setup-node@0669eb4a159c9c5cdf56fa27dbca59c6c4ff55cf # v6
         with:
           node-version: 24
-      - run: node --test test/run.test.mjs test/engine.test.mjs test/config.test.mjs
+      - run: node --test test/run.test.mjs test/engine.test.mjs test/pipeline.test.mjs test/config.test.mjs test/vite.test.mjs test/security.test.mjs test/zopfli.test.mjs test/svg-precision.test.mjs test/astro-middleware.test.mjs test/lazy-loading.test.mjs test/astro-dev.test.mjs test/bytes.test.mjs test/write-failures.test.mjs test/bench-corpus.test.mjs test/bench-metrics.test.mjs test/bench-wasm-parity.test.mjs test/bench-compare.test.mjs test/quality.test.mjs test/resolve.test.mjs test/docs.test.mjs

@@ -23,6 +23,12 @@ node bench/bench.mjs colors    # one sweep only
 node bench/bench.mjs --write   # regenerate docs/BENCHMARKS.md
 ```
 
+Run the root suite with plain `bun run test`, not `bun --bun run test`: under `--bun` the `node`
+on PATH is Bun and 26 tests that spawn real Node fail. It needs Node 24 on PATH. `test:astro` runs
+under `node --test` because Bun times out on it and caches the config its in-process builds change.
+The `node-compat` CI job runs the whole root suite under Node. Follow-up: revisit once these suites
+pass under `--bun`.
+
 TypeScript is a pinned root development dependency. `bun run test` always runs the config and
 Vite option type checks; a missing compiler fails instead of skipping them.
 

@@ -265,6 +265,8 @@ function checkout() {
     buildCommit: git('log', '-1', '--format=%h', '--', ':/bin', ':/lib'),
     trees: { bin: git('rev-parse', 'HEAD:bin'), lib: git('rev-parse', 'HEAD:lib') },
     lockfile: git('rev-parse', 'HEAD:bun.lock'),
+    lockfileName: 'bun.lock',
+    installCommand: 'bun install',
     buildDirty: git('status', '--porcelain', '--', ':/bin', ':/lib', ':/bun.lock').length > 0,
   };
 }

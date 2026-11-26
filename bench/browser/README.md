@@ -92,9 +92,9 @@ Both networks go through a small server in `bench/browser.mjs` serving each buil
 ## Reproducing
 
 ```sh
-bun --filter favseed-site build
+pnpm --filter favseed-site build
 git worktree add /tmp/fs-before 62f4d15
-(cd /tmp/fs-before && bun install --frozen-lockfile && bun --filter favseed-site build)
+(cd /tmp/fs-before && pnpm install --frozen-lockfile && pnpm --filter favseed-site build)
 node bench/browser.mjs --write --before /tmp/fs-before/site/dist
 git worktree remove /tmp/fs-before
 ```

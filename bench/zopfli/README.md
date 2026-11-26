@@ -29,7 +29,7 @@ Rebuild with Clang/wasm-ld 23.1.4 on PATH and these archives:
 
 ```sh
 node bench/zopfli/build.mjs /path/to/source.tar.gz /path/to/sysroot.tar.gz
-node --test test/zopfli.mjs
+node --test test/zopfli.test.mjs
 node bench/performance.mjs
 ```
 
