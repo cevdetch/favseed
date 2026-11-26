@@ -615,7 +615,7 @@ describe('favseed/vite types', () => {
 
   const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
   it('type-checks a vite.config, and catches out and a misspelt key', () => {
-    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run bun install');
     const d = dir();
     const spec = JSON.stringify(join(ROOT, 'vite', 'index.mjs').replace(/\\/g, '/'));
     writeFileSync(

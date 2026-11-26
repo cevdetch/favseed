@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "icons": "node ../bin/favseed.mjs",
-    "test": "node --test test/worker.mjs test/sections.mjs test/offline-lists.mjs test/sw.mjs test/offline.mjs test/zopfli-pool.mjs",
+    "icons": "bun ../bin/favseed.mjs",
+    "test": "bun test test/worker.test.mjs test/sections.test.mjs test/offline-lists.test.mjs test/sw.test.mjs test/offline.test.mjs test/zopfli-pool.test.mjs",
     "test:browser": "playwright test",
-    "test:dist": "node --test test/seo.mjs",
-    "build": "node build/unshallow.mjs && astro build && deadhead dist --fail-on=harmful",
+    "test:dist": "bun test test/seo.test.mjs",
+    "build": "bun build/unshallow.mjs && astro build && deadhead dist --fail-on=harmful",
     "preview": "astro preview"
   },
   "dependencies": {

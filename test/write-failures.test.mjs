@@ -76,7 +76,7 @@ const run = async (state, faults = [], api = false) => {
       ]
     : [cli, fixture('general'), '--out', state.out, '--bg', '#fff', '--sizes', '32', '--manifest', '--html'];
   try {
-    const result = await exec(process.execPath, ['--import', preload, ...args], {
+    const result = await exec('node', ['--import', preload, ...args], {
       env: { ...process.env, FAVSEED_TEST_WRITE_FAILURE: JSON.stringify({ ...state, faults }) },
       timeout: 30000,
     });

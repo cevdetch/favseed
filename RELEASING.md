@@ -1,8 +1,9 @@
 # Releasing
 
-favseed is one package, `favseed`. Registry commands use pnpm, which keeps its own login
-(`pnpm login`, checked with `pnpm whoami`); pnpm 12 has `publish`, `stage`, `view` and
-`deprecate`. No npm token is ever created for this project (decision 23).
+favseed is one package, `favseed`. Development uses Bun; every registry command uses npm
+(`npm login`, checked with `npm whoami`), which has `publish`, `stage`, `view` and
+`deprecate` and is the only client that publishes. No npm token is ever created for this
+project (decision 23).
 
 - **The first release, 1.0.1,** is published by hand from a packed tarball: npm lets a package
   use trusted publishing only once it exists. (1.0.0 was published and withdrawn on
@@ -50,11 +51,12 @@ never executed.
    | setting | value |
    |---|---|
    | Production branch | `main` |
-   | Build command | `pnpm --filter favseed-site build` |
+   | Build command | `bun --filter favseed-site build` |
    | Build output directory | `site/dist` |
    | Environment variable | `NODE_VERSION` = `24` |
+   | Environment variable | `BUN_VERSION` = `1.4.5` |
 
-   pnpm is picked up from `packageManager` in `package.json`. Then **Custom domains → Set up a
+   Pages installs with Bun when it finds `bun.lock`, and `BUN_VERSION` pins the version. Then **Custom domains → Set up a
    domain**: `favseed.cevdet.ch`. The site writes its own `_headers`.
 
 ## The first release, 1.0.1
@@ -69,8 +71,8 @@ On an up-to-date `main` with a clean working tree and CI green:
 1. Check the login and that the name is free:
 
    ```sh
-   pnpm whoami            # your npm user
-   pnpm view favseed       # must fail with 404 ("Unpublished on 2026-11-21…" since 1.0.0)
+   npm whoami             # your npm user
+   npm view favseed        # must fail with 404 ("Unpublished on 2026-11-21…" since 1.0.0)
    ```
 
 2. Set `"version": "1.0.1"` in `package.json`, and date the release in `CHANGELOG.md`: the
@@ -80,8 +82,8 @@ On an up-to-date `main` with a clean working tree and CI green:
 3. Test and pack. The tarball `npm pack` writes is the file you publish.
 
    ```sh
-   pnpm install
-   pnpm test
+   bun install
+   bun run test
    npm pack --dry-run     # read the list: bin/, lib/, vite/, astro/, README, LICENSE, CHANGELOG only
    npm pack
    ```
@@ -151,12 +153,12 @@ On an up-to-date `main` with a clean working tree and CI green:
 4. Approve with 2FA:
 
    ```sh
-   pnpm stage list
-   pnpm stage view <stage-id>      # check name, version, file list
-   pnpm stage approve <stage-id>
+   npm stage list
+   npm stage view <stage-id>      # check name, version, file list
+   npm stage approve <stage-id>
    ```
 
-   `pnpm stage reject <stage-id>` drops a staged package instead.
+   `npm stage reject <stage-id>` drops a staged package instead.
 5. Check the package on npmjs.com (provenance shown, `latest` moved) and run
    `npx favseed@X.Y.Z --version` in an empty directory.
 
@@ -172,7 +174,7 @@ navigation; it deletes every cache, unregisters itself and reloads the open page
 registers `/sw.js` on every visit, so each visit installs the switch again, and it removes itself
 again, until the fixed worker ships.
 
-`site/test/sw.mjs` and `site/test/offline.spec.mjs` test the real worker, so they fail while the
+`site/test/sw.test.mjs` and `site/test/offline.spec.mjs` test the real worker, so they fail while the
 switch is deployed. Skip or remove them for that deploy, and restore them with the fixed worker.
 
 ```js

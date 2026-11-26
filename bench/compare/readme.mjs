@@ -627,9 +627,9 @@ export function renderReadme(results) {
         ? [
             `favseed's code is named by content, since a branch commit does not survive a squash merge: the run ` +
               `used \`bin/\` tree \`${t.trees.bin}\` and \`lib/\` tree \`${t.trees.lib}\`, last changed in ` +
-              `\`${t.buildCommit}\`, with \`pnpm-lock.yaml\` blob \`${t.lockfile}\`. Any checkout where ` +
-              '`git rev-parse HEAD:bin`, `HEAD:lib` and `HEAD:pnpm-lock.yaml` print these runs the same favseed code ' +
-              'with the same engine pins; `pnpm install` installs them.',
+              `\`${t.buildCommit}\`, with \`${t.lockfileName ?? 'pnpm-lock.yaml'}\` blob \`${t.lockfile}\`. Any checkout where ` +
+              `\`git rev-parse HEAD:bin\`, \`HEAD:lib\` and \`HEAD:${t.lockfileName ?? 'pnpm-lock.yaml'}\` print these runs the same favseed code ` +
+              `with the same engine pins; \`${t.installCommand ?? 'pnpm install'}\` installs them.`,
             '',
           ]
         : [];
@@ -642,7 +642,7 @@ export function renderReadme(results) {
     'From the repository root, with Node 24 or later:',
     '',
     '```sh',
-    'pnpm install                                                # favseed and its pinned engines',
+    `${favseedTool.installCommand ?? 'pnpm install'}`.padEnd(60) + '# favseed and its pinned engines',
     'node bench/corpus/fetch.mjs                                 # the open icons, once',
     `node bench/compare/run.mjs --install --reps ${results.reps} --write   # install the pins, run, write results.json and this file`,
     'node bench/compare/run.mjs --readme                         # rewrite this file from results.json',

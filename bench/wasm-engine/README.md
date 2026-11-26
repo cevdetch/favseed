@@ -71,8 +71,8 @@ rustup target add --toolchain 1.99.0 wasm32-wasip1 wasm32-wasip1-threads
 node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz
 # To replace the vendored engines, manifest and notices after reviewing an upgrade:
 node bench/wasm-engine/build.mjs /tmp/image-source.tar.gz /tmp/wasi-sdk.tar.gz --write
-pnpm --filter favseed-site build
-pnpm --filter favseed-site test:browser
+bun --filter favseed-site build
+bun --filter favseed-site test:browser
 ```
 
 The **Engine rebuild** workflow (`.github/workflows/engine-rebuild.yml`, run by hand from the

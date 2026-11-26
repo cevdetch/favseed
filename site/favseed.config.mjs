@@ -1,6 +1,6 @@
 import { defineConfig } from '../bin/favseed.mjs';
 
-// pnpm's icons command runs here. Source and metadata live outside the generated set.
+// the icons script runs here. Source and metadata live outside the generated set.
 export default defineConfig({
   input: 'src/icon.svg',
   out: 'public',

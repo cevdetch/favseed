@@ -236,7 +236,7 @@ const project = (files) => {
 /** The CLI, run in `cwd`. Never throws; tests assert on the exit code. */
 const run = async (cwd, args = []) => {
   try {
-    const { stdout, stderr } = await execFileAsync(process.execPath, [CLI, ...args], { cwd, timeout: 120_000 });
+    const { stdout, stderr } = await execFileAsync('node', [CLI, ...args], { cwd, timeout: 120_000 });
     return { code: 0, stdout, stderr };
   } catch (e) {
     return { code: e.code ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
@@ -584,7 +584,7 @@ describe('defineConfig from favseed', () => {
 
   const tsc = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
   it('type-checks a config, and catches a misspelt key', () => {
-    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run pnpm install');
+    assert.ok(existsSync(tsc), 'TypeScript compiler missing; run bun install');
     const dir = join(scratch, `tsc${++n}`);
     mkdirSync(dir);
     const spec = JSON.stringify(CLI.replace(/\\/g, '/'));
@@ -598,7 +598,7 @@ describe('defineConfig from favseed', () => {
     );
     const check = (f) =>
       spawnSync(
-        process.execPath,
+        'node',
         [
           tsc,
           '--noEmit',

@@ -31,13 +31,17 @@ jobs:
           persist-credentials: false
           # Compare the candidate with previous stable release manifests.
           fetch-depth: 0
-      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          runtime: node@24
-          install: false
+          bun-version: 1.4.5
+          no-cache: true
       # No dependency lifecycle scripts in the job that holds the OIDC token. The engine
       # needs none: its platform binary arrives as an optional dependency.
-      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
 
       - name: Tag matches package.json
         env:
@@ -54,7 +58,7 @@ jobs:
           sudo tar -xzf /tmp/resvg.tar.gz -C /usr/local/bin resvg
           sudo chmod +x /usr/local/bin/resvg
 
-      - run: pnpm test
+      - run: bun run test
       - name: Protect release output bytes
         run: node test/hashes.mjs --release > hashes-release.json
 

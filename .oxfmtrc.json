@@ -16,7 +16,7 @@
     "test/fixtures/**",
     "lib/zopfli-build.mjs",
     "site/src/lib/structured-data.ts",
-    "pnpm-lock.yaml",
+    "bun.lock",
     "**/*.md"
   ]
 }

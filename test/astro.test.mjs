@@ -1,5 +1,6 @@
 // External-consumer checks: install the published artifact, not a workspace link.
-// Kept separate from pnpm test because this suite needs npm registry access.
+// Kept separate from bun run test because this suite needs npm registry access, and run by Node
+// because it builds in process: Bun would cache the config that each build changes.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -174,7 +175,7 @@ const cliSet = async (p, fast = false) => {
     `export default ${JSON.stringify({ base: '/blog/', effort: fast ? 'fast' : 'default' })};`,
   );
   await command(
-    process.execPath,
+    'node',
     [
       join(installed, 'bin/favseed.mjs'),
       join(p.root, 'src/logo.svg'),
@@ -214,9 +215,9 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
         '--pretty',
         'false',
       ];
-      await command(process.execPath, [...args, 'good.mts'], root);
+      await command('node', [...args, 'good.mts'], root);
       // Check our declarations too, rather than hiding errors behind skipLibCheck.
-      await command(process.execPath, [...args.filter((arg) => arg !== '--skipLibCheck'), 'api.mts'], root);
+      await command('node', [...args.filter((arg) => arg !== '--skipLibCheck'), 'api.mts'], root);
       const declarations = [];
       for (const [specifier, entry] of [
         ['favseed', 'bin/index.mjs'],
@@ -228,8 +229,8 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
         );
       }
       await writeFile(join(root, 'exports.mts'), declarations.join('\n'));
-      await command(process.execPath, [...args.filter((arg) => arg !== '--skipLibCheck'), 'exports.mts'], root);
-      await assert.rejects(command(process.execPath, [...args, 'bad.mts'], root), (error) => {
+      await command('node', [...args.filter((arg) => arg !== '--skipLibCheck'), 'exports.mts'], root);
+      await assert.rejects(command('node', [...args, 'bad.mts'], root), (error) => {
         assert.ok(Number.isInteger(error.code) && error.code > 0, 'expected compiler diagnostics, not a startup error');
         // Separate calls prevent the first invalid property from masking the next.
         const propertyErrors = error.stdout.split('\n').filter((line) => /error TS(?:2353|2561):/.test(line));
@@ -282,7 +283,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       ['ESNext', 'Bundler'],
     ]) {
       await command(
-        process.execPath,
+        'node',
         [
           tsc,
           '--noEmit',
@@ -386,7 +387,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
       npm_config_fund: 'false',
       npm_config_package_lock: 'false',
     };
-    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], root, env);
+    await command('node', [cli, 'add', 'favseed', '--yes'], root, env);
     assert.equal((await json(join(root, 'package.json'))).dependencies.favseed, `^${pkg.version}`);
     assert.equal((await lstat(freshInstalled)).isSymbolicLink(), false);
     assert.equal(await realpath(freshInstalled), freshInstalled);
@@ -400,11 +401,11 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     const config = await readFile(configPath, 'utf8');
     assert.match(config, /import favseed from ["']favseed["']/);
     assert.match(config, /integrations:\s*\[favseed\(\)\]/);
-    await command(process.execPath, [cli, 'build'], root);
+    await command('node', [cli, 'build'], root);
     const names = ['apple-touch-icon.png', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon.svg'];
     await assert.rejects(readdir(join(root, 'public')), { code: 'ENOENT' });
     await command(
-      process.execPath,
+      'node',
       [join(freshInstalled, 'bin/favseed.mjs'), 'src/logo.svg', '--out', 'cli-output', '--quiet'],
       root,
     );
@@ -416,7 +417,7 @@ describe('installed Astro integration', { concurrency: false, timeout: 240000 },
     for (const name of ['favicon.ico', 'icon.svg', 'apple-touch-icon.png']) {
       assert.equal(html.split(`href="/blog/${name}"`).length - 1, 1, html);
     }
-    await command(process.execPath, [cli, 'add', 'favseed', '--yes'], root, env);
+    await command('node', [cli, 'add', 'favseed', '--yes'], root, env);
     assert.equal(await readFile(configPath, 'utf8'), config, 'repeat installation changed the config');
   });
 

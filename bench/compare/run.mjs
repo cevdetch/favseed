@@ -255,7 +255,7 @@ function install() {
 //
 // A branch commit does not survive a squash merge, so the build is also named by what does: the
 // last commit that touched bin/ or lib/, the git tree hashes of bin/ and lib/ (equal trees are
-// equal code, whichever commit holds them), and pnpm-lock.yaml's blob hash, which pins the
+// equal code, whichever commit holds them), and bun.lock's blob hash, which pins the
 // engines. `buildDirty` says whether bin/, lib/ or the lockfile had uncommitted changes, in which
 // case the hashes name the committed code, not the code that ran.
 function checkout() {
@@ -264,8 +264,10 @@ function checkout() {
     dirty: git('status', '--porcelain').length > 0,
     buildCommit: git('log', '-1', '--format=%h', '--', ':/bin', ':/lib'),
     trees: { bin: git('rev-parse', 'HEAD:bin'), lib: git('rev-parse', 'HEAD:lib') },
-    lockfile: git('rev-parse', 'HEAD:pnpm-lock.yaml'),
-    buildDirty: git('status', '--porcelain', '--', ':/bin', ':/lib', ':/pnpm-lock.yaml').length > 0,
+    lockfile: git('rev-parse', 'HEAD:bun.lock'),
+    lockfileName: 'bun.lock',
+    installCommand: 'bun install',
+    buildDirty: git('status', '--porcelain', '--', ':/bin', ':/lib', ':/bun.lock').length > 0,
   };
 }
 
