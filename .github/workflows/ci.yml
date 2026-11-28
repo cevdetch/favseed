@@ -26,6 +26,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun --bun run format:check
       - run: bun --bun run lint
+      - run: bun run check:package
 
   linux:
     # Pinned, not ubuntu-latest, so an image flip never arrives inside an unrelated change.
