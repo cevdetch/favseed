@@ -81,7 +81,7 @@
     "test": "bun test test/run.test.mjs test/engine.test.mjs test/pipeline.test.mjs test/config.test.mjs test/vite.test.mjs test/security.test.mjs test/zopfli.test.mjs test/svg-precision.test.mjs test/astro-middleware.test.mjs test/lazy-loading.test.mjs test/astro-dev.test.mjs test/bytes.test.mjs test/write-failures.test.mjs test/bench-corpus.test.mjs test/bench-metrics.test.mjs test/bench-wasm-parity.test.mjs test/bench-compare.test.mjs test/quality.test.mjs test/resolve.test.mjs test/docs.test.mjs",
     "test:astro": "node --test test/astro.test.mjs",
     "bench": "bun bench/bench.mjs",
-    "lint": "oxlint . && knip --include exports,files,dependencies",
+    "lint": "oxlint . && knip",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "check:package": "publint --strict && attw --pack --profile esm-only --exclude-entrypoints ./astro/Head.astro ./astro/middleware ."
