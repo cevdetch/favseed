@@ -6,11 +6,18 @@
   "rules": { "optionalPeerDependencies": "warn" },
   // The structured-data builders every cevdet.ch site installs as one shared copy. The site
   // uses a few of them; the copy is replaced whole on each install, never trimmed here.
-  "ignoreIssues": { "site/src/lib/structured-data.ts": ["exports"] },
+  "ignoreIssues": { "site/src/lib/structured-data.ts": ["exports", "types"] },
+  // System tools, not packages: the engine builds call rustc, clang and wasm-ld, and the
+  // render and ICO tests run resvg and icotool when they are on PATH (CONTRIBUTING.md).
+  "ignoreBinaries": ["rustc", "clang", "wasm-ld", "resvg", "icotool"],
   "workspaces": {
     ".": {
       "entry": ["test/*.mjs", "bench/**/*.mjs"],
-      "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"]
+      "project": ["bin/**/*.mjs", "lib/**/*.mjs", "vite/**/*.mjs", "astro/**/*.mjs", "test/**/*.mjs", "bench/**/*.mjs"],
+      // The browser benchmarks drive the site with the site workspace's @playwright/test, and
+      // test/astro/ is a consumer project with its own package.json that the Astro suite
+      // installs; neither belongs in the package's own dependencies.
+      "ignoreDependencies": ["@playwright/test", "@astrojs/node"]
     },
     "site": {
       "entry": [
