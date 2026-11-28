@@ -83,18 +83,21 @@
     "bench": "bun bench/bench.mjs",
     "lint": "oxlint . && knip --include exports,files,dependencies",
     "format": "oxfmt .",
-    "format:check": "oxfmt --check ."
+    "format:check": "oxfmt --check .",
+    "check:package": "publint --strict && attw --pack --profile esm-only --exclude-entrypoints ./astro/Head.astro ./astro/middleware ."
   },
   "dependencies": {
     "@napi-rs/image": "1.16.0",
     "svgo": "^4.1.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
     "@gfx/zopfli": "1.0.15",
     "@types/node": "^26.6.6",
     "knip": "6.44.2",
     "oxfmt": "0.78.0",
     "oxlint": "1.93.0",
+    "publint": "0.3.25",
     "typescript": "7.0.2",
     "vite": "8.3.6"
   },
